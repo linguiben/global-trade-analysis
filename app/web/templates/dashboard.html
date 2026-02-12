@@ -52,14 +52,62 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-blue-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Trade Flow</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Most active corridors (value & volume). Target cadence: monthly/quarterly (open sources).</p>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Exports/Imports, trade balance, corridors (value & volume), freight (WCI), and port signals. Cadence varies by source.</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP scaffold</div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <label class="text-xs text-slate-400 font-mono">Scope</label>
+          <select id="trade_geo" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+            <option>Loading…</option>
+          </select>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2 text-xs font-mono">
+          <button data-tab="corridors" class="trade-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Corridors</button>
+          <button data-tab="exim" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Export/Import</button>
+          <button data-tab="balance" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Surplus/Deficit</button>
+          <button data-tab="wci" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Freight (WCI)</button>
+          <button data-tab="portwatch" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">PortWatch</button>
+        </div>
+
         <div class="mt-4 text-sm">
-          <div class="text-slate-300 font-semibold">Top corridor (Value)</div>
-          <div id="trade_value_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
-          <div class="text-slate-300 font-semibold mt-3">Top corridor (Volume)</div>
-          <div id="trade_volume_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
-          <div id="trade_period" class="text-xs text-slate-500 mt-3 font-mono"></div>
+          <div id="trade_panel_corridors" class="trade-panel">
+            <div class="text-slate-300 font-semibold">Top corridor (Value)</div>
+            <div id="trade_value_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+            <div class="text-slate-300 font-semibold mt-3">Top corridor (Volume)</div>
+            <div id="trade_volume_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+          </div>
+
+          <div id="trade_panel_exim" class="trade-panel hidden">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-slate-300 font-semibold">Export</div>
+                <div id="trade_export" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+              </div>
+              <div>
+                <div class="text-slate-300 font-semibold">Import</div>
+                <div id="trade_import" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="trade_panel_balance" class="trade-panel hidden">
+            <div class="text-slate-300 font-semibold">Trade balance</div>
+            <div id="trade_balance" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+          </div>
+
+          <div id="trade_panel_wci" class="trade-panel hidden">
+            <div class="text-slate-300 font-semibold">World Container Index (Drewry)</div>
+            <div id="trade_wci" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+            <div id="trade_wci_commentary" class="text-slate-400 text-sm mt-2"></div>
+          </div>
+
+          <div id="trade_panel_portwatch" class="trade-panel hidden">
+            <div class="text-slate-300 font-semibold">IMF PortWatch</div>
+            <div id="trade_portwatch" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+          </div>
+
+          <div id="trade_period" class="text-xs text-slate-500 mt-4 font-mono"></div>
           <div id="trade_source" class="text-xs text-slate-500 mt-1 font-mono"></div>
         </div>
       </div>
@@ -110,15 +158,78 @@
         return n + " kg";
       }
 
+      function setTradeTab(active) {
+        document.querySelectorAll('.trade-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('trade_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.trade-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+      }
+
+      function fmtSignedUSD(n) {
+        if (n == null) return '—';
+        const sign = n >= 0 ? '+' : '−';
+        return sign + '$' + fmtUSD(Math.abs(n));
+      }
+
+      let TRADE_DATA = null;
+
+      function renderTrade() {
+        if (!TRADE_DATA) return;
+        const geo = document.getElementById('trade_geo').value || 'Global';
+        const d = (TRADE_DATA.by_geo || {})[geo] || {};
+
+        const v = (d.value_usd_top || [])[0];
+        const vol = (d.volume_top || [])[0];
+        document.getElementById('trade_value_top').textContent = v ? `${v.origin} → ${v.dest} · $${fmtUSD(v.value_usd)}` : '—';
+        document.getElementById('trade_volume_top').textContent = vol ? `${vol.origin} → ${vol.dest} · ${fmtKG(vol.volume_kg)}` : '—';
+
+        document.getElementById('trade_export').textContent = d.export_usd != null ? `$${fmtUSD(d.export_usd)}` : '—';
+        document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
+        document.getElementById('trade_balance').textContent = d.trade_balance_usd != null ? fmtSignedUSD(d.trade_balance_usd) : '—';
+
+        const wci = TRADE_DATA.wci || {};
+        const wciLine = wci.value_usd_per_40ft != null ? `$${wci.value_usd_per_40ft}/40ft` : '—';
+        document.getElementById('trade_wci').textContent = `${wciLine}`;
+        document.getElementById('trade_wci_commentary').textContent = wci.commentary || '';
+
+        const pw = TRADE_DATA.portwatch || {};
+        document.getElementById('trade_portwatch').textContent = pw.commentary || '—';
+
+        document.getElementById('trade_period').textContent = `Period: ${d.period || '—'} · WCI: ${wci.period || '—'} · PortWatch: ${pw.period || '—'}`;
+        document.getElementById('trade_source').textContent = `Source: ${TRADE_DATA.source} · Updated: ${TRADE_DATA.updated_at}`;
+      }
+
       async function loadTrade() {
         const res = await fetch(`${BASE}/api/trade/corridors`);
         const data = await res.json();
-        const v = (data.value_usd_top || [])[0];
-        const vol = (data.volume_top || [])[0];
-        document.getElementById('trade_value_top').textContent = v ? `${v.origin} → ${v.dest} · $${fmtUSD(v.value_usd)}` : '—';
-        document.getElementById('trade_volume_top').textContent = vol ? `${vol.origin} → ${vol.dest} · ${fmtKG(vol.volume_kg)}` : '—';
-        document.getElementById('trade_period').textContent = `Period: ${data.period || '—'}`;
-        document.getElementById('trade_source').textContent = `Source: ${data.source} · Updated: ${data.updated_at}`;
+        TRADE_DATA = data;
+
+        const sel = document.getElementById('trade_geo');
+        sel.innerHTML = '';
+        (data.geos || ['Global']).forEach(g => {
+          const opt = document.createElement('option');
+          opt.value = g;
+          opt.textContent = g;
+          sel.appendChild(opt);
+        });
+        sel.value = 'Global';
+        sel.addEventListener('change', renderTrade);
+
+        document.querySelectorAll('.trade-tab').forEach(b => {
+          b.addEventListener('click', () => setTradeTab(b.dataset.tab));
+        });
+        setTradeTab('corridors');
+
+        renderTrade();
       }
 
       async function loadWealth() {

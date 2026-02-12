@@ -8,24 +8,79 @@ def utc_now_iso() -> str:
 
 
 def trade_corridors_mvp() -> dict:
-    # MVP stub. TODO: integrate UN Comtrade (monthly) and optional IMF DOTS.
+    # MVP stub. TODO: integrate UN Comtrade (monthly) + WITS/WB where possible + IMF PortWatch.
+    geos = ["Global", "India", "Mexico", "Singapore", "Hong Kong"]
+
+    by_geo = {
+        "Global": {
+            "period": "2025 (example)",
+            "value_usd_top": [
+                {"rank": 1, "origin": "CN", "dest": "US", "value_usd": 575_000_000_000},
+                {"rank": 2, "origin": "DE", "dest": "US", "value_usd": 160_000_000_000},
+                {"rank": 3, "origin": "MX", "dest": "US", "value_usd": 155_000_000_000},
+            ],
+            "volume_top": [
+                {"rank": 1, "origin": "CN", "dest": "US", "volume_kg": 92_000_000_000},
+                {"rank": 2, "origin": "CN", "dest": "VN", "volume_kg": 45_000_000_000},
+                {"rank": 3, "origin": "US", "dest": "CA", "volume_kg": 40_000_000_000},
+            ],
+            "export_usd": 25_600_000_000_000,
+            "import_usd": 26_200_000_000_000,
+        },
+        "India": {
+            "period": "2025 (example)",
+            "value_usd_top": [{"rank": 1, "origin": "IN", "dest": "US", "value_usd": 85_000_000_000}],
+            "volume_top": [{"rank": 1, "origin": "IN", "dest": "AE", "volume_kg": 9_200_000_000}],
+            "export_usd": 780_000_000_000,
+            "import_usd": 980_000_000_000,
+        },
+        "Mexico": {
+            "period": "2025 (example)",
+            "value_usd_top": [{"rank": 1, "origin": "MX", "dest": "US", "value_usd": 155_000_000_000}],
+            "volume_top": [{"rank": 1, "origin": "MX", "dest": "US", "volume_kg": 11_500_000_000}],
+            "export_usd": 670_000_000_000,
+            "import_usd": 650_000_000_000,
+        },
+        "Singapore": {
+            "period": "2025 (example)",
+            "value_usd_top": [{"rank": 1, "origin": "SG", "dest": "CN", "value_usd": 35_000_000_000}],
+            "volume_top": [{"rank": 1, "origin": "SG", "dest": "MY", "volume_kg": 2_100_000_000}],
+            "export_usd": 520_000_000_000,
+            "import_usd": 480_000_000_000,
+        },
+        "Hong Kong": {
+            "period": "2025 (example)",
+            "value_usd_top": [{"rank": 1, "origin": "HK", "dest": "CN", "value_usd": 42_000_000_000}],
+            "volume_top": [{"rank": 1, "origin": "HK", "dest": "CN", "volume_kg": 1_400_000_000}],
+            "export_usd": 620_000_000_000,
+            "import_usd": 690_000_000_000,
+        },
+    }
+
+    # Convenience: compute surplus/deficit for each geo.
+    for geo, d in by_geo.items():
+        d["trade_balance_usd"] = (d.get("export_usd") or 0) - (d.get("import_usd") or 0)
+
     return {
-        "source": "MVP stub (planned: UN Comtrade / IMF DOTS)",
-        "period": "2025 (example)",
+        "source": "MVP stub (planned: UN Comtrade / WITS / UNCTAD / PortWatch)",
         "updated_at": utc_now_iso(),
-        "value_usd_top": [
-            {"rank": 1, "origin": "CN", "dest": "US", "value_usd": 575_000_000_000},
-            {"rank": 2, "origin": "DE", "dest": "US", "value_usd": 160_000_000_000},
-            {"rank": 3, "origin": "MX", "dest": "US", "value_usd": 155_000_000_000},
-        ],
-        "volume_top": [
-            {"rank": 1, "origin": "CN", "dest": "US", "volume_kg": 92_000_000_000},
-            {"rank": 2, "origin": "CN", "dest": "VN", "volume_kg": 45_000_000_000},
-            {"rank": 3, "origin": "US", "dest": "CA", "volume_kg": 40_000_000_000},
-        ],
+        "geos": geos,
+        "by_geo": by_geo,
+        "wci": {
+            "source": "Manual entry (Drewry WCI)",
+            "period": "2026-W07 (example)",
+            "value_usd_per_40ft": 3200,
+            "link": "https://www.drewry.co.uk/supply-chain-advisors/supply-chain-expertise/world-container-index-assessed-by-drewry",
+            "commentary": "Manual placeholder. We will update weekly with a short commentary.",
+        },
+        "portwatch": {
+            "source": "Planned: IMF PortWatch",
+            "period": "2026-02 (example)",
+            "commentary": "Placeholder until PortWatch integration.",
+        },
         "notes": [
-            "Value and volume are shown separately; volume may be missing for some corridors in real data.",
-            "Update cadence target: monthly/quarterly depending on source availability.",
+            "This is an MVP scaffold: numbers are placeholders until data sources are wired.",
+            "We show value and volume separately; volume may be missing for some corridors in real data.",
         ],
     }
 
