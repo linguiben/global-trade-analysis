@@ -36,4 +36,5 @@ app.include_router(web_router)
 def favicon():
     if favicon_path.exists():
         return FileResponse(favicon_path)
-    return FileResponse("/dev/null")
+    # Avoid FileResponse on /dev/null (not a regular file in some containers)
+    return ""

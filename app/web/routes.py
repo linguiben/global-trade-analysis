@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.web import widget_data
+from app.web.worldbank import fetch_trade_exim_5y
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -69,6 +70,25 @@ def api_trade_refresh():
         "refreshed_at": widget_data.utc_now_iso(),
         "details": widget_data.refresh_trade_flow_sources(),
     }
+
+
+@router.get("/api/trade/exim-5y")
+def api_trade_exim_5y(geo: str = "Global"):
+    # Annual fallback via World Bank WDI (nominal USD)
+    geo_map = {
+        "Global": "WLD",
+        "India": "IND",
+        "Mexico": "MEX",
+        "Singapore": "SGP",
+        "Hong Kong": "HKG",
+    }
+    country = geo_map.get(geo, "WLD")
+
+    # derive end_year from UTC date (safe, close enough; WDI may lag)
+    from datetime import datetime, timezone
+
+    end_year = datetime.now(timezone.utc).year - 1
+    return fetch_trade_exim_5y(country, end_year=end_year, years=5)
 
 
 @router.get("/api/wealth/proxy")
