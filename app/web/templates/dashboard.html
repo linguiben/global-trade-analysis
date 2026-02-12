@@ -59,7 +59,8 @@
           <div id="trade_value_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
           <div class="text-slate-300 font-semibold mt-3">Top corridor (Volume)</div>
           <div id="trade_volume_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
-          <div id="trade_source" class="text-xs text-slate-500 mt-3 font-mono"></div>
+          <div id="trade_period" class="text-xs text-slate-500 mt-3 font-mono"></div>
+          <div id="trade_source" class="text-xs text-slate-500 mt-1 font-mono"></div>
         </div>
       </div>
 
@@ -116,6 +117,7 @@
         const vol = (data.volume_top || [])[0];
         document.getElementById('trade_value_top').textContent = v ? `${v.origin} → ${v.dest} · $${fmtUSD(v.value_usd)}` : '—';
         document.getElementById('trade_volume_top').textContent = vol ? `${vol.origin} → ${vol.dest} · ${fmtKG(vol.volume_kg)}` : '—';
+        document.getElementById('trade_period').textContent = `Period: ${data.period || '—'}`;
         document.getElementById('trade_source').textContent = `Source: ${data.source} · Updated: ${data.updated_at}`;
       }
 

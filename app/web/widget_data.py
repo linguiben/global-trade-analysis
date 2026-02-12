@@ -11,6 +11,7 @@ def trade_corridors_mvp() -> dict:
     # MVP stub. TODO: integrate UN Comtrade (monthly) and optional IMF DOTS.
     return {
         "source": "MVP stub (planned: UN Comtrade / IMF DOTS)",
+        "period": "2025 (example)",
         "updated_at": utc_now_iso(),
         "value_usd_top": [
             {"rank": 1, "origin": "CN", "dest": "US", "value_usd": 575_000_000_000},
