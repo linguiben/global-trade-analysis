@@ -41,13 +41,68 @@ def _to_number(s: str) -> Optional[float]:
         return None
 
 
+def _fetch_worldbank_latest_percapita(countries: Dict[str, str], ttl_seconds: int = 24 * 60 * 60, force: bool = False) -> Dict[str, Any]:
+    """Fetch a stable proxy from World Bank API.
+
+    We use: Household final consumption expenditure per capita (current US$)
+    Indicator: NE.CON.PRVT.PC.CD
+
+    This is NOT strictly disposable income, but it is broadly available and stable.
+    """
+
+    indicator = "NE.CON.PRVT.PC.CD"
+    url = f"https://api.worldbank.org/v2/country/{';'.join(countries.values())}/indicator/{indicator}?format=json"
+    key = f"wb:{indicator}:latest"
+    cached = None if force else _get_cached(key)
+    if cached:
+        return {**cached, "cached": True}
+
+    req = Request(url, headers={"User-Agent": "GTA dashboard"})
+    try:
+        with urlopen(req, timeout=12) as resp:
+            raw = resp.read().decode("utf-8", errors="ignore")
+    except Exception as e:
+        payload = {"ok": False, "source": "worldbank.org (api)", "link": url, "rows": {}, "error": str(e)}
+        _set_cached(key, payload, ttl_seconds)
+        return {**payload, "cached": False}
+
+    import json
+
+    rows: Dict[str, Dict[str, Any]] = {}
+    try:
+        j = json.loads(raw)
+        data = j[1] if isinstance(j, list) and len(j) >= 2 else []
+        # pick latest non-null per country
+        latest: Dict[str, float] = {}
+        for it in data or []:
+            c = (it.get("country") or {}).get("id") if isinstance(it, dict) else None
+            v = it.get("value") if isinstance(it, dict) else None
+            if c and v is not None and c not in latest:
+                latest[c] = float(v)
+        for geo, code in countries.items():
+            if code in latest:
+                rows[geo] = {"per_capita_usd": latest[code], "per_household_usd": None}
+    except Exception:
+        rows = {}
+
+    payload = {
+        "ok": True,
+        "source": "worldbank.org (api)",
+        "link": url,
+        "note": "Proxy: Household final consumption expenditure per capita (current US$) · Indicator NE.CON.PRVT.PC.CD · Latest non-null point.",
+        "rows": rows,
+    }
+    _set_cached(key, payload, ttl_seconds)
+    return {**payload, "cached": False}
+
+
 def fetch_disposable_income_latest(ttl_seconds: int = 24 * 60 * 60, force: bool = False) -> Dict[str, Any]:
-    """Best-effort scrape from WorldPopulationReview country rankings page.
+    """Latest point for disposable-income-like widget values.
 
-    IMPORTANT: This is a secondary source; structure may change.
-    This returns latest point only (no 5Y history).
+    Primary: best-effort scrape from WorldPopulationReview country rankings page.
+    Fallback (for missing geos): World Bank API proxy.
 
-    Page used (current): disposable-income-by-country
+    IMPORTANT: This is latest point only (no 5Y history guarantee).
     """
 
     url = "https://worldpopulationreview.com/country-rankings/disposable-income-by-country"
@@ -115,12 +170,27 @@ def fetch_disposable_income_latest(ttl_seconds: int = 24 * 60 * 60, force: bool 
         if pc is not None or hh is not None:
             rows[k] = {"per_capita_usd": pc, "per_household_usd": hh}
 
+    # Fallback fill from World Bank proxy for any missing geos.
+    wb_geo_map = {
+        "Global": "WLD",
+        "India": "IND",
+        "Mexico": "MEX",
+        "Singapore": "SGP",
+        "Hong Kong": "HKG",
+    }
+    missing = {k: v for k, v in wb_geo_map.items() if k not in rows}
+    wb = _fetch_worldbank_latest_percapita(missing, ttl_seconds=ttl_seconds, force=force) if missing else {"ok": True, "rows": {}}
+    for k, v in (wb.get("rows") or {}).items():
+        if k not in rows:
+            rows[k] = v
+
     payload = {
         "ok": True,
-        "source": "worldpopulationreview.com (scrape)",
+        "source": "worldpopulationreview.com (scrape) + worldbank.org (api fallback)",
         "link": url,
-        "note": "Secondary source; best-effort parsing; latest point only (no guaranteed history).",
+        "note": "Best-effort: WPR scrape first; missing geos filled using World Bank proxy (NE.CON.PRVT.PC.CD). Latest point only.",
         "rows": rows,
+        "fallback": {"worldbank": {"ok": wb.get("ok"), "link": wb.get("link"), "source": wb.get("source"), "note": wb.get("note")}},
     }
     _set_cached(key, payload, ttl_seconds)
     return {**payload, "cached": False}
