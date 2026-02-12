@@ -76,6 +76,7 @@
             <div id="trade_value_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
             <div class="text-slate-300 font-semibold mt-3">Top corridor (Volume)</div>
             <div id="trade_volume_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+            <div id="trade_corridors_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
           <div id="trade_panel_exim" class="trade-panel hidden">
@@ -89,11 +90,13 @@
                 <div id="trade_import" class="text-slate-400 text-sm mt-1 font-mono">—</div>
               </div>
             </div>
+            <div id="trade_exim_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
           <div id="trade_panel_balance" class="trade-panel hidden">
             <div class="text-slate-300 font-semibold">Trade balance</div>
             <div id="trade_balance" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+            <div id="trade_balance_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
           <div id="trade_panel_wci" class="trade-panel hidden">
@@ -105,6 +108,7 @@
           <div id="trade_panel_portwatch" class="trade-panel hidden">
             <div class="text-slate-300 font-semibold">IMF PortWatch</div>
             <div id="trade_portwatch" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+            <div id="trade_portwatch_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
           <div id="trade_period" class="text-xs text-slate-500 mt-4 font-mono"></div>
@@ -196,13 +200,31 @@
         document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
         document.getElementById('trade_balance').textContent = d.trade_balance_usd != null ? fmtSignedUSD(d.trade_balance_usd) : '—';
 
+        // --- per-tab commentary ---
+        const corridorsNote = v || vol
+          ? `Commentary: value and volume leaders can differ; use this to spot reroutes or mix changes.`
+          : `Commentary: corridor leaders will appear once data is available.`;
+        document.getElementById('trade_corridors_commentary').textContent = corridorsNote;
+
+        const bal = d.trade_balance_usd;
+        const eximNote = (d.export_usd != null && d.import_usd != null)
+          ? `Commentary: ${geo} is currently a ${bal != null && bal >= 0 ? 'net exporter' : 'net importer'} in this period.`
+          : `Commentary: export/import will populate once data is available.`;
+        document.getElementById('trade_exim_commentary').textContent = eximNote;
+
+        const balanceNote = (bal != null)
+          ? `Commentary: ${bal >= 0 ? 'surplus' : 'deficit'} equals export minus import (simple identity).`
+          : `Commentary: balance will populate once data is available.`;
+        document.getElementById('trade_balance_commentary').textContent = balanceNote;
+
         const wci = TRADE_DATA.wci || {};
         const wciLine = wci.value_usd_per_40ft != null ? `$${wci.value_usd_per_40ft}/40ft` : '—';
         document.getElementById('trade_wci').textContent = `${wciLine}`;
-        document.getElementById('trade_wci_commentary').textContent = wci.commentary || '';
+        document.getElementById('trade_wci_commentary').textContent = wci.commentary || 'Commentary: auto-extracted from source.';
 
         const pw = TRADE_DATA.portwatch || {};
         document.getElementById('trade_portwatch').textContent = pw.commentary || '—';
+        document.getElementById('trade_portwatch_commentary').textContent = `Commentary: port signals help validate whether trade changes are demand-led or capacity-led.`;
 
         document.getElementById('trade_period').textContent = `Period: ${d.period || '—'} · WCI: ${wci.period || '—'} · PortWatch: ${pw.period || '—'}`;
         document.getElementById('trade_source').textContent = `Source: ${TRADE_DATA.source} · Updated: ${TRADE_DATA.updated_at}`;
