@@ -220,7 +220,7 @@
         const wci = TRADE_DATA.wci || {};
         const wciLine = wci.value_usd_per_40ft != null ? `$${wci.value_usd_per_40ft}/40ft` : '—';
         document.getElementById('trade_wci').textContent = `${wciLine}`;
-        document.getElementById('trade_wci_commentary').textContent = wci.analysis_commentary || wci.commentary || 'Commentary: auto-extracted from source.';
+        document.getElementById('trade_wci_commentary').textContent = wci.commentary || 'Commentary: auto-extracted from source.';
 
         const pw = TRADE_DATA.portwatch || {};
         document.getElementById('trade_portwatch').textContent = pw.commentary || '—';
