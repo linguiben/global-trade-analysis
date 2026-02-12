@@ -236,9 +236,10 @@
         return n + " kg";
       }
 
-      function withDot(text, colorClass) {
-        const dot = `<span class="inline-block w-2 h-2 rounded-full ${colorClass} align-middle ml-2"></span>`;
-        return `${text}${dot}`;
+      function corridorPills(routeText, valueText, theme) {
+        // theme: { bg, border, text }
+        const pill = (t) => `<span class="inline-flex items-center rounded-full px-3 py-1 border ${theme.border} ${theme.bg} ${theme.text}">${t}</span>`;
+        return `<div class="flex flex-wrap items-center gap-2">${pill(routeText)}${pill(valueText)}</div>`;
       }
 
       function setTradeTab(active) {
@@ -375,8 +376,20 @@
 
         const v = (d.value_usd_top || [])[0];
         const vol = (d.volume_top || [])[0];
-        document.getElementById('trade_value_top').innerHTML = v ? withDot(`${v.origin} → ${v.dest} · $${fmtUSD(v.value_usd)}`, 'bg-blue-400') : '—';
-        document.getElementById('trade_volume_top').innerHTML = vol ? withDot(`${vol.origin} → ${vol.dest} · ${fmtKG(vol.volume_kg)}`, 'bg-emerald-400') : '—';
+        document.getElementById('trade_value_top').innerHTML = v
+          ? corridorPills(
+              `${v.origin} → ${v.dest}`,
+              `$${fmtUSD(v.value_usd)}`,
+              { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-slate-200' }
+            )
+          : '—';
+        document.getElementById('trade_volume_top').innerHTML = vol
+          ? corridorPills(
+              `${vol.origin} → ${vol.dest}`,
+              `${fmtKG(vol.volume_kg)}`,
+              { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-slate-200' }
+            )
+          : '—';
 
         document.getElementById('trade_export').textContent = d.export_usd != null ? `$${fmtUSD(d.export_usd)}` : '—';
         document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
