@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -47,6 +48,13 @@ def _snapshot_payload(snapshot: WidgetSnapshot | None, fallback: dict | None = N
     if snapshot and isinstance(snapshot.payload, dict):
         return snapshot.payload
     return fallback or {}
+
+
+def _jobs_redirect_url(request: Request, msg: str) -> str:
+    base = settings.BASE_PATH.rstrip("/")
+    use_prefixed = bool(base) and request.url.path.startswith(f"{base}/")
+    path = f"{base}/jobs" if use_prefixed else "/jobs"
+    return f"{path}?msg={quote(msg)}"
 
 
 def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
@@ -234,8 +242,7 @@ def jobs_run(
     params = parse_params_json(params_json, fallback={})
     result = run_job_now(job_id=job_id, params_override=params, triggered_by="manual")
     msg = f"{job_id}: {result.get('status')} ({result.get('message') or result.get('error') or ''})"
-    target = request.url_for("jobs_page").include_query_params(msg=msg)
-    return RedirectResponse(url=str(target), status_code=303)
+    return RedirectResponse(url=_jobs_redirect_url(request, msg), status_code=303)
 
 
 @router.post("/jobs/update")
@@ -259,5 +266,41 @@ def jobs_update(
     )
     status = "updated" if ok else "failed"
     msg = f"{job_id}: {status} ({detail})"
-    target = request.url_for("jobs_page").include_query_params(msg=msg)
-    return RedirectResponse(url=str(target), status_code=303)
+    return RedirectResponse(url=_jobs_redirect_url(request, msg), status_code=303)
+
+
+def _register_base_path_aliases() -> None:
+    base = settings.BASE_PATH.rstrip("/")
+    if not base or base == "/":
+        return
+
+    alias_specs = [
+        {"path": base, "endpoint": homepage, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_homepage_root"},
+        {"path": f"{base}/", "endpoint": homepage, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_homepage_slash"},
+        {"path": f"{base}/health", "endpoint": health, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_health"},
+        {"path": f"{base}/api/trade/corridors", "endpoint": api_trade_corridors, "methods": ["GET"], "name": "prefixed_api_trade_corridors"},
+        {"path": f"{base}/api/trade/refresh", "endpoint": api_trade_refresh, "methods": ["POST"], "name": "prefixed_api_trade_refresh"},
+        {"path": f"{base}/api/trade/exim-5y", "endpoint": api_trade_exim_5y, "methods": ["GET"], "name": "prefixed_api_trade_exim_5y"},
+        {"path": f"{base}/api/wealth/proxy", "endpoint": api_wealth_proxy, "methods": ["GET"], "name": "prefixed_api_wealth_proxy"},
+        {"path": f"{base}/api/finance/big-transactions", "endpoint": api_finance_big_transactions, "methods": ["GET"], "name": "prefixed_api_finance_big_transactions"},
+        {"path": f"{base}/api/wealth/indicators-5y", "endpoint": api_wealth_indicators_5y, "methods": ["GET"], "name": "prefixed_api_wealth_indicators_5y"},
+        {"path": f"{base}/api/wealth/disposable-latest", "endpoint": api_wealth_disposable_latest, "methods": ["GET"], "name": "prefixed_api_wealth_disposable_latest"},
+        {"path": f"{base}/api/finance/ma/industry", "endpoint": api_finance_ma_industry, "methods": ["GET"], "name": "prefixed_api_finance_ma_industry"},
+        {"path": f"{base}/api/finance/ma/country", "endpoint": api_finance_ma_country, "methods": ["GET"], "name": "prefixed_api_finance_ma_country"},
+        {"path": f"{base}/jobs", "endpoint": jobs_page, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_jobs_page"},
+        {"path": f"{base}/jobs/run", "endpoint": jobs_run, "methods": ["POST"], "name": "prefixed_jobs_run"},
+        {"path": f"{base}/jobs/update", "endpoint": jobs_update, "methods": ["POST"], "name": "prefixed_jobs_update"},
+    ]
+
+    for spec in alias_specs:
+        router.add_api_route(
+            spec["path"],
+            endpoint=spec["endpoint"],
+            methods=spec["methods"],
+            response_class=spec.get("response_class"),
+            include_in_schema=False,
+            name=spec["name"],
+        )
+
+
+_register_base_path_aliases()
