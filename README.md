@@ -1,4 +1,15 @@
-# global-trade-analysis
+# global-trade-analysis (GTA)
+
+A lightweight web homepage scaffold for **Global Trade Analysis**.
+
+## Run (Docker)
+
+```bash
+docker compose up -d --build
+```
+
+- Web: http://localhost:9000
+- PostgreSQL: localhost:9527
 
 Workspace for analyzing global trade data (imports/exports, HS/SITC codes, partners, time series).
 

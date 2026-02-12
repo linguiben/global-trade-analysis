@@ -17,3 +17,6 @@ figures/
 # OS / editor
 .DS_Store
 .vscode/
+
+# Env
+.env
