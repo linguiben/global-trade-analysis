@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from app.web.external_sources import fetch_drewry_wci
+
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -66,13 +68,7 @@ def trade_corridors_mvp() -> dict:
         "updated_at": utc_now_iso(),
         "geos": geos,
         "by_geo": by_geo,
-        "wci": {
-            "source": "Manual entry (Drewry WCI)",
-            "period": "2026-W07 (example)",
-            "value_usd_per_40ft": 3200,
-            "link": "https://www.drewry.co.uk/supply-chain-advisors/supply-chain-expertise/world-container-index-assessed-by-drewry",
-            "commentary": "Manual placeholder. We will update weekly with a short commentary.",
-        },
+        "wci": fetch_drewry_wci(),
         "portwatch": {
             "source": "Planned: IMF PortWatch",
             "period": "2026-02 (example)",
