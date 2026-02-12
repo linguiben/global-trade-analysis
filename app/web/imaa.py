@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import time
+import html as _html
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 from urllib.request import Request, urlopen
@@ -39,6 +40,7 @@ def _fetch_html(url: str) -> str:
 
 def _strip_tags(s: str) -> str:
     s = re.sub(r"<[^>]+>", " ", s)
+    s = _html.unescape(s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
