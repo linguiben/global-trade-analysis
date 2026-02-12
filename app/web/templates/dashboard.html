@@ -714,10 +714,10 @@
         return {
           responsive: true,
           maintainAspectRatio: true,
-          cutout: '62%',
+          cutout: '40%',
           plugins: {
             legend: {
-              position: 'right',
+              position: 'bottom',
               labels: { color: '#cbd5e1', boxWidth: 10, boxHeight: 10 }
             },
             tooltip: {
@@ -729,7 +729,7 @@
                   const sum = ds.reduce((a, b) => a + Number(b || 0), 0) || 0;
                   const pct = sum ? (v / sum * 100) : 0;
                   const pv = pct ? `${pct.toFixed(1)}%` : '0%';
-                  return `${label}: ${v.toLocaleString()} (${pv})`;
+                  return [`${label}: ${v.toLocaleString()}`, `Share: ${pv}`];
                 }
               }
             }
@@ -740,14 +740,69 @@
       function upsertRing(id, label, labels, values) {
         const ctx = document.getElementById(id);
         if (!ctx) return null;
+        const ringSliceLabelPlugin = {
+          id: 'ringSliceLabelPlugin',
+          afterDatasetsDraw(chart) {
+            const dataset = chart.data && chart.data.datasets ? chart.data.datasets[0] : null;
+            if (!dataset || !Array.isArray(dataset.data)) return;
+            const meta = chart.getDatasetMeta(0);
+            if (!meta || !Array.isArray(meta.data)) return;
+
+            const total = dataset.data.reduce((a, b) => a + Number(b || 0), 0) || 0;
+            if (!total) return;
+
+            const c = chart.ctx;
+            c.save();
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+
+            meta.data.forEach((arc, i) => {
+              const raw = Number(dataset.data[i] || 0);
+              if (!raw) return;
+
+              const pct = (raw / total) * 100;
+              if (pct < 6) return; // avoid clutter on tiny slices
+
+              const angle = (arc.startAngle + arc.endAngle) / 2;
+              const radius = (arc.innerRadius + arc.outerRadius) / 2;
+              const x = arc.x + Math.cos(angle) * radius;
+              const y = arc.y + Math.sin(angle) * radius;
+              const txt = String((chart.data.labels || [])[i] || '');
+              const short = txt.length > 10 ? txt.slice(0, 10) + '…' : txt;
+
+              c.fillStyle = '#ffffff';
+              c.font = '600 10px sans-serif';
+              c.fillText(short, x, y - 6);
+
+              c.fillStyle = 'rgba(255,255,255,0.95)';
+              c.font = '500 10px sans-serif';
+              c.fillText(`${pct.toFixed(1)}%`, x, y + 7);
+            });
+
+            c.restore();
+          }
+        };
+
         const palette = [
-          '#60a5fa', '#34d399', '#fbbf24', '#fb7185', '#a78bfa',
-          '#22d3ee', '#f472b6', '#fb923c', '#94a3b8', '#4ade80'
+          '#1890ff', '#52c41a', '#faad14', '#f5222d', '#8c8c8c',
+          '#13c2c2', '#722ed1', '#fa8c16', '#2f54eb', '#eb2f96'
         ];
         const colors = labels.map((_, i) => palette[i % palette.length]);
         return new Chart(ctx, {
           type: 'doughnut',
-          data: { labels, datasets: [{ label, data: values, backgroundColor: colors, borderColor: 'rgba(15,23,42,0.65)', borderWidth: 2 }] },
+          data: {
+            labels,
+            datasets: [{
+              label,
+              data: values,
+              backgroundColor: colors,
+              radius: '70%',
+              borderRadius: 8,
+              borderColor: '#ffffff',
+              borderWidth: 2,
+            }]
+          },
+          plugins: [ringSliceLabelPlugin],
           options: ringOpts(),
         });
       }
