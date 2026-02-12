@@ -236,6 +236,11 @@
         return n + " kg";
       }
 
+      function withDot(text, colorClass) {
+        const dot = `<span class="inline-block w-2 h-2 rounded-full ${colorClass} align-middle ml-2"></span>`;
+        return `${text}${dot}`;
+      }
+
       function setTradeTab(active) {
         document.querySelectorAll('.trade-panel').forEach(p => p.classList.add('hidden'));
         const panel = document.getElementById('trade_panel_' + active);
@@ -370,8 +375,8 @@
 
         const v = (d.value_usd_top || [])[0];
         const vol = (d.volume_top || [])[0];
-        document.getElementById('trade_value_top').textContent = v ? `${v.origin} → ${v.dest} · $${fmtUSD(v.value_usd)}` : '—';
-        document.getElementById('trade_volume_top').textContent = vol ? `${vol.origin} → ${vol.dest} · ${fmtKG(vol.volume_kg)}` : '—';
+        document.getElementById('trade_value_top').innerHTML = v ? withDot(`${v.origin} → ${v.dest} · $${fmtUSD(v.value_usd)}`, 'bg-blue-400') : '—';
+        document.getElementById('trade_volume_top').innerHTML = vol ? withDot(`${vol.origin} → ${vol.dest} · ${fmtKG(vol.volume_kg)}`, 'bg-emerald-400') : '—';
 
         document.getElementById('trade_export').textContent = d.export_usd != null ? `$${fmtUSD(d.export_usd)}` : '—';
         document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
