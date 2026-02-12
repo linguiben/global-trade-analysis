@@ -51,39 +51,41 @@ def _fetch_worldbank_latest_percapita(countries: Dict[str, str], ttl_seconds: in
     """
 
     indicator = "NE.CON.PRVT.PC.KD"
-    url = f"https://api.worldbank.org/v2/country/{';'.join(countries.values())}/indicator/{indicator}?format=json"
-    key = f"wb:{indicator}:latest"
+    key = f"wb:{indicator}:latest:{','.join(sorted(countries.values()))}"
     cached = None if force else _get_cached(key)
     if cached:
         return {**cached, "cached": True}
 
-    req = Request(url, headers={"User-Agent": "GTA dashboard"})
-    try:
-        with urlopen(req, timeout=12) as resp:
-            raw = resp.read().decode("utf-8", errors="ignore")
-    except Exception as e:
-        payload = {"ok": False, "source": "worldbank.org (api)", "link": url, "rows": {}, "error": str(e)}
-        _set_cached(key, payload, ttl_seconds)
-        return {**payload, "cached": False}
-
     import json
 
     rows: Dict[str, Dict[str, Any]] = {}
-    try:
-        j = json.loads(raw)
-        data = j[1] if isinstance(j, list) and len(j) >= 2 else []
-        # pick latest non-null per country
-        latest: Dict[str, float] = {}
-        for it in data or []:
-            c = (it.get("country") or {}).get("id") if isinstance(it, dict) else None
-            v = it.get("value") if isinstance(it, dict) else None
-            if c and v is not None and c not in latest:
-                latest[c] = float(v)
-        for geo, code in countries.items():
-            if code in latest:
-                rows[geo] = {"per_capita_usd": latest[code], "per_household_usd": None}
-    except Exception:
-        rows = {}
+    links: Dict[str, str] = {}
+
+    # Fetch per-country to avoid pagination issues when combining many countries.
+    for geo, code in (countries or {}).items():
+        url = f"https://api.worldbank.org/v2/country/{code}/indicator/{indicator}?format=json"
+        links[geo] = url
+        req = Request(url, headers={"User-Agent": "GTA dashboard"})
+        try:
+            with urlopen(req, timeout=12) as resp:
+                raw = resp.read().decode("utf-8", errors="ignore")
+            j = json.loads(raw)
+            data = j[1] if isinstance(j, list) and len(j) >= 2 else []
+            val = None
+            for it in data or []:
+                if not isinstance(it, dict):
+                    continue
+                v = it.get("value")
+                if v is not None:
+                    val = float(v)
+                    break
+            if val is not None:
+                rows[geo] = {"per_capita_usd": val, "per_household_usd": None}
+        except Exception:
+            # best-effort: ignore failures for individual geos
+            continue
+
+    url = "https://api.worldbank.org/v2"  # base
 
     payload = {
         "ok": True,
@@ -91,6 +93,7 @@ def _fetch_worldbank_latest_percapita(countries: Dict[str, str], ttl_seconds: in
         "link": url,
         "note": "Proxy: HH+NPISH final consumption expenditure per capita (constant 2015 US$) · Indicator NE.CON.PRVT.PC.KD · Latest non-null point.",
         "rows": rows,
+        "links": links,
     }
     _set_cached(key, payload, ttl_seconds)
     return {**payload, "cached": False}
