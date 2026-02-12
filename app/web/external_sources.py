@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import time
+import html as _html
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from urllib.request import Request, urlopen
@@ -32,6 +33,14 @@ def _get_cached(key: str) -> Optional[Dict[str, Any]]:
 
 def _set_cached(key: str, value: Dict[str, Any], ttl_seconds: int) -> None:
     _CACHE[key] = _CacheEntry(value=value, expires_at=time.time() + ttl_seconds)
+
+
+def _strip_html(s: str) -> str:
+    # Remove tags and decode entities; keep it simple and dependency-free.
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = _html.unescape(s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
 
 def fetch_drewry_wci(ttl_seconds: int = 6 * 60 * 60) -> Dict[str, Any]:
@@ -117,13 +126,13 @@ def fetch_drewry_wci(ttl_seconds: int = 6 * 60 * 60) -> Dict[str, Any]:
     assessment = None
     m_assess = re.search(r"Our detailed assessment.*?(The\s+Drewry.*?)(?:Related Research|Featured Services)", html, re.IGNORECASE | re.DOTALL)
     if m_assess:
-        assessment = re.sub(r"\s+", " ", m_assess.group(1)).strip()
+        assessment = _strip_html(m_assess.group(1))
 
     # Extract expectation sentence if present
     expectation = None
     m_expect = re.search(r"Hence, we expect.*?\.|Drewry expects.*?\.\s*", html, re.IGNORECASE)
     if m_expect:
-        expectation = re.sub(r"\s+", " ", m_expect.group(0)).strip()
+        expectation = _strip_html(m_expect.group(0))
 
     # Build analysis-style commentary in English (derived only from extracted text)
     parts = []
