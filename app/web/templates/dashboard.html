@@ -51,25 +51,107 @@
     <section id="widgets" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="card rounded-3xl p-6 transition-all hover:border-blue-500/50">
         <div class="text-xs text-slate-400">Widget</div>
-        <div class="mt-1 text-xl font-bold">Trade flows</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Imports/exports by partner and sector, with time-series comparisons and revisions tracking.</p>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: planned</div>
+        <div class="mt-1 text-xl font-bold">Global Trade Flow</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Most active corridors (value & volume). Target cadence: monthly/quarterly (open sources).</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP</div>
+        <div class="mt-4 text-sm">
+          <div class="text-slate-300 font-semibold">Top corridor (Value)</div>
+          <div id="trade_value_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+          <div class="text-slate-300 font-semibold mt-3">Top corridor (Volume)</div>
+          <div id="trade_volume_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+          <div id="trade_source" class="text-xs text-slate-500 mt-3 font-mono"></div>
+        </div>
       </div>
 
       <div class="card rounded-3xl p-6 transition-all hover:border-emerald-500/50">
         <div class="text-xs text-slate-400">Widget</div>
-        <div class="mt-1 text-xl font-bold">Tariffs & policy</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Policy events, duty changes, and simple scenario analysis (baseline vs shock).</p>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: planned</div>
+        <div class="mt-1 text-xl font-bold">Global Wealth Distribution</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Proxy-based wealth/spending by age group + shift pace (India/Mexico/Singapore/HK).</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP (proxy)</div>
+        <div class="mt-4 text-sm">
+          <div class="text-slate-300 font-semibold">Fastest shift pace (proxy)</div>
+          <div id="wealth_fastest" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+          <div id="wealth_source" class="text-xs text-slate-500 mt-3 font-mono"></div>
+        </div>
       </div>
 
       <div class="card rounded-3xl p-6 transition-all hover:border-fuchsia-500/50">
         <div class="text-xs text-slate-400">Widget</div>
-        <div class="mt-1 text-xl font-bold">Trade corridors</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Corridor activity, definitions, and methodology notes (value vs volume vs shipping metrics).</p>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: planned</div>
+        <div class="mt-1 text-xl font-bold">Global Financial Flow</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Big transactions feed (near-real-time via open news feeds; always source-linked).</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP</div>
+        <div class="mt-4 text-sm">
+          <div class="text-slate-300 font-semibold">Latest big tickets</div>
+          <ul id="finance_list" class="mt-2 space-y-2 text-slate-400 text-sm"></ul>
+          <div id="finance_source" class="text-xs text-slate-500 mt-3 font-mono"></div>
+        </div>
       </div>
     </section>
+
+    <script>
+      const BASE = "{{ base }}";
+
+      function fmtUSD(n) {
+        if (n == null) return "—";
+        const abs = Math.abs(n);
+        if (abs >= 1e12) return (n/1e12).toFixed(2) + "T";
+        if (abs >= 1e9) return (n/1e9).toFixed(2) + "B";
+        if (abs >= 1e6) return (n/1e6).toFixed(2) + "M";
+        return String(n);
+      }
+
+      function fmtKG(n) {
+        if (n == null) return "—";
+        const abs = Math.abs(n);
+        if (abs >= 1e12) return (n/1e12).toFixed(2) + "T kg";
+        if (abs >= 1e9) return (n/1e9).toFixed(2) + "B kg";
+        if (abs >= 1e6) return (n/1e6).toFixed(2) + "M kg";
+        return n + " kg";
+      }
+
+      async function loadTrade() {
+        const res = await fetch(`${BASE}/api/trade/corridors`);
+        const data = await res.json();
+        const v = (data.value_usd_top || [])[0];
+        const vol = (data.volume_top || [])[0];
+        document.getElementById('trade_value_top').textContent = v ? `${v.origin} → ${v.dest} · $${fmtUSD(v.value_usd)}` : '—';
+        document.getElementById('trade_volume_top').textContent = vol ? `${vol.origin} → ${vol.dest} · ${fmtKG(vol.volume_kg)}` : '—';
+        document.getElementById('trade_source').textContent = `Source: ${data.source} · Updated: ${data.updated_at}`;
+      }
+
+      async function loadWealth() {
+        const res = await fetch(`${BASE}/api/wealth/proxy`);
+        const data = await res.json();
+        const pace = data.shift_pace_proxy || {};
+        let best = null;
+        for (const [k, v] of Object.entries(pace)) {
+          if (best == null || v > best.v) best = {k, v};
+        }
+        document.getElementById('wealth_fastest').textContent = best ? `${best.k} · +${best.v}% (proxy)` : '—';
+        document.getElementById('wealth_source').textContent = `Source: ${data.source} · Updated: ${data.updated_at}`;
+      }
+
+      async function loadFinance() {
+        const res = await fetch(`${BASE}/api/finance/big-transactions`);
+        const data = await res.json();
+        const ul = document.getElementById('finance_list');
+        ul.innerHTML = '';
+        for (const t of (data.transactions || []).slice(0, 5)) {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = t.link;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.className = 'hover:text-fuchsia-300';
+          a.textContent = `${t.date} · ${t.type} · $${fmtUSD(t.value_usd)} · ${t.headline}`;
+          li.appendChild(a);
+          ul.appendChild(li);
+        }
+        document.getElementById('finance_source').textContent = `Source: ${data.source} · Updated: ${data.updated_at}`;
+      }
+
+      Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});
+    </script>
 
     <section id="about" class="mt-6 card rounded-3xl p-6">
       <h3 class="text-lg font-bold">Notes</h3>

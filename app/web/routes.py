@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+
+from app.web import widget_data
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -48,3 +50,21 @@ def homepage(request: Request, db: Session = Depends(get_db)):
 @router.get("/health", response_class=HTMLResponse)
 def health():
     return "OK"
+
+
+# --- Widget APIs (MVP stubs) ---
+
+
+@router.get("/api/trade/corridors")
+def api_trade_corridors():
+    return widget_data.trade_corridors_mvp()
+
+
+@router.get("/api/wealth/proxy")
+def api_wealth_proxy():
+    return widget_data.wealth_proxy_mvp()
+
+
+@router.get("/api/finance/big-transactions")
+def api_finance_big_transactions():
+    return widget_data.finance_big_transactions_mvp()
