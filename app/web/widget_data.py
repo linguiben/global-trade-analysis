@@ -15,7 +15,7 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
 
-def trade_corridors_mvp() -> dict:
+def trade_corridors_mvp(force_wci: bool = False) -> dict:
     # MVP stub. TODO: integrate UN Comtrade (monthly) + WITS/WB where possible + IMF PortWatch.
     geos = ["Global", "India", "Mexico", "Singapore", "Hong Kong"]
 
@@ -74,7 +74,7 @@ def trade_corridors_mvp() -> dict:
         "updated_at": utc_now_iso(),
         "geos": geos,
         "by_geo": by_geo,
-        "wci": fetch_drewry_wci(),
+        "wci": fetch_drewry_wci(force=force_wci),
         "portwatch": {
             "source": "Planned: IMF PortWatch",
             "period": "2026-02 (example)",

@@ -25,10 +25,13 @@
         <p class="text-slate-400 text-sm mt-1" style="font-family: cursive;">$POC · data-driven trade insights$</p>
       </div>
       <div class="text-right text-xs text-slate-500 font-mono">
-        Visited: {{ visited_count }}<br>{{ now }}
+        Visited: {{ visited_count }}<br>{{ now }}<br>
+        Data Updated: {{ data_updated_at }}<br>
+        Stale: {% if data_is_stale %}YES{% else %}NO{% endif %}
       </div>
       <nav class="w-full text-right text-xs text-slate-400 space-x-3">
         <a class="hover:text-blue-300" href="{{ base }}/health">Health</a>
+        <a class="hover:text-blue-300" href="{{ base }}/jobs">Jobs</a>
       </nav>
     </header>
 
@@ -217,6 +220,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
       const BASE = "{{ base }}";
+      const DASHBOARD_DATA = {{ dashboard_data | tojson }};
 
       function fmtUSD(n) {
         if (n == null) return "—";
@@ -290,8 +294,8 @@
       let BAL_CHART = null;
 
       async function loadEximSeries(geo) {
-        const res = await fetch(`${BASE}/api/trade/exim-5y?geo=${encodeURIComponent(geo)}`);
-        return await res.json();
+        const all = DASHBOARD_DATA.trade_exim_by_geo || {};
+        return all[geo] || { source: 'N/A', frequency: 'annual', date: '', series: [] };
       }
 
       function toBillions(n) {
@@ -451,8 +455,7 @@
       }
 
       async function loadTrade() {
-        const res = await fetch(`${BASE}/api/trade/corridors`);
-        const data = await res.json();
+        const data = DASHBOARD_DATA.trade_corridors || {};
         TRADE_DATA = data;
 
         const sel = document.getElementById('trade_geo');
@@ -495,13 +498,12 @@
       let WEALTH_CONS_CHART = null;
 
       async function loadWealthIndicators(geo) {
-        const res = await fetch(`${BASE}/api/wealth/indicators-5y?geo=${encodeURIComponent(geo)}`);
-        return await res.json();
+        const all = DASHBOARD_DATA.wealth_indicators_by_geo || {};
+        return all[geo] || { source: 'N/A', frequency: 'annual', date: '', series: [] };
       }
 
       async function loadDisposableLatest() {
-        const res = await fetch(`${BASE}/api/wealth/disposable-latest`);
-        return await res.json();
+        return DASHBOARD_DATA.wealth_disposable_latest || { rows: {}, source: 'N/A', link: '' };
       }
 
       function upsertWealthGdpChart(payload) {
@@ -629,13 +631,11 @@
       let FIN_CTY_VALUE = null;
 
       async function loadFinIndustry() {
-        const res = await fetch(`${BASE}/api/finance/ma/industry`);
-        return await res.json();
+        return DASHBOARD_DATA.finance_ma_industry || { rows: [], source: 'N/A', link: '' };
       }
 
       async function loadFinCountry() {
-        const res = await fetch(`${BASE}/api/finance/ma/country`);
-        return await res.json();
+        return DASHBOARD_DATA.finance_ma_country || { rows: [], source: 'N/A', link: '' };
       }
 
       function _wrapLabel(s, maxLineLen=18, maxLines=3) {

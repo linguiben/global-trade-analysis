@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTA Jobs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; }
+    .card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(51, 65, 85, 1); backdrop-filter: blur(8px); }
+    textarea, input[type="text"] { background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0; }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+  {% set base = base_path or '' %}
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold">Jobs Console</h1>
+        <p class="text-slate-400 text-sm">Scheduled data refresh and manual execution</p>
+      </div>
+      <div class="text-xs text-slate-500 font-mono text-right">
+        {{ now }}<br>
+        <a class="underline hover:text-blue-300" href="{{ base }}/">Back to dashboard</a>
+      </div>
+    </header>
+
+    {% if msg %}
+    <section class="card rounded-xl p-3 mb-4 text-sm text-emerald-300">{{ msg }}</section>
+    {% endif %}
+    {% if not jobs_enabled %}
+    <section class="card rounded-xl p-3 mb-4 text-sm text-amber-300">Jobs are globally disabled by <span class="font-mono">JOBS_ENABLED=false</span>.</section>
+    {% endif %}
+
+    <section class="card rounded-2xl p-4 md:p-6 mb-6 overflow-x-auto">
+      <h2 class="text-lg font-semibold mb-4">Jobs</h2>
+      <table class="w-full text-sm">
+        <thead class="text-slate-400">
+          <tr>
+            <th class="text-left py-2 pr-3">Job</th>
+            <th class="text-left py-2 pr-3">Schedule</th>
+            <th class="text-left py-2 pr-3">Manual Run</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+          <tr class="border-t border-slate-700 align-top">
+            <td class="py-3 pr-3 min-w-[220px]">
+              <div class="font-semibold">{{ job.name }}</div>
+              <div class="text-slate-400 text-xs mt-1">{{ job.job_id }}</div>
+              <div class="text-slate-400 text-xs mt-1">{{ job.description }}</div>
+              <div class="text-slate-500 text-xs mt-2 font-mono">Next: {{ job.next_run_at }}</div>
+              <div class="text-slate-500 text-xs font-mono">Last success: {{ job.last_success_at }}</div>
+            </td>
+            <td class="py-3 pr-3 min-w-[260px]">
+              <form method="post" action="{{ base }}/jobs/update" class="space-y-2">
+                <input type="hidden" name="job_id" value="{{ job.job_id }}">
+                <label class="block text-xs text-slate-400">Cron (5-field)</label>
+                <input class="w-full rounded px-2 py-1 text-xs font-mono" type="text" name="cron_expr" value="{{ job.cron_expr }}">
+                <label class="block text-xs text-slate-400">Timezone</label>
+                <input class="w-full rounded px-2 py-1 text-xs font-mono" type="text" name="timezone_name" value="{{ job.timezone }}">
+                <label class="inline-flex items-center gap-2 text-xs text-slate-300">
+                  <input type="checkbox" name="enabled" {% if job.enabled %}checked{% endif %}>
+                  enabled
+                </label>
+                <label class="block text-xs text-slate-400">Default Params (JSON)</label>
+                <textarea class="w-full rounded p-2 text-xs font-mono h-24" name="default_params_json">{{ job.default_params_json }}</textarea>
+                <button class="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold" type="submit">Update</button>
+              </form>
+            </td>
+            <td class="py-3 pr-3 min-w-[260px]">
+              <div class="text-slate-400 text-xs">Manual run params (JSON override)</div>
+              <form method="post" action="{{ base }}/jobs/run" class="space-y-2 mt-2">
+                <input type="hidden" name="job_id" value="{{ job.job_id }}">
+                <textarea class="w-full rounded p-2 text-xs font-mono h-24" name="params_json">{}</textarea>
+                <button class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-xs font-semibold" type="submit">Run Now</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card rounded-2xl p-4 md:p-6 overflow-x-auto">
+      <h2 class="text-lg font-semibold mb-4">Recent Runs</h2>
+      <table class="w-full text-xs font-mono">
+        <thead class="text-slate-400">
+          <tr>
+            <th class="text-left py-2 pr-3">Started</th>
+            <th class="text-left py-2 pr-3">Job</th>
+            <th class="text-left py-2 pr-3">Status</th>
+            <th class="text-left py-2 pr-3">Duration(ms)</th>
+            <th class="text-left py-2 pr-3">Triggered By</th>
+            <th class="text-left py-2 pr-3">Message / Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in runs %}
+          <tr class="border-t border-slate-700">
+            <td class="py-2 pr-3">{{ run.started_at }}</td>
+            <td class="py-2 pr-3">{{ run.job_id }}</td>
+            <td class="py-2 pr-3">{{ run.status }}</td>
+            <td class="py-2 pr-3">{{ run.duration_ms or '—' }}</td>
+            <td class="py-2 pr-3">{{ run.triggered_by }}</td>
+            <td class="py-2 pr-3 break-all">{{ run.message or run.error or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

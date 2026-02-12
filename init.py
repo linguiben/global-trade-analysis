@@ -37,8 +37,8 @@ SKIP_PATTERNS = [
 
 
 def _should_skip_error(msg: str) -> bool:
-    s = (msg or "").lower()
-    return any(pat in s for pat in SKIP_PATTERNS)
+    s = msg or ""
+    return any(re.search(pat, s, flags=re.IGNORECASE) for pat in SKIP_PATTERNS)
 
 
 def _read_sql(path: Path) -> str:
@@ -53,22 +53,51 @@ def _read_sql(path: Path) -> str:
 
 
 def _split_sql(sql: str) -> list[str]:
-    # Minimal SQL splitter: handles semicolons outside of single/double-quoted strings.
+    # SQL splitter: handles semicolons outside single/double quotes and dollar-quoted blocks.
     stmts = []
     buf = []
     in_squote = False
     in_dquote = False
-    esc = False
+    dollar_tag: str | None = None
 
-    for ch in sql:
-        if ch == "\\" and not esc:
-            esc = True
-            buf.append(ch)
+    i = 0
+    n = len(sql)
+    while i < n:
+        if dollar_tag:
+            if sql.startswith(dollar_tag, i):
+                buf.append(dollar_tag)
+                i += len(dollar_tag)
+                dollar_tag = None
+                continue
+            buf.append(sql[i])
+            i += 1
             continue
 
-        if ch == "'" and not in_dquote and not esc:
+        # Detect start of dollar-quoted block: $$...$$ or $tag$...$tag$
+        if not in_squote and not in_dquote and sql[i] == "$":
+            m = re.match(r"^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$", sql[i:])
+            if m:
+                tag = m.group(0)
+                dollar_tag = tag
+                buf.append(tag)
+                i += len(tag)
+                continue
+
+        ch = sql[i]
+
+        # Handle escaped quote in string literals ('' or "")
+        if in_squote and ch == "'" and i + 1 < n and sql[i + 1] == "'":
+            buf.append("''")
+            i += 2
+            continue
+        if in_dquote and ch == '"' and i + 1 < n and sql[i + 1] == '"':
+            buf.append('""')
+            i += 2
+            continue
+
+        if ch == "'" and not in_dquote:
             in_squote = not in_squote
-        elif ch == '"' and not in_squote and not esc:
+        elif ch == '"' and not in_squote:
             in_dquote = not in_dquote
 
         if ch == ";" and not in_squote and not in_dquote:
@@ -76,10 +105,11 @@ def _split_sql(sql: str) -> list[str]:
             if stmt:
                 stmts.append(stmt)
             buf = []
-        else:
-            buf.append(ch)
+            i += 1
+            continue
 
-        esc = False
+        buf.append(ch)
+        i += 1
 
     tail = "".join(buf).strip()
     if tail:

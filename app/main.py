@@ -7,8 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.db.models import Base
-from app.db.session import engine
+from app.jobs import init_scheduler, shutdown_scheduler
 from app.web.routes import router as web_router
 
 favicon_path = Path("app/web/static/favicon.ico")
@@ -16,9 +15,9 @@ favicon_path = Path("app/web/static/favicon.ico")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create minimal tables automatically.
-    Base.metadata.create_all(bind=engine)
+    init_scheduler()
     yield
+    shutdown_scheduler()
 
 
 app = FastAPI(title="Global Trade Analysis", lifespan=lifespan)
