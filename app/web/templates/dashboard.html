@@ -190,15 +190,15 @@
 
         <div class="mt-4 text-sm">
           <div id="fin_panel_industry" class="fin-panel">
-            <canvas id="fin_industry_deals" height="120"></canvas>
-            <canvas id="fin_industry_value" height="120" class="mt-4"></canvas>
+            <canvas id="fin_industry_deals" height="200"></canvas>
+            <canvas id="fin_industry_value" height="200" class="mt-4"></canvas>
             <div id="fin_industry_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
             <div id="fin_industry_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
           <div id="fin_panel_country" class="fin-panel hidden">
-            <canvas id="fin_country_deals" height="120"></canvas>
-            <canvas id="fin_country_value" height="120" class="mt-4"></canvas>
+            <canvas id="fin_country_deals" height="200"></canvas>
+            <canvas id="fin_country_value" height="200" class="mt-4"></canvas>
             <div id="fin_country_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
             <div id="fin_country_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
@@ -596,6 +596,7 @@
       function barOpts() {
         return {
           responsive: true,
+          maintainAspectRatio: false,
           indexAxis: 'y',
           plugins: {
             legend: { labels: { color: '#cbd5e1' } },
