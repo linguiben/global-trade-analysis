@@ -254,6 +254,15 @@
         return `<div class="flex items-center gap-3">${circle(routeHtml)}${circle(valueHtml)}</div>`;
       }
 
+      function valueBubble(text, theme, sizePx = 72) {
+        // theme: { bg, ring, text }
+        return `
+          <span class="inline-flex items-center justify-center rounded-full ${theme.bg} ${theme.ring} ${theme.text} shadow-sm"
+                style="width:${sizePx}px;height:${sizePx}px;">
+            <span class="text-center leading-tight text-[12px] font-semibold">${text}</span>
+          </span>`;
+      }
+
       function setTradeTab(active) {
         document.querySelectorAll('.trade-panel').forEach(p => p.classList.add('hidden'));
         const panel = document.getElementById('trade_panel_' + active);
@@ -428,7 +437,9 @@
 
         const wci = TRADE_DATA.wci || {};
         const wciLine = wci.value_usd_per_40ft != null ? `$${wci.value_usd_per_40ft}/40ft` : '—';
-        document.getElementById('trade_wci').textContent = `${wciLine}`;
+        document.getElementById('trade_wci').innerHTML = wci.value_usd_per_40ft != null
+          ? valueBubble(`${wciLine}`, { bg: 'bg-fuchsia-500/40', ring: 'ring-2 ring-fuchsia-300/70', text: 'text-slate-50' }, 76)
+          : '—';
         document.getElementById('trade_wci_commentary').textContent = wci.commentary || 'Commentary: auto-extracted from source.';
 
         const pw = TRADE_DATA.portwatch || {};
