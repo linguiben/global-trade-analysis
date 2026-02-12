@@ -190,15 +190,15 @@
 
         <div class="mt-4 text-sm">
           <div id="fin_panel_industry" class="fin-panel">
-            <canvas id="fin_industry_deals" height="200"></canvas>
-            <canvas id="fin_industry_value" height="200" class="mt-4"></canvas>
+            <canvas id="fin_industry_deals" height="140"></canvas>
+            <canvas id="fin_industry_value" height="140" class="mt-4"></canvas>
             <div id="fin_industry_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
             <div id="fin_industry_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
           <div id="fin_panel_country" class="fin-panel hidden">
-            <canvas id="fin_country_deals" height="200"></canvas>
-            <canvas id="fin_country_value" height="200" class="mt-4"></canvas>
+            <canvas id="fin_country_deals" height="140"></canvas>
+            <canvas id="fin_country_value" height="140" class="mt-4"></canvas>
             <div id="fin_country_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
             <div id="fin_country_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
@@ -587,23 +587,46 @@
         return await res.json();
       }
 
-      function _shortLabel(s, maxLen=18) {
+      function _wrapLabel(s, maxLineLen=18, maxLines=3) {
         if (!s) return s;
-        s = String(s);
-        return s.length > maxLen ? (s.slice(0, maxLen-1) + '…') : s;
+        const words = String(s).split(/\s+/).filter(Boolean);
+        if (!words.length) return s;
+
+        const lines = [];
+        let cur = '';
+        for (const w of words) {
+          const next = cur ? (cur + ' ' + w) : w;
+          if (next.length <= maxLineLen) {
+            cur = next;
+          } else {
+            if (cur) lines.push(cur);
+            cur = w;
+          }
+          if (lines.length >= maxLines) break;
+        }
+        if (lines.length < maxLines && cur) lines.push(cur);
+
+        // If still too long, ellipsis the last line.
+        const joined = lines.join(' ');
+        if (joined.length < String(s).length) {
+          const last = lines[lines.length - 1];
+          lines[lines.length - 1] = last.length > maxLineLen - 1 ? (last.slice(0, maxLineLen - 1) + '…') : (last + '…');
+        }
+
+        return lines;
       }
 
       function barOpts() {
         return {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true,
           indexAxis: 'y',
+          layout: { padding: { left: 10, right: 10, top: 6, bottom: 6 } },
           plugins: {
             legend: { labels: { color: '#cbd5e1' } },
             tooltip: {
               callbacks: {
                 title: (items) => {
-                  // show full label in tooltip
                   const it = items && items[0];
                   return it ? String(it.label) : '';
                 }
@@ -617,7 +640,7 @@
                 color: '#94a3b8',
                 callback: function(value) {
                   const lbl = this.getLabelForValue(value);
-                  return _shortLabel(lbl, 22);
+                  return _wrapLabel(lbl, 18, 3);
                 }
               },
               grid: { color: 'rgba(148,163,184,0.12)' }
@@ -631,7 +654,7 @@
         if (!ctx) return null;
         return new Chart(ctx, {
           type: 'bar',
-          data: { labels, datasets: [{ label, data: values, backgroundColor: color }] },
+          data: { labels, datasets: [{ label, data: values, backgroundColor: color, barThickness: 10 }] },
           options: barOpts(),
         });
       }
