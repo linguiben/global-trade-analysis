@@ -61,20 +61,33 @@ def fetch_ma_by_industry(ttl_seconds: int = 24 * 60 * 60, force: bool = False) -
         _set_cached(key, payload, ttl_seconds)
         return {**payload, "cached": False}
 
-    # Find table rows: <tr> <td>rank</td><td>Industry</td><td>Number</td><td>Value USD</td> ...
     rows: List[Dict[str, Any]] = []
 
-    # Use a fairly permissive regex for td values.
-    for m in re.finditer(r"<tr[^>]*>\s*<td[^>]*>\s*(\d+)\s*</td>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>\s*([0-9'’,,]+)\s*</td>\s*<td[^>]*>\s*([0-9.,]+)\s*</td>", html, re.IGNORECASE | re.DOTALL):
-        rank = int(m.group(1))
-        industry = _strip_tags(m.group(2))
-        num_s = m.group(3).replace("'", "").replace("’", "").replace(",", "").strip()
+    # Extract rows from the first HTML table.
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", html, re.IGNORECASE | re.DOTALL):
+        tds = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.IGNORECASE | re.DOTALL)
+        if len(tds) < 4:
+            continue
+
+        rank_s = _strip_tags(tds[0])
+        if not rank_s.isdigit():
+            continue
+
+        rank = int(rank_s)
+        industry = _strip_tags(tds[1])
+
+        deals_s = _strip_tags(tds[2]).replace("'", "").replace("’", "").replace(",", "")
+        # Sometimes deals cell contains a <br/> with extra notes; take first token.
+        deals_s = deals_s.split()[0] if deals_s else ""
         try:
-            deals = int(num_s)
+            deals = int(deals_s)
         except Exception:
             deals = None
+
+        val_s = _strip_tags(tds[3]).replace(",", "")
+        val_s = val_s.split()[0] if val_s else ""
         try:
-            value_usd_bil = float(m.group(4))
+            value_usd_bil = float(val_s)
         except Exception:
             value_usd_bil = None
 
@@ -98,8 +111,8 @@ def fetch_ma_by_industry(ttl_seconds: int = 24 * 60 * 60, force: bool = False) -
 def fetch_ma_by_country(ttl_seconds: int = 24 * 60 * 60, force: bool = False) -> Dict[str, Any]:
     """Extract per-country cumulative deals and value from IMAA country sections.
 
-    IMPORTANT: The page provides narrative paragraphs by country; we derive a ranking by parsing
-    the 'Since YEAR, COUNTRY has ... X deals ... value ... USD/EUR' sentence.
+    The IMAA country page is narrative by country. We parse each "M&A <Country>" section and
+    extract the first "Since YYYY ... deals ... value ..." sentence.
     """
 
     key = "imaa:country"
@@ -114,21 +127,27 @@ def fetch_ma_by_country(ttl_seconds: int = 24 * 60 * 60, force: bool = False) ->
         _set_cached(key, payload, ttl_seconds)
         return {**payload, "cached": False}
 
-    text = _strip_tags(html)
+    # Preserve some structure by inserting markers for headings.
+    # Elementor headings appear as <h2> / <h3> with text like "M&A Australia".
+    headings = list(re.finditer(r"<h[23][^>]*>\s*(M&amp;A|M&A)\s+([^<]+)</h[23]>", html, re.IGNORECASE))
 
-    # Find headings like "M&A Australia" and capture following sentence.
-    # We'll search the original HTML for the specific pattern to avoid losing structure.
     rows: List[Dict[str, Any]] = []
 
-    # Pattern examples:
-    # Since 1989, a total of approximately 53,972 M&A deals have been announced in Australia, reflecting a cumulative value exceeding 3.5 trillion USD.
-    # Since 1985, Austria has witnessed over 9,164 announced M&A deals, amounting to a total value of more than 299.3 billion EUR.
-    pat = re.compile(
-        r"Since\s+(\d{4}).{0,80}?([0-9]{1,3}(?:[,'’][0-9]{3})+|\d{1,7}).{0,80}?deal.{0,120}?(?:in|for)\s+([A-Z][A-Za-z .&()-]+?),\s+.{0,120}?(?:value|valued?).{0,120}?([0-9]+(?:\.[0-9]+)?)\s*(trillion|billion|bil\.|million)?\s*(USD|EUR)",
-        re.IGNORECASE,
-    )
+    for idx, hm in enumerate(headings):
+        country = _strip_tags(hm.group(2))
+        start = hm.end()
+        end = headings[idx + 1].start() if idx + 1 < len(headings) else start + 8000
+        chunk = _strip_tags(html[start:end])
 
-    for m in pat.finditer(text):
+        # Look for sentence with deals + value in USD/EUR.
+        m = re.search(
+            r"Since\s+(\d{4}).{0,120}?([0-9]{1,3}(?:[,'’][0-9]{3})+|\d{1,7}).{0,80}?deal.{0,160}?(?:value|valued?).{0,120}?([0-9]+(?:\.[0-9]+)?)\s*(trillion|billion|bil\.|million)?\s*(USD|EUR)",
+            chunk,
+            re.IGNORECASE,
+        )
+        if not m:
+            continue
+
         since_year = int(m.group(1))
         deals_s = m.group(2).replace(",", "").replace("'", "").replace("’", "")
         try:
@@ -136,14 +155,13 @@ def fetch_ma_by_country(ttl_seconds: int = 24 * 60 * 60, force: bool = False) ->
         except Exception:
             continue
 
-        country = m.group(3).strip()
-        val = float(m.group(4))
-        scale = (m.group(5) or "").lower()
-        ccy = (m.group(6) or "").upper()
+        val = float(m.group(3))
+        scale = (m.group(4) or "").lower()
+        ccy = (m.group(5) or "").upper()
 
         mult = 1.0
         if "trillion" in scale:
-            mult = 1_000.0  # trillion -> billion
+            mult = 1_000.0
         elif "billion" in scale or "bil" in scale:
             mult = 1.0
         elif "million" in scale:
@@ -160,25 +178,17 @@ def fetch_ma_by_country(ttl_seconds: int = 24 * 60 * 60, force: bool = False) ->
             "value_unit": "bil.",
         })
 
-    # Deduplicate by country keeping the max deals entry.
-    dedup: Dict[str, Dict[str, Any]] = {}
-    for r in rows:
-        k = r["country"].lower()
-        if k not in dedup or (r.get("deals") or 0) > (dedup[k].get("deals") or 0):
-            dedup[k] = r
-
-    out = list(dedup.values())
-    out.sort(key=lambda r: (r.get("deals") or 0), reverse=True)
+    rows.sort(key=lambda r: (r.get("deals") or 0), reverse=True)
 
     payload = {
         "ok": True,
         "source": "IMAA (country narratives)",
         "link": IMAA_COUNTRY_URL,
-        "rows": out,
-        "note": "Derived by parsing narrative text; best-effort and may miss countries or use mixed currencies.",
+        "rows": rows,
+        "note": "Parsed from country section narratives (best-effort).",
         "warnings": [
             "Value is normalized to billions of the stated currency (USD/EUR).",
-            "Some country sections may use EUR; cross-country value comparisons are indicative only unless converted.",
+            "Some entries use EUR; cross-country value comparisons are indicative only unless converted.",
         ],
     }
 
