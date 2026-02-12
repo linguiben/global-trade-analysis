@@ -735,7 +735,7 @@
         const ccy = (ctyRows[0] && ctyRows[0].currency) ? ctyRows[0].currency : '';
         if (FIN_CTY_DEALS) FIN_CTY_DEALS.destroy();
         if (FIN_CTY_VALUE) FIN_CTY_VALUE.destroy();
-        FIN_CTY_DEALS = upsertBar('fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
+        FIN_CTY_DEALS = upsertRing('fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals);
         FIN_CTY_VALUE = upsertRing('fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal);
         document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
