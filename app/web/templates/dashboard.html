@@ -714,7 +714,7 @@
         if (FIN_IND_DEALS) FIN_IND_DEALS.destroy();
         if (FIN_IND_VALUE) FIN_IND_VALUE.destroy();
         FIN_IND_DEALS = upsertRing('fin_industry_deals', 'Deals (count)', indLabels, indDeals);
-        FIN_IND_VALUE = upsertBar('fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal, 'rgba(244,114,182,0.55)');
+        FIN_IND_VALUE = upsertRing('fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal);
         document.getElementById('fin_industry_meta').innerHTML = `Source: ${ind.source} · Unit: ${ind.unit}${ind.currency}<br>Link: <a class="underline hover:text-fuchsia-300" href="${ind.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_industry_commentary').textContent = 'Commentary (EN): top industries by deal count and by total disclosed value (IMAA public stats).';
 
@@ -728,7 +728,7 @@
         if (FIN_CTY_DEALS) FIN_CTY_DEALS.destroy();
         if (FIN_CTY_VALUE) FIN_CTY_VALUE.destroy();
         FIN_CTY_DEALS = upsertBar('fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
-        FIN_CTY_VALUE = upsertBar('fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
+        FIN_CTY_VALUE = upsertRing('fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal);
         document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
       }
