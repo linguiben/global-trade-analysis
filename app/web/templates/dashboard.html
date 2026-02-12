@@ -236,10 +236,22 @@
         return n + " kg";
       }
 
-      function corridorPills(routeText, valueText, theme) {
-        // theme: { bg, border, text }
-        const pill = (t) => `<span class="inline-flex items-center rounded-full px-3 py-1 border ${theme.border} ${theme.bg} ${theme.text}">${t}</span>`;
-        return `<div class="flex flex-wrap items-center gap-2">${pill(routeText)}${pill(valueText)}</div>`;
+      function corridorBubbles(origin, dest, valueText, theme) {
+        // theme: { bg, ring, text }
+        const circle = (innerHtml) => `
+          <span class="inline-flex items-center justify-center rounded-full ${theme.bg} ${theme.ring} ${theme.text} shadow-sm"
+                style="width: 64px; height: 64px;">
+            <span class="text-center leading-tight">${innerHtml}</span>
+          </span>`;
+
+        const routeHtml = `
+          <span class="block text-xs font-semibold">${origin}</span>
+          <span class="block text-[10px] opacity-90">→</span>
+          <span class="block text-xs font-semibold">${dest}</span>`;
+
+        const valueHtml = `<span class="block text-[11px] font-semibold">${valueText}</span>`;
+
+        return `<div class="flex items-center gap-3">${circle(routeHtml)}${circle(valueHtml)}</div>`;
       }
 
       function setTradeTab(active) {
@@ -377,17 +389,19 @@
         const v = (d.value_usd_top || [])[0];
         const vol = (d.volume_top || [])[0];
         document.getElementById('trade_value_top').innerHTML = v
-          ? corridorPills(
-              `${v.origin} → ${v.dest}`,
+          ? corridorBubbles(
+              v.origin,
+              v.dest,
               `$${fmtUSD(v.value_usd)}`,
-              { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-slate-200' }
+              { bg: 'bg-blue-500/35', ring: 'ring-2 ring-blue-400/60', text: 'text-slate-50' }
             )
           : '—';
         document.getElementById('trade_volume_top').innerHTML = vol
-          ? corridorPills(
-              `${vol.origin} → ${vol.dest}`,
+          ? corridorBubbles(
+              vol.origin,
+              vol.dest,
               `${fmtKG(vol.volume_kg)}`,
-              { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-slate-200' }
+              { bg: 'bg-emerald-500/35', ring: 'ring-2 ring-emerald-400/60', text: 'text-slate-50' }
             )
           : '—';
 
