@@ -43,6 +43,25 @@ def _strip_html(s: str) -> str:
     return s
 
 
+def _shorten_text(s: str, max_chars: int = 260, max_sentences: int = 2) -> str:
+    s = (s or "").strip()
+    if not s:
+        return s
+
+    # Prefer keeping the first N sentences.
+    # Split on ". " while keeping simple abbreviations risk acceptable for MVP.
+    parts = re.split(r"(?<=[.!?])\s+", s)
+    if len(parts) > 1:
+        s2 = " ".join(parts[:max_sentences]).strip()
+    else:
+        s2 = s
+
+    if len(s2) > max_chars:
+        s2 = s2[: max_chars - 1].rstrip() + "…"
+
+    return s2
+
+
 def fetch_drewry_wci(ttl_seconds: int = 6 * 60 * 60) -> Dict[str, Any]:
     """Fetch Drewry WCI headline value from the public page.
 
@@ -126,7 +145,7 @@ def fetch_drewry_wci(ttl_seconds: int = 6 * 60 * 60) -> Dict[str, Any]:
     assessment = None
     m_assess = re.search(r"Our detailed assessment.*?(The\s+Drewry.*?)(?:Related Research|Featured Services)", html, re.IGNORECASE | re.DOTALL)
     if m_assess:
-        assessment = _strip_html(m_assess.group(1))
+        assessment = _shorten_text(_strip_html(m_assess.group(1)))
 
     # Extract expectation sentence if present
     expectation = None
