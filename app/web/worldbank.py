@@ -148,3 +148,60 @@ def fetch_trade_exim_5y(
         "errors": [x for x in [exp.get("error"), imp.get("error")] if x],
         "series": series,
     }
+
+
+def fetch_wealth_indicators_5y(
+    country: str,
+    *,
+    end_year: int,
+    years: int = 5,
+    ttl_seconds: int = 24 * 60 * 60,
+    force: bool = False,
+) -> Dict[str, Any]:
+    """GDP per capita + household consumption expenditure (nominal USD), annual fallback."""
+
+    start_year = end_year - years + 1
+    date = f"{start_year}:{end_year}"
+
+    gdp_pc = fetch_wdi_indicator(
+        country,
+        "NY.GDP.PCAP.CD",
+        date=date,
+        ttl_seconds=ttl_seconds,
+        force=force,
+    )
+    cons = fetch_wdi_indicator(
+        country,
+        "NE.CON.PRVT.CD",
+        date=date,
+        ttl_seconds=ttl_seconds,
+        force=force,
+    )
+
+    periods = sorted({p["period"] for p in gdp_pc.get("series", [])} | {p["period"] for p in cons.get("series", [])})
+    gdp_map = {p["period"]: p.get("value") for p in gdp_pc.get("series", [])}
+    cons_map = {p["period"]: p.get("value") for p in cons.get("series", [])}
+
+    series = []
+    for per in periods:
+        series.append(
+            {
+                "period": per,
+                "gdp_per_capita_usd": gdp_map.get(per),
+                "consumption_expenditure_usd": cons_map.get(per),
+            }
+        )
+
+    return {
+        "source": "World Bank WDI",
+        "frequency": "annual",
+        "country": country,
+        "date": date,
+        "ok": bool(gdp_pc.get("ok")) and bool(cons.get("ok")),
+        "errors": [x for x in [gdp_pc.get("error"), cons.get("error")] if x],
+        "series": series,
+        "definitions": {
+            "gdp_per_capita": "NY.GDP.PCAP.CD (current US$)",
+            "consumption_expenditure": "NE.CON.PRVT.CD (current US$)",
+        },
+    }

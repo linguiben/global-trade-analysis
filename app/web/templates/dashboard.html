@@ -127,12 +127,53 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-emerald-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Wealth Distribution</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Proxy-based wealth/spending by age group + shift pace (India/Mexico/Singapore/HK).</p>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP (proxy)</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">GDP per capita (WDI), disposable income (per capita/per household), and consumption expenditure (WDI). 5Y trend where available.</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → indicators</div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <label class="text-xs text-slate-400 font-mono">Scope</label>
+          <select id="wealth_geo" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+            <option>Global</option>
+            <option>India</option>
+            <option>Mexico</option>
+            <option>Singapore</option>
+            <option>Hong Kong</option>
+          </select>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2 text-xs font-mono">
+          <button data-tab="gdp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">GDP pc</button>
+          <button data-tab="disp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable pc</button>
+          <button data-tab="disp_hh" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable hh</button>
+          <button data-tab="cons" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Consumption</button>
+        </div>
+
         <div class="mt-4 text-sm">
-          <div class="text-slate-300 font-semibold">Fastest shift pace (proxy)</div>
-          <div id="wealth_fastest" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
-          <div id="wealth_source" class="text-xs text-slate-500 mt-3 font-mono"></div>
+          <div id="wealth_panel_gdp_pc" class="wealth-panel">
+            <canvas id="wealth_gdp_pc_chart" height="120"></canvas>
+            <div id="wealth_gdp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_gdp_pc_commentary" class="text-slate-400 text-sm mt-2"></div>
+          </div>
+
+          <div id="wealth_panel_disp_pc" class="wealth-panel hidden">
+            <div class="text-slate-300 font-semibold">Disposable income (per capita, latest)</div>
+            <div id="wealth_disp_pc" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+            <div id="wealth_disp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_disp_pc_commentary" class="text-slate-400 text-sm mt-2"></div>
+          </div>
+
+          <div id="wealth_panel_disp_hh" class="wealth-panel hidden">
+            <div class="text-slate-300 font-semibold">Disposable income (per household, latest)</div>
+            <div id="wealth_disp_hh" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+            <div id="wealth_disp_hh_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_disp_hh_commentary" class="text-slate-400 text-sm mt-2"></div>
+          </div>
+
+          <div id="wealth_panel_cons" class="wealth-panel hidden">
+            <canvas id="wealth_cons_chart" height="120"></canvas>
+            <div id="wealth_cons_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_cons_commentary" class="text-slate-400 text-sm mt-2"></div>
+          </div>
         </div>
       </div>
 
@@ -367,16 +408,136 @@
         refreshChartsForGeo('Global');
       }
 
-      async function loadWealth() {
-        const res = await fetch(`${BASE}/api/wealth/proxy`);
-        const data = await res.json();
-        const pace = data.shift_pace_proxy || {};
-        let best = null;
-        for (const [k, v] of Object.entries(pace)) {
-          if (best == null || v > best.v) best = {k, v};
+      function setWealthTab(active) {
+        document.querySelectorAll('.wealth-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('wealth_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.wealth-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+      }
+
+      let WEALTH_GDP_CHART = null;
+      let WEALTH_CONS_CHART = null;
+
+      async function loadWealthIndicators(geo) {
+        const res = await fetch(`${BASE}/api/wealth/indicators-5y?geo=${encodeURIComponent(geo)}`);
+        return await res.json();
+      }
+
+      async function loadDisposableLatest() {
+        const res = await fetch(`${BASE}/api/wealth/disposable-latest`);
+        return await res.json();
+      }
+
+      function upsertWealthGdpChart(payload) {
+        const ctx = document.getElementById('wealth_gdp_pc_chart');
+        if (!ctx) return;
+        const labels = (payload.series || []).map(r => r.period);
+        const vals = (payload.series || []).map(r => r.gdp_per_capita_usd == null ? null : r.gdp_per_capita_usd);
+
+        const data = {
+          labels,
+          datasets: [
+            { label: 'GDP per capita (current US$)', data: vals, borderColor: '#a7f3d0', backgroundColor: 'rgba(167,243,208,0.12)', tension: 0.25 },
+          ]
+        };
+
+        const opts = {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+          }
+        };
+
+        if (WEALTH_GDP_CHART) WEALTH_GDP_CHART.destroy();
+        WEALTH_GDP_CHART = new Chart(ctx, { type: 'line', data, options: opts });
+
+        const meta = document.getElementById('wealth_gdp_pc_meta');
+        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
+
+        const s = (payload.series || []).filter(r => r.gdp_per_capita_usd != null);
+        const c = document.getElementById('wealth_gdp_pc_commentary');
+        if (c && s.length >= 2) {
+          const a = s[s.length-2].gdp_per_capita_usd;
+          const b = s[s.length-1].gdp_per_capita_usd;
+          const pct = ((b-a)/a)*100.0;
+          c.textContent = `Commentary (EN): GDP per capita ${pct>=0?'rose':'fell'} ${Math.abs(pct).toFixed(1)}% in the latest year vs prior year (nominal USD).`;
         }
-        document.getElementById('wealth_fastest').textContent = best ? `${best.k} · +${best.v}% (proxy)` : '—';
-        document.getElementById('wealth_source').textContent = `Source: ${data.source} · Updated: ${data.updated_at}`;
+      }
+
+      function upsertWealthConsChart(payload) {
+        const ctx = document.getElementById('wealth_cons_chart');
+        if (!ctx) return;
+        const labels = (payload.series || []).map(r => r.period);
+        const vals = (payload.series || []).map(r => r.consumption_expenditure_usd == null ? null : r.consumption_expenditure_usd/1e12);
+
+        const data = {
+          labels,
+          datasets: [
+            { label: 'Household consumption (US$, tn)', data: vals, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.12)', tension: 0.25 },
+          ]
+        };
+
+        const opts = {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+          }
+        };
+
+        if (WEALTH_CONS_CHART) WEALTH_CONS_CHART.destroy();
+        WEALTH_CONS_CHART = new Chart(ctx, { type: 'line', data, options: opts });
+
+        const meta = document.getElementById('wealth_cons_meta');
+        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
+
+        const s = (payload.series || []).filter(r => r.consumption_expenditure_usd != null);
+        const c = document.getElementById('wealth_cons_commentary');
+        if (c && s.length >= 2) {
+          const a = s[s.length-2].consumption_expenditure_usd;
+          const b = s[s.length-1].consumption_expenditure_usd;
+          const pct = ((b-a)/a)*100.0;
+          c.textContent = `Commentary (EN): consumption expenditure ${pct>=0?'rose':'fell'} ${Math.abs(pct).toFixed(1)}% in the latest year vs prior year (nominal USD).`;
+        }
+      }
+
+      async function refreshWealthForGeo(geo) {
+        const ind = await loadWealthIndicators(geo);
+        upsertWealthGdpChart(ind);
+        upsertWealthConsChart(ind);
+
+        const disp = await loadDisposableLatest();
+        const row = (disp.rows || {})[geo] || null;
+        const pc = row && row.per_capita_usd != null ? `$${Math.round(row.per_capita_usd).toLocaleString()}` : '—';
+        const hh = row && row.per_household_usd != null ? `$${Math.round(row.per_household_usd).toLocaleString()}` : '—';
+
+        document.getElementById('wealth_disp_pc').textContent = pc;
+        document.getElementById('wealth_disp_hh').textContent = hh;
+        document.getElementById('wealth_disp_pc_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
+        document.getElementById('wealth_disp_hh_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
+        document.getElementById('wealth_disp_pc_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
+        document.getElementById('wealth_disp_hh_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
+      }
+
+      async function loadWealth() {
+        const sel = document.getElementById('wealth_geo');
+        document.querySelectorAll('.wealth-tab').forEach(b => b.addEventListener('click', () => setWealthTab(b.dataset.tab)));
+        setWealthTab('gdp_pc');
+
+        sel.addEventListener('change', () => refreshWealthForGeo(sel.value));
+        await refreshWealthForGeo(sel.value || 'Global');
       }
 
       async function loadFinance() {

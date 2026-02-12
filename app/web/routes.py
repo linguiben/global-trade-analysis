@@ -7,7 +7,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.web import widget_data
-from app.web.worldbank import fetch_trade_exim_5y
+from app.web.worldbank import fetch_trade_exim_5y, fetch_wealth_indicators_5y
+from app.web.worldpopreview import fetch_disposable_income_latest
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -99,3 +100,26 @@ def api_wealth_proxy():
 @router.get("/api/finance/big-transactions")
 def api_finance_big_transactions():
     return widget_data.finance_big_transactions_mvp()
+
+
+@router.get("/api/wealth/indicators-5y")
+def api_wealth_indicators_5y(geo: str = "Global"):
+    geo_map = {
+        "Global": "WLD",
+        "India": "IND",
+        "Mexico": "MEX",
+        "Singapore": "SGP",
+        "Hong Kong": "HKG",
+    }
+    country = geo_map.get(geo, "WLD")
+
+    from datetime import datetime, timezone
+
+    end_year = datetime.now(timezone.utc).year - 1
+    return fetch_wealth_indicators_5y(country, end_year=end_year, years=5)
+
+
+@router.get("/api/wealth/disposable-latest")
+def api_wealth_disposable_latest():
+    # Latest point only (secondary source)
+    return fetch_disposable_income_latest()
