@@ -192,14 +192,14 @@
           <div id="fin_panel_industry" class="fin-panel">
             <canvas id="fin_industry_deals" height="120"></canvas>
             <canvas id="fin_industry_value" height="120" class="mt-4"></canvas>
-            <div id="fin_industry_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="fin_industry_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
             <div id="fin_industry_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
           <div id="fin_panel_country" class="fin-panel hidden">
             <canvas id="fin_country_deals" height="120"></canvas>
             <canvas id="fin_country_value" height="120" class="mt-4"></canvas>
-            <div id="fin_country_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="fin_country_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
             <div id="fin_country_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
         </div>
@@ -622,7 +622,7 @@
         if (FIN_IND_VALUE) FIN_IND_VALUE.destroy();
         FIN_IND_DEALS = upsertBar('fin_industry_deals', 'Deals (count)', indLabels, indDeals, 'rgba(96,165,250,0.55)');
         FIN_IND_VALUE = upsertBar('fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal, 'rgba(244,114,182,0.55)');
-        document.getElementById('fin_industry_meta').textContent = `Source: ${ind.source} · ${ind.unit}${ind.currency} · Link: ${ind.link}`;
+        document.getElementById('fin_industry_meta').innerHTML = `Source: ${ind.source} · Unit: ${ind.unit}${ind.currency}<br>Link: <a class="underline hover:text-fuchsia-300" href="${ind.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_industry_commentary').textContent = 'Commentary (EN): top industries by deal count and by total disclosed value (IMAA public stats).';
 
         // Country
@@ -636,7 +636,7 @@
         if (FIN_CTY_VALUE) FIN_CTY_VALUE.destroy();
         FIN_CTY_DEALS = upsertBar('fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
         FIN_CTY_VALUE = upsertBar('fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
-        document.getElementById('fin_country_meta').textContent = `Source: ${cty.source} · Link: ${cty.link}`;
+        document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
       }
 
