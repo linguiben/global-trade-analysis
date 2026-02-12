@@ -44,13 +44,13 @@ def _to_number(s: str) -> Optional[float]:
 def _fetch_worldbank_latest_percapita(countries: Dict[str, str], ttl_seconds: int = 24 * 60 * 60, force: bool = False) -> Dict[str, Any]:
     """Fetch a stable proxy from World Bank API.
 
-    We use: Household final consumption expenditure per capita (current US$)
-    Indicator: NE.CON.PRVT.PC.CD
+    We use: Households and NPISHs final consumption expenditure per capita (constant 2015 US$)
+    Indicator: NE.CON.PRVT.PC.KD
 
     This is NOT strictly disposable income, but it is broadly available and stable.
     """
 
-    indicator = "NE.CON.PRVT.PC.CD"
+    indicator = "NE.CON.PRVT.PC.KD"
     url = f"https://api.worldbank.org/v2/country/{';'.join(countries.values())}/indicator/{indicator}?format=json"
     key = f"wb:{indicator}:latest"
     cached = None if force else _get_cached(key)
@@ -89,7 +89,7 @@ def _fetch_worldbank_latest_percapita(countries: Dict[str, str], ttl_seconds: in
         "ok": True,
         "source": "worldbank.org (api)",
         "link": url,
-        "note": "Proxy: Household final consumption expenditure per capita (current US$) · Indicator NE.CON.PRVT.PC.CD · Latest non-null point.",
+        "note": "Proxy: HH+NPISH final consumption expenditure per capita (constant 2015 US$) · Indicator NE.CON.PRVT.PC.KD · Latest non-null point.",
         "rows": rows,
     }
     _set_cached(key, payload, ttl_seconds)
@@ -171,12 +171,13 @@ def fetch_disposable_income_latest(ttl_seconds: int = 24 * 60 * 60, force: bool 
             rows[k] = {"per_capita_usd": pc, "per_household_usd": hh}
 
     # Fallback fill from World Bank proxy for any missing geos.
+    # World Bank API uses 2-letter ISO codes for many economies; aggregates like WLD also work.
     wb_geo_map = {
         "Global": "WLD",
-        "India": "IND",
-        "Mexico": "MEX",
-        "Singapore": "SGP",
-        "Hong Kong": "HKG",
+        "India": "IN",
+        "Mexico": "MX",
+        "Singapore": "SG",
+        "Hong Kong": "HK",
     }
     missing = {k: v for k, v in wb_geo_map.items() if k not in rows}
     wb = _fetch_worldbank_latest_percapita(missing, ttl_seconds=ttl_seconds, force=force) if missing else {"ok": True, "rows": {}}
@@ -188,7 +189,7 @@ def fetch_disposable_income_latest(ttl_seconds: int = 24 * 60 * 60, force: bool 
         "ok": True,
         "source": "worldpopulationreview.com (scrape) + worldbank.org (api fallback)",
         "link": url,
-        "note": "Best-effort: WPR scrape first; missing geos filled using World Bank proxy (NE.CON.PRVT.PC.CD). Latest point only.",
+        "note": "Best-effort: WPR scrape first; missing geos filled using World Bank proxy (NE.CON.PRVT.PC.KD). Latest point only.",
         "rows": rows,
         "fallback": {"worldbank": {"ok": wb.get("ok"), "link": wb.get("link"), "source": wb.get("source"), "note": wb.get("note")}},
     }
