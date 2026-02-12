@@ -25,6 +25,10 @@ app = FastAPI(title="Global Trade Analysis", lifespan=lifespan)
 
 # Static files; when running behind nginx under /gta/, nginx will strip the prefix.
 app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
+
+# Test pages: /gta/test/* (intended for quick HTML prototypes)
+app.mount("/test", StaticFiles(directory="app/web/test", html=True), name="test")
+
 app.include_router(web_router)
 
 

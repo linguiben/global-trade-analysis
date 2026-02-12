@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GTA Test Page - t1</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; line-height: 1.5; margin: 24px; }
+    pre { white-space: pre-wrap; word-break: break-word; padding: 16px; border-radius: 10px; background: rgba(127,127,127,0.12); }
+    .meta { opacity: 0.75; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <h1>GTA Test Page /gta/test/t1.html</h1>
+  <div class="meta">Deployed: 2026-02-12</div>
+  <pre>全球经济动态监控看板设计方案
+布局架构 (Layout)
+ * 顶部状态栏 (KPI Strip): 显示全球实际GDP增长率预测 (3.1%)、全球贸易量增速 (0.5-1%) 和并购交易总额 。
+ * 左侧侧边栏 (Filters): 按地区（APAC, NA, EU）、行业（AI, Energy, Retail）及时间维度进行筛选。
+ * 中央核心区 (Main Stage):
+   * 交互式贸易地图: 使用 Sankey 图或流向地图展示活跃贸易通道，高亮显示绕行好望角的航线成本变化 。
+   * 财富转移热力图: 展示不同国家的财富集中度（Gini系数）及代际转移进度 。
+ * 右侧分析面板 (Insights Drawer): 实时摘要，如“印度超越日本成为第四大经济体”或“墨西哥FDI创下历史新高” 。
+前端实现代码草案 (React + D3.js 思路)
+// 示例：定义核心KPI组件
+const KPICard = ({ title, value, change }) => (
+  <div className="card">
+    <h3>{title}</h3>
+    <div className="value">{value}</div>
+    <span className={change > 0? "positive" : "negative"}>
+      {change > 0? "↑" : "↓"} {Math.abs(change)}%
+    </span>
+  </div>
+);
+
+// 核心仪表盘主页面
+export default function EconomicDashboard() {
+  return (
+    <div className="dashboard-container">
+      <header className="kpi-header">
+        <KPICard title="全球GDP增长 (2026)" value="3.1%" change={+0.5} />
+        <KPICard title="并购市场价值" value="$4.8T" change={+40} />
+        <KPICard title="亚洲贸易占比" value="60%" change={+12} />
+      </header>
+      
+      <main className="grid-layout">
+        <section className="map-view">
+          {/* 这里集成 D3.js 的全球贸易流向图 */}
+          <GlobalTradeMap data={tradeData} />
+        </section>
+        
+        <section className="wealth-charts">
+          {/* 这里展示代际财富转移 (Boomers vs Gen Z) */}
+          <WealthTransferBarChart data={generationalData} />
+        </section>
+      </main>
+      
+      <footer className="data-source-footer">
+        数据最后更新时间: 2026-02-12 | 来源: UN Comtrade, IMF, Lazard
+      </footer>
+    </div>
+  );
+}
+
+设计最佳实践
+ * Z-模式布局: 用户的视觉焦点通常从左上角开始，因此将最重要的“良好与否”指标放在左上角。
+ * 交互式过滤: 允许用户通过点击地图上的国家来深入查看其具体的 Gini 系数或 FDI 构成。
+ * 色彩暗示: 使用红色表示通胀或风险，绿色表示增长。对于气温或能源等特定领域，遵循直觉色彩 associate。
+ * 实时新鲜度: 在显眼位置标注“Last Updated”时间戳，以确保决策者基于最新数据进行分析。</pre>
+</body>
+</html>
