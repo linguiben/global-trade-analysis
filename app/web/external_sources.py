@@ -62,7 +62,7 @@ def _shorten_text(s: str, max_chars: int = 260, max_sentences: int = 2) -> str:
     return s2
 
 
-def fetch_drewry_wci(ttl_seconds: int = 6 * 60 * 60) -> Dict[str, Any]:
+def fetch_drewry_wci(ttl_seconds: int = 6 * 60 * 60, force: bool = False) -> Dict[str, Any]:
     """Fetch Drewry WCI headline value from the public page.
 
     Notes:
@@ -71,7 +71,7 @@ def fetch_drewry_wci(ttl_seconds: int = 6 * 60 * 60) -> Dict[str, Any]:
     """
 
     cache_key = "drewry_wci"
-    cached = _get_cached(cache_key)
+    cached = None if force else _get_cached(cache_key)
     if cached:
         return {**cached, "cached": True}
 

@@ -5,6 +5,12 @@ from datetime import datetime, timezone
 from app.web.external_sources import fetch_drewry_wci
 
 
+def refresh_trade_flow_sources() -> dict:
+    # Force-refresh upstream-derived data (best-effort).
+    wci = fetch_drewry_wci(force=True)
+    return {"wci": wci}
+
+
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 

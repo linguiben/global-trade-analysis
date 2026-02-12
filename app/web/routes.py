@@ -60,6 +60,17 @@ def api_trade_corridors():
     return widget_data.trade_corridors_mvp()
 
 
+@router.post("/api/trade/refresh")
+def api_trade_refresh():
+    # This endpoint is intended for scheduled refresh (e.g., 09:00 daily).
+    # It forces upstream pulls (WCI now; more sources later).
+    return {
+        "ok": True,
+        "refreshed_at": widget_data.utc_now_iso(),
+        "details": widget_data.refresh_trade_flow_sources(),
+    }
+
+
 @router.get("/api/wealth/proxy")
 def api_wealth_proxy():
     return widget_data.wealth_proxy_mvp()
