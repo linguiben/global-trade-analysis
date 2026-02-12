@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from app.web import widget_data
 from app.web.worldbank import fetch_trade_exim_5y, fetch_wealth_indicators_5y
 from app.web.worldpopreview import fetch_disposable_income_latest
+from app.web.imaa import fetch_ma_by_country, fetch_ma_by_industry
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -123,3 +124,13 @@ def api_wealth_indicators_5y(geo: str = "Global"):
 def api_wealth_disposable_latest():
     # Latest point only (secondary source)
     return fetch_disposable_income_latest()
+
+
+@router.get("/api/finance/ma/industry")
+def api_finance_ma_industry():
+    return fetch_ma_by_industry()
+
+
+@router.get("/api/finance/ma/country")
+def api_finance_ma_country():
+    return fetch_ma_by_country()

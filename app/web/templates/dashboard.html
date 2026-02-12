@@ -180,12 +180,28 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-fuchsia-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Financial Flow</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Big transactions feed (near-real-time via open news feeds; always source-linked).</p>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">M&A activity breakdown by industry and country (IMAA). Deal-level “daily biggest” is not included.</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → M&A breakdown</div>
+
+        <div class="mt-4 flex flex-wrap gap-2 text-xs font-mono">
+          <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">By industry</button>
+          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">By country</button>
+        </div>
+
         <div class="mt-4 text-sm">
-          <div class="text-slate-300 font-semibold">Latest big tickets</div>
-          <ul id="finance_list" class="mt-2 space-y-2 text-slate-400 text-sm"></ul>
-          <div id="finance_source" class="text-xs text-slate-500 mt-3 font-mono"></div>
+          <div id="fin_panel_industry" class="fin-panel">
+            <canvas id="fin_industry_deals" height="120"></canvas>
+            <canvas id="fin_industry_value" height="120" class="mt-4"></canvas>
+            <div id="fin_industry_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="fin_industry_commentary" class="text-slate-400 text-sm mt-2"></div>
+          </div>
+
+          <div id="fin_panel_country" class="fin-panel hidden">
+            <canvas id="fin_country_deals" height="120"></canvas>
+            <canvas id="fin_country_value" height="120" class="mt-4"></canvas>
+            <div id="fin_country_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="fin_country_commentary" class="text-slate-400 text-sm mt-2"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -540,23 +556,88 @@
         await refreshWealthForGeo(sel.value || 'Global');
       }
 
+      function setFinTab(active) {
+        document.querySelectorAll('.fin-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('fin_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.fin-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+      }
+
+      let FIN_IND_DEALS = null;
+      let FIN_IND_VALUE = null;
+      let FIN_CTY_DEALS = null;
+      let FIN_CTY_VALUE = null;
+
+      async function loadFinIndustry() {
+        const res = await fetch(`${BASE}/api/finance/ma/industry`);
+        return await res.json();
+      }
+
+      async function loadFinCountry() {
+        const res = await fetch(`${BASE}/api/finance/ma/country`);
+        return await res.json();
+      }
+
+      function barOpts() {
+        return {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+          }
+        };
+      }
+
+      function upsertBar(id, label, labels, values, color) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return null;
+        return new Chart(ctx, {
+          type: 'bar',
+          data: { labels, datasets: [{ label, data: values, backgroundColor: color }] },
+          options: barOpts(),
+        });
+      }
+
       async function loadFinance() {
-        const res = await fetch(`${BASE}/api/finance/big-transactions`);
-        const data = await res.json();
-        const ul = document.getElementById('finance_list');
-        ul.innerHTML = '';
-        for (const t of (data.transactions || []).slice(0, 5)) {
-          const li = document.createElement('li');
-          const a = document.createElement('a');
-          a.href = t.link;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          a.className = 'hover:text-fuchsia-300';
-          a.textContent = `${t.date} · ${t.type} · $${fmtUSD(t.value_usd)} · ${t.headline}`;
-          li.appendChild(a);
-          ul.appendChild(li);
-        }
-        document.getElementById('finance_source').textContent = `Source: ${data.source} · Updated: ${data.updated_at}`;
+        document.querySelectorAll('.fin-tab').forEach(b => b.addEventListener('click', () => setFinTab(b.dataset.tab)));
+        setFinTab('industry');
+
+        // Industry
+        const ind = await loadFinIndustry();
+        const indRows = (ind.rows || []).slice(0, 10);
+        const indLabels = indRows.map(r => r.industry);
+        const indDeals = indRows.map(r => r.deals);
+        const indVal = indRows.map(r => r.value_usd_bil);
+        if (FIN_IND_DEALS) FIN_IND_DEALS.destroy();
+        if (FIN_IND_VALUE) FIN_IND_VALUE.destroy();
+        FIN_IND_DEALS = upsertBar('fin_industry_deals', 'Deals (count)', indLabels, indDeals, 'rgba(96,165,250,0.55)');
+        FIN_IND_VALUE = upsertBar('fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal, 'rgba(244,114,182,0.55)');
+        document.getElementById('fin_industry_meta').textContent = `Source: ${ind.source} · ${ind.unit}${ind.currency} · Link: ${ind.link}`;
+        document.getElementById('fin_industry_commentary').textContent = 'Commentary (EN): top industries by deal count and by total disclosed value (IMAA public stats).';
+
+        // Country
+        const cty = await loadFinCountry();
+        const ctyRows = (cty.rows || []).slice(0, 10);
+        const ctyLabels = ctyRows.map(r => r.country);
+        const ctyDeals = ctyRows.map(r => r.deals);
+        const ctyVal = ctyRows.map(r => r.value_bil);
+        const ccy = (ctyRows[0] && ctyRows[0].currency) ? ctyRows[0].currency : '';
+        if (FIN_CTY_DEALS) FIN_CTY_DEALS.destroy();
+        if (FIN_CTY_VALUE) FIN_CTY_VALUE.destroy();
+        FIN_CTY_DEALS = upsertBar('fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
+        FIN_CTY_VALUE = upsertBar('fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
+        document.getElementById('fin_country_meta').textContent = `Source: ${cty.source} · Link: ${cty.link}`;
+        document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
       }
 
       Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});
