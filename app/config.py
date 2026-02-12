@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     PORT: int = 9000
+    BASE_PATH: str = "/gta"
     TZ: str = "Asia/Shanghai"
 
     # SQLAlchemy URL, e.g. postgresql+psycopg://user:pass@db:5432/dbname

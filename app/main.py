@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Global Trade Analysis", lifespan=lifespan)
 
+# Static files; when running behind nginx under /gta/, nginx will strip the prefix.
 app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 app.include_router(web_router)
 

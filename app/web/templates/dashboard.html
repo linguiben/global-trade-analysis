@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Global Trade Analysis</title>
-  <link rel="icon" href="{{ (request.scope.get('root_path') or '') }}/favicon.ico" />
+  <link rel="icon" href="{{ base_path }}/favicon.ico" />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html { -ms-overflow-style: none; scrollbar-width: none; }
@@ -15,7 +15,7 @@
   </style>
 </head>
 <body class="p-4 md:p-8">
-  {% set base = (request.scope.get('root_path') or '') %}
+  {% set base = base_path or '' %}
   <div class="max-w-7xl mx-auto">
     <header class="mb-8 flex flex-wrap justify-between items-center gap-3">
       <div>

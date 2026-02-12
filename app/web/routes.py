@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db.models import UserVisitLog
 from app.db.session import get_db
 
@@ -37,6 +38,7 @@ def homepage(request: Request, db: Session = Depends(get_db)):
         "dashboard.html",
         {
             "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
             "visited_count": visited_count,
             "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         },
