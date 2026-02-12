@@ -587,13 +587,40 @@
         return await res.json();
       }
 
+      function _shortLabel(s, maxLen=18) {
+        if (!s) return s;
+        s = String(s);
+        return s.length > maxLen ? (s.slice(0, maxLen-1) + '…') : s;
+      }
+
       function barOpts() {
         return {
           responsive: true,
-          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          indexAxis: 'y',
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  // show full label in tooltip
+                  const it = items && items[0];
+                  return it ? String(it.label) : '';
+                }
+              }
+            }
+          },
           scales: {
             x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
-            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: {
+              ticks: {
+                color: '#94a3b8',
+                callback: function(value) {
+                  const lbl = this.getLabelForValue(value);
+                  return _shortLabel(lbl, 22);
+                }
+              },
+              grid: { color: 'rgba(148,163,184,0.12)' }
+            },
           }
         };
       }
