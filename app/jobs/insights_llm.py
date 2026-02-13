@@ -2,12 +2,38 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from urllib.request import Request, urlopen
 
 from app.config import settings
+
+
+def _extract_json_object(text: str) -> dict:
+    """Best-effort extraction of a JSON object from LLM text."""
+    if not text:
+        return {}
+    t = text.strip()
+    # Strip markdown code fences
+    t = re.sub(r"^```(?:json)?\s*", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s*```$", "", t)
+    # Direct parse
+    try:
+        obj = json.loads(t)
+        return obj if isinstance(obj, dict) else {}
+    except Exception:
+        pass
+    # Find first {...} block
+    m = re.search(r"\{[\s\S]*\}", t)
+    if not m:
+        return {}
+    try:
+        obj = json.loads(m.group(0))
+        return obj if isinstance(obj, dict) else {}
+    except Exception:
+        return {}
 
 
 def digest_for_inputs(obj: Any) -> str:
@@ -74,7 +100,7 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
                 raw = resp.read().decode("utf-8", errors="ignore")
             j = json.loads(raw)
             text = j["choices"][0]["message"]["content"]
-            out = json.loads(text)
+            out = _extract_json_object(text)
             content = str(out.get("insight") or "").strip()
             refs = out.get("references")
             references = refs if isinstance(refs, list) else []
@@ -123,7 +149,7 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
             )[0].get("text")
             if not text:
                 return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="empty response")
-            out = json.loads(text)
+            out = _extract_json_object(text)
             content = str(out.get("insight") or "").strip()
             refs = out.get("references")
             references = refs if isinstance(refs, list) else []
