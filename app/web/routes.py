@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.web import widget_data
 from app.jobs.runtime import (
+    ALLOWED_GEOS,
     get_latest_snapshot,
     get_latest_snapshots_by_key,
     get_next_run_time,
