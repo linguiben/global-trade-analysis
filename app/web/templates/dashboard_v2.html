@@ -177,6 +177,8 @@
       <div class="freshness" title="Derived from latest WidgetSnapshot.fetched_at">
         <span class="dot" aria-hidden="true"></span>
         <span>Data updated at: <b>{{ data_updated_at }}</b></span>
+        <span class="pill" style="margin-left:6px;"><a href="{{ base_path }}/jobs" style="color:inherit; text-decoration:none;">Jobs</a></span>
+        <span class="pill"><a href="{{ base_path }}/health" style="color:inherit; text-decoration:none;">Health</a></span>
       </div>
     </div>
 
@@ -233,7 +235,7 @@
           <div class="placeholder">MAIN STAGE</div>
 
           <div class="meta-block">
-            <div><b>Source</b>: (example) IMF PortWatch (proxy) · <a href="#" onclick="return false">https://portwatch.imf.org/...</a></div>
+            <div><b>Source</b>: (example) IMF PortWatch (proxy) · <a href="https://portwatch.imf.org/pages/data-and-methodology" target="_blank" rel="noopener noreferrer">PortWatch methodology</a></div>
             <div><b>Period</b>: daily · as-of {{ data_updated_at }}</div>
             <div><b>Definition</b>: proxy/nowcast indicator (not customs statistics)</div>
             <div><b>Caveats</b>: model-based nowcast; interpret as activity proxy</div>
@@ -245,7 +247,7 @@
             <div class="panel-title"><h2>Wealth → Age (Population age structure)</h2><span class="hint">Bar chart</span></div>
             <div class="age" id="ageBars"></div>
             <div class="meta-block">
-              <div><b>Source</b>: World Bank WDI · <a href="#" onclick="return false">https://api.worldbank.org/</a></div>
+              <div><b>Source</b>: World Bank WDI · <a href="https://api.worldbank.org/" target="_blank" rel="noopener noreferrer">api.worldbank.org</a></div>
               <div><b>Period</b>: latest year (annual)</div>
               <div><b>Definition</b>: % of total population by age bands (0–14 / 15–64 / 65+)</div>
               <div><b>Note</b>: This is <b>NOT</b> income/expenditure/wealth-by-age; it is population age structure.</div>
