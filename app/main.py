@@ -22,11 +22,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Global Trade Analysis", lifespan=lifespan)
 
-# Static files; when running behind nginx under /gta/, nginx will strip the prefix.
+# Static files
 app.mount("/static", StaticFiles(directory="app/web/static"), name="static")
 
-# Test pages: /gta/test/* (intended for quick HTML prototypes)
+# When running behind nginx under a base path (e.g. /gta), we also expose
+# base-prefixed static routes so pages under /gta/* can load assets.
+from app.config import settings
+
+BASE_PATH = (settings.BASE_PATH or "").rstrip("/")
+if BASE_PATH and BASE_PATH != "/":
+    app.mount(f"{BASE_PATH}/static", StaticFiles(directory="app/web/static"), name="static_prefixed")
+
+# Test pages
 app.mount("/test", StaticFiles(directory="app/web/test", html=True), name="test")
+if BASE_PATH and BASE_PATH != "/":
+    app.mount(f"{BASE_PATH}/test", StaticFiles(directory="app/web/test", html=True), name="test_prefixed")
 
 app.include_router(web_router)
 
