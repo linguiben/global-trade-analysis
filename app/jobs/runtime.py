@@ -539,10 +539,11 @@ def _gen_insight(
     system = (
         "You are a macroeconomic analyst and corporate strategy advisor. Your readers are (1) economic analysts and "
         "(2) senior executives. Write a concise, decision-oriented Insight for the selected dashboard card/tab. "
-        "Use ONLY the provided data, its source metadata, and the declared/inferred source-updated time. "
+        "Use ONLY the provided data, its source metadata, the declared/inferred source-updated time, and the provided public excerpts. "
         "Do NOT mention job execution times. Do NOT invent numbers. "
         "If data is proxy/nowcast/scraped, explicitly caveat. "
         "Style: 2-4 short bullet points max, each bullet actionable or interpretive. "
+        "Keep the JSON output compact (<= ~1200 chars). "
         "Return STRICT JSON with keys: insight (string), references (array of {title,url,publisher,date})."
     )
 
@@ -571,6 +572,7 @@ def _gen_insight(
                 "must_use_source_updated_at": True,
                 "avoid_job_time": True,
                 "no_fabrication": True,
+                "json_max_chars": 1200,
             },
             "inputs": input_obj,
             "candidate_public_urls": public_urls,
