@@ -460,6 +460,7 @@ def _save_insight(
     llm_provider: str = "",
     llm_model: str = "",
     llm_prompt: str = "",
+    llm_error: str = "",
 ) -> None:
     db.add(
         WidgetInsight(
@@ -475,6 +476,7 @@ def _save_insight(
             llm_provider=llm_provider or "",
             llm_model=llm_model or "",
             llm_prompt=llm_prompt or "",
+            llm_error=llm_error or "",
             generated_by=generated_by,
             job_run_id=job_run_id,
         )
@@ -608,6 +610,7 @@ def _gen_insight(
         llm_provider=llm.provider if llm.ok else "",
         llm_model=llm.model if llm.ok else "",
         llm_prompt=user if llm.ok else "",
+        llm_error=(llm.error or "") if not llm.ok else "",
     )
 
 
@@ -616,12 +619,47 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
 
     Requirement:
     - Insight must change with scope + tab.
-    - Content should be synthesized from real widget data + sources + source update time and other public info.
-      (We use an optional LLM; if not configured, fallback to safe templates.)
+    - Content should be synthesized from real widget data + sources + source update time and public excerpts.
+
+    Time budget:
+    - Must finish within ~5 minutes. We do batching: always generate global tabs + rotate 1 geo per run.
     """
 
     lang = (params or {}).get("lang") or "en"
-    geo_list = _as_geo_list((params or {}).get("geo_list"))
+    requested_geos = (params or {}).get("geo_list")
+    geo_list = _as_geo_list(requested_geos)
+
+    # Batching cursor (rotate geos across runs)
+    from app.db.models import WidgetInsightJobState
+
+    cursor_key = f"generate_homepage_insights:{lang}"  # one cursor per language
+    state = (
+        db.query(WidgetInsightJobState)
+        .filter(WidgetInsightJobState.key == cursor_key)
+        .first()
+    )
+    if state is None:
+        state = WidgetInsightJobState(key=cursor_key, value={"geo_idx": 0})
+        db.add(state)
+        db.flush()
+
+    geo_idx = int((state.value or {}).get("geo_idx") or 0)
+
+    # If caller explicitly passed geo_list, we still only process 1 geo per run unless forced.
+    force_all = bool((params or {}).get("force_all"))
+    if force_all:
+        geos_to_process = geo_list
+    else:
+        if not geo_list:
+            geo_list = list(ALLOWED_GEOS)
+        geos_to_process = [geo_list[geo_idx % len(geo_list)]]
+        state.value = {"geo_idx": (geo_idx + 1) % len(geo_list)}
+        state.updated_at = _now_utc()
+
+    # Always include Global for geo selector-driven cards where it makes sense.
+    if "Global" not in geos_to_process and "Global" in geo_list:
+        # do not force; UI usually uses geo-specific scopes; keep rotation stable
+        pass
 
     # Public context URLs per card/tab (job-only fetch + DB cache)
     URLS = {
@@ -707,7 +745,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
         )
 
     # Trade per-geo tabs
-    for geo in geo_list:
+    for geo in geos_to_process:
         exim = get_latest_snapshot(db, "trade_exim_5y", geo)
         if not exim:
             continue
@@ -736,7 +774,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
 
     # Wealth per-geo
     disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
-    for geo in geo_list:
+    for geo in geos_to_process:
         w = get_latest_snapshot(db, "wealth_indicators_5y", geo)
         if w:
             _gen_insight(

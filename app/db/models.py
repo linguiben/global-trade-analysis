@@ -130,6 +130,19 @@ class PublicContext(Base):
     )
 
 
+class WidgetInsightJobState(Base):
+    __tablename__ = "widget_insight_job_state"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    value: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class WidgetInsight(Base):
     __tablename__ = "widget_insights"
 
@@ -157,6 +170,7 @@ class WidgetInsight(Base):
     llm_provider: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     llm_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     llm_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    llm_error: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     generated_by: Mapped[str] = mapped_column(String(80), nullable=False, default="job")
     job_run_id: Mapped[int | None] = mapped_column(
