@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Trade Analysis · Dashboard v3</title>
+  <link rel="icon" href="{{ base_path }}/favicon.ico" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html { -ms-overflow-style: none; scrollbar-width: none; }
+    html::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+    body { background-color: #0f172a; color: #f8fafc; overflow: auto; -ms-overflow-style: none; }
+    body::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+    .card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(51, 65, 85, 1); backdrop-filter: blur(8px); }
+    [id$="_insight_text"] {
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-line;
+      line-height: 1.45;
+      padding-right: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.55) rgba(15, 23, 42, 0.35);
+    }
+    [id$="_insight_text"]::-webkit-scrollbar {
+      width: 7px;
+    }
+    [id$="_insight_text"]::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.35);
+      border-radius: 8px;
+    }
+    [id$="_insight_text"]::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.55);
+      border-radius: 8px;
+    }
+    [id$="_insight_text"]::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.75);
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+  {% set base = base_path or '' %}
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-8 flex flex-wrap justify-between items-center gap-3">
+      <div>
+        <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+          Global Trade Analysis <span class="text-xs font-mono align-top text-slate-300">v3</span>
+        </h1>
+        <p class="text-slate-400 text-sm mt-1" style="font-family: cursive;">$POC · data-driven trade insights$</p>
+      </div>
+      <div class="text-right text-xs text-slate-500 font-mono">
+        Visited: {{ visited_count }}<br>{{ now }}<br>
+        Data Updated: {{ data_updated_at }}<br>
+        Stale: {% if data_is_stale %}YES{% else %}NO{% endif %}
+      </div>
+      <nav class="w-full text-right text-xs text-slate-400 space-x-3">
+        <a class="hover:text-blue-300" href="{{ base }}/">v1</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v2">v2</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v3">v3</a>
+        <span class="text-slate-600">|</span>
+        <a class="hover:text-blue-300" href="{{ base }}/health">Health</a>
+        <a class="hover:text-blue-300" href="{{ base }}/jobs">Jobs</a>
+      </nav>
+    </header>
+
+    <section class="card rounded-3xl p-6 md:p-10 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        <div class="md:col-span-2">
+          <h2 class="text-xl md:text-2xl font-bold text-slate-100">One dashboard for global trade signals</h2>
+          <p class="text-slate-400 mt-2 leading-relaxed">
+            This is the homepage scaffold for <span class="text-slate-200 font-semibold">Global Trade Analysis</span>.
+            The goal is to progressively add widgets (trade flows, tariffs, corridors, shipping, and risk) with transparent definitions and reproducible sources.
+          </p>
+        </div>
+        <div class="flex md:justify-end gap-3">
+          <a class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold" href="#widgets">Explore widgets</a>
+          <a class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold" href="#about">About</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="widgets" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="card rounded-3xl p-6 transition-all hover:border-blue-500/50">
+        <div class="text-xs text-slate-400">Widget</div>
+        <div class="mt-1 text-xl font-bold">Global Trade Flow</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Exports/Imports, trade balance, corridors (value & volume), freight (WCI), and port signals. Cadence varies by source.</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP scaffold</div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <label class="text-xs text-slate-400 font-mono">Scope</label>
+          <select id="trade_geo" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+            <option>Loading…</option>
+          </select>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2 text-xs font-mono">
+          <button data-tab="corridors" class="trade-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Corridors</button>
+          <button data-tab="exim" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Export/Import</button>
+          <button data-tab="balance" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Surplus/Deficit</button>
+          <button data-tab="wci" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Freight (WCI)</button>
+          <button data-tab="portwatch" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">PortWatch</button>
+        </div>
+
+        <div class="mt-4 text-sm">
+          <div id="trade_panel_corridors" class="trade-panel">
+            <div class="text-slate-300 font-semibold">Active corridors (Top <span id="trade_corridors_value_topn">5</span>, Value)</div>
+            <canvas id="trade_corridors_value_chart" height="130" class="mt-2"></canvas>
+
+            <div class="text-slate-300 font-semibold mt-4">Active corridors (Top <span id="trade_corridors_volume_topn">5</span>, Volume)</div>
+            <canvas id="trade_corridors_volume_chart" height="130" class="mt-2"></canvas>
+
+            <div id="trade_corridors_commentary" class="text-slate-400 text-sm mt-2"></div>
+          <div id="trade_corridors_insight" class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+            <div class="text-xs text-slate-400 font-mono">Insight</div>
+            <div class="text-slate-300 text-sm mt-1" id="trade_corridors_insight_text">—</div>
+            <div class="text-xs text-slate-500 font-mono mt-2" id="trade_corridors_source_updated">Source updated: —</div>
+          </div>
+          </div>
+
+          <div id="trade_panel_exim" class="trade-panel hidden">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-slate-300 font-semibold">Export</div>
+                <div id="trade_export" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+              </div>
+              <div>
+                <div class="text-slate-300 font-semibold">Import</div>
+                <div id="trade_import" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <canvas id="trade_exim_chart" height="120"></canvas>
+              <div id="trade_exim_chart_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            </div>
+            <div id="trade_exim_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="trade_exim_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="trade_exim_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="trade_panel_balance" class="trade-panel hidden">
+            <div class="text-slate-300 font-semibold">Trade balance</div>
+            <div id="trade_balance" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+            <div class="mt-3">
+              <canvas id="trade_balance_chart" height="120"></canvas>
+              <div id="trade_balance_chart_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            </div>
+            <div id="trade_balance_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="trade_balance_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="trade_balance_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="trade_panel_wci" class="trade-panel hidden">
+            <div class="text-slate-300 font-semibold">World Container Index (Drewry)</div>
+            <div id="trade_wci" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+            <div id="trade_wci_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="trade_wci_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="trade_wci_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="trade_panel_portwatch" class="trade-panel hidden">
+            <div class="text-slate-300 font-semibold">IMF PortWatch</div>
+            <div id="trade_portwatch" class="text-slate-400 text-sm mt-1 font-mono">—</div>
+            <div id="trade_portwatch_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="trade_portwatch_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="trade_portwatch_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div class="mt-4 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+            <div id="trade_period" class="text-xs text-slate-400 font-mono"></div>
+            <div id="trade_source" class="text-xs text-slate-500 font-mono mt-1"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card rounded-3xl p-6 transition-all hover:border-emerald-500/50">
+        <div class="text-xs text-slate-400">Widget</div>
+        <div class="mt-1 text-xl font-bold">Global Wealth Distribution</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">GDP per capita (WDI), disposable income (per capita/per household), and consumption expenditure (WDI). 5Y trend where available.</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → indicators</div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <label class="text-xs text-slate-400 font-mono">Scope</label>
+          <select id="wealth_geo" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+            <option>Global</option>
+            <option>India</option>
+            <option>Mexico</option>
+            <option>Singapore</option>
+            <option>Hong Kong</option>
+          </select>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2 text-xs font-mono">
+          <button data-tab="gdp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">GDP pc</button>
+          <button data-tab="disp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable pc</button>
+          <button data-tab="disp_hh" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable hh</button>
+          <button data-tab="cons" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Consumption</button>
+          <button data-tab="age" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Age</button>
+        </div>
+
+        <div class="mt-4 text-sm">
+          <div id="wealth_panel_gdp_pc" class="wealth-panel">
+            <canvas id="wealth_gdp_pc_chart" height="120"></canvas>
+            <div id="wealth_gdp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_gdp_pc_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_gdp_pc_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_gdp_pc_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="wealth_panel_disp_pc" class="wealth-panel hidden">
+            <div class="text-slate-300 font-semibold">Disposable income (per capita, latest)</div>
+            <div id="wealth_disp_pc" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+            <div id="wealth_disp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_disp_pc_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_disp_pc_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_disp_pc_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="wealth_panel_disp_hh" class="wealth-panel hidden">
+            <div class="text-slate-300 font-semibold">Disposable income (per household, latest)</div>
+            <div id="wealth_disp_hh" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+            <div id="wealth_disp_hh_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_disp_hh_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_disp_hh_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_disp_hh_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="wealth_panel_cons" class="wealth-panel hidden">
+            <canvas id="wealth_cons_chart" height="120"></canvas>
+            <div id="wealth_cons_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_cons_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_cons_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_cons_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="wealth_panel_age" class="wealth-panel hidden">
+            <div class="text-slate-300 font-semibold">Age structure (% of population, latest)</div>
+            <canvas id="wealth_age_chart" height="160" class="mt-2"></canvas>
+            <div id="wealth_age_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_age_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_age_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_age_source_updated">Source updated: —</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card rounded-3xl p-6 transition-all hover:border-fuchsia-500/50">
+        <div class="text-xs text-slate-400">Widget</div>
+        <div class="mt-1 text-xl font-bold">Global Financial Flow</div>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">M&A activity breakdown by industry and country (IMAA). Deal-level “daily biggest” is not included.</p>
+        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → M&A breakdown</div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-mono">
+          <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">By industry</button>
+          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">By country</button>
+          <span class="ml-auto text-slate-500">Chart</span>
+          <button data-chart="ring" class="fin-chart px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Ring</button>
+          <button data-chart="bar" class="fin-chart px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Bar</button>
+        </div>
+
+        <div class="mt-4 text-sm">
+          <div id="fin_panel_industry" class="fin-panel">
+            <div class="text-slate-300 font-semibold">Deals (count)</div>
+            <canvas id="fin_industry_deals" height="140" class="mt-2"></canvas>
+
+            <div class="text-slate-300 font-semibold mt-4">Transaction value</div>
+            <canvas id="fin_industry_value" height="140" class="mt-2"></canvas>
+
+            <div id="fin_industry_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
+            <div id="fin_industry_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="fin_industry_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="fin_industry_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="fin_panel_country" class="fin-panel hidden">
+            <div class="text-slate-300 font-semibold">Deals (count)</div>
+            <canvas id="fin_country_deals" height="140" class="mt-2"></canvas>
+
+            <div class="text-slate-300 font-semibold mt-4">Transaction value</div>
+            <canvas id="fin_country_value" height="140" class="mt-2"></canvas>
+
+            <div id="fin_country_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
+            <div id="fin_country_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="fin_country_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="fin_country_source_updated">Source updated: —</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      const BASE = "{{ base }}";
+      const DASHBOARD_DATA = {{ dashboard_data | tojson }};
+
+      function fmtUSD(n) {
+        if (n == null) return "—";
+        const abs = Math.abs(n);
+        if (abs >= 1e12) return (n/1e12).toFixed(2) + "T";
+        if (abs >= 1e9) return (n/1e9).toFixed(2) + "B";
+        if (abs >= 1e6) return (n/1e6).toFixed(2) + "M";
+        return String(n);
+      }
+
+      function fmtKG(n) {
+        if (n == null) return "—";
+        const abs = Math.abs(n);
+        if (abs >= 1e12) return (n/1e12).toFixed(2) + "T kg";
+        if (abs >= 1e9) return (n/1e9).toFixed(2) + "B kg";
+        if (abs >= 1e6) return (n/1e6).toFixed(2) + "M kg";
+        return n + " kg";
+      }
+
+      function corridorBubbles(origin, dest, valueText, theme) {
+        // theme: { bg, ring, text }
+        const circle = (innerHtml) => `
+          <span class="inline-flex items-center justify-center rounded-full ${theme.bg} ${theme.ring} ${theme.text} shadow-sm"
+                style="width: 64px; height: 64px;">
+            <span class="text-center leading-tight">${innerHtml}</span>
+          </span>`;
+
+        const routeHtml = `
+          <span class="block text-xs font-semibold">${origin}</span>
+          <span class="block text-[10px] opacity-90">→</span>
+          <span class="block text-xs font-semibold">${dest}</span>`;
+
+        const valueHtml = `<span class="block text-[11px] font-semibold">${valueText}</span>`;
+
+        return `<div class="flex items-center gap-3">${circle(routeHtml)}${circle(valueHtml)}</div>`;
+      }
+
+      function valueBubble(text, theme, sizePx = 72) {
+        // theme: { bg, ring, text }
+        return `
+          <span class="inline-flex items-center justify-center rounded-full ${theme.bg} ${theme.ring} ${theme.text} shadow-sm"
+                style="width:${sizePx}px;height:${sizePx}px;">
+            <span class="text-center leading-tight text-[12px] font-semibold">${text}</span>
+          </span>`;
+      }
+
+      function _fmtSourceUpdated(iso) {
+        if (!iso) return '—';
+        try {
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return String(iso);
+          return d.toISOString().replace('T',' ').replace('.000Z',' UTC');
+        } catch {
+          return String(iso);
+        }
+      }
+
+      function _getInsight(card, tab, scope) {
+        const m = (DASHBOARD_DATA.insights || {});
+        return (((m[card] || {})[tab] || {})[scope] || null);
+      }
+
+      function setTradeTab(active) {
+        document.querySelectorAll('.trade-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('trade_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.trade-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+      }
+
+      function fmtSignedUSD(n) {
+        if (n == null) return '—';
+        const sign = n >= 0 ? '+' : '−';
+        return sign + '$' + fmtUSD(Math.abs(n));
+      }
+
+      let TRADE_DATA = null;
+      let EXIM_CHART = null;
+      let BAL_CHART = null;
+      let CORR_VAL_CHART = null;
+      let CORR_VOL_CHART = null;
+
+      async function loadEximSeries(geo) {
+        const all = DASHBOARD_DATA.trade_exim_by_geo || {};
+        return all[geo] || { source: 'N/A', frequency: 'annual', date: '', series: [] };
+      }
+
+      function toBillions(n) {
+        if (n == null) return null;
+        return n / 1e9;
+      }
+
+      function upsertEximChart(payload) {
+        const ctx = document.getElementById('trade_exim_chart');
+        if (!ctx) return;
+        const labels = (payload.series || []).map(r => r.period);
+        const exp = (payload.series || []).map(r => toBillions(r.export_usd));
+        const imp = (payload.series || []).map(r => toBillions(r.import_usd));
+
+        const data = {
+          labels,
+          datasets: [
+            { label: 'Export (USD, bn)', data: exp, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.15)', tension: 0.25 },
+            { label: 'Import (USD, bn)', data: imp, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.15)', tension: 0.25 },
+          ]
+        };
+
+        const opts = {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } },
+            tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw == null ? '—' : c.raw.toFixed(1)}` } }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+          }
+        };
+
+        if (EXIM_CHART) EXIM_CHART.destroy();
+        EXIM_CHART = new Chart(ctx, { type: 'line', data, options: opts });
+
+        const meta = document.getElementById('trade_exim_chart_meta');
+        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
+      }
+
+      function upsertBalanceChart(payload) {
+        const ctx = document.getElementById('trade_balance_chart');
+        if (!ctx) return;
+        const labels = (payload.series || []).map(r => r.period);
+        const bal = (payload.series || []).map(r => toBillions(r.balance_usd));
+
+        const data = {
+          labels,
+          datasets: [
+            { label: 'Balance (USD, bn)', data: bal, borderColor: '#f472b6', backgroundColor: 'rgba(244,114,182,0.15)', tension: 0.25 },
+          ]
+        };
+
+        const opts = {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } },
+            tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw == null ? '—' : c.raw.toFixed(1)}` } }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+          }
+        };
+
+        if (BAL_CHART) BAL_CHART.destroy();
+        BAL_CHART = new Chart(ctx, { type: 'line', data, options: opts });
+
+        const meta = document.getElementById('trade_balance_chart_meta');
+        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
+      }
+
+      async function refreshChartsForGeo(geo) {
+        try {
+          const ex = await loadEximSeries(geo);
+          upsertEximChart(ex);
+          upsertBalanceChart(ex);
+
+          // Analysis-style commentary (English) based on last two points
+          const s = (ex.series || []).filter(r => r.export_usd != null && r.import_usd != null);
+          if (s.length >= 2) {
+            const a = s[s.length - 2];
+            const b = s[s.length - 1];
+            const dx = ((b.export_usd - a.export_usd) / a.export_usd) * 100.0;
+            const dm = ((b.import_usd - a.import_usd) / a.import_usd) * 100.0;
+            const db = ((b.balance_usd - a.balance_usd) / (Math.abs(a.balance_usd) || 1)) * 100.0;
+            document.getElementById('trade_exim_commentary').textContent = `Commentary: exports ${dx >= 0 ? 'rose' : 'fell'} ${Math.abs(dx).toFixed(1)}% while imports ${dm >= 0 ? 'rose' : 'fell'} ${Math.abs(dm).toFixed(1)}% (latest vs prior year).`;
+            document.getElementById('trade_balance_commentary').textContent = `Commentary: trade balance moved to ${fmtSignedUSD(b.balance_usd)} in ${b.period} (vs ${fmtSignedUSD(a.balance_usd)} in ${a.period}).`;
+          } else {
+            document.getElementById('trade_exim_commentary').textContent = 'Commentary: not enough historical points yet.';
+            document.getElementById('trade_balance_commentary').textContent = 'Commentary: not enough historical points yet.';
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function renderTrade() {
+        if (!TRADE_DATA) return;
+        const geo = document.getElementById('trade_geo').value || 'Global';
+        const d = (TRADE_DATA.by_geo || {})[geo] || {};
+
+        // Insights (from DB)
+        const iCorr = _getInsight('trade_flow','corridors','global');
+        document.getElementById('trade_corridors_insight_text').textContent = (iCorr && iCorr.content) || '—';
+        document.getElementById('trade_corridors_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCorr && iCorr.source_updated_at);
+
+        const iWci = _getInsight('trade_flow','wci','global');
+        document.getElementById('trade_wci_insight_text').textContent = (iWci && iWci.content) || '—';
+        document.getElementById('trade_wci_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iWci && iWci.source_updated_at);
+
+        const iPw = _getInsight('trade_flow','portwatch','global');
+        document.getElementById('trade_portwatch_insight_text').textContent = (iPw && iPw.content) || '—';
+        document.getElementById('trade_portwatch_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iPw && iPw.source_updated_at);
+
+        const iEx = _getInsight('trade_flow','exim', geo);
+        document.getElementById('trade_exim_insight_text').textContent = (iEx && iEx.content) || '—';
+        document.getElementById('trade_exim_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iEx && iEx.source_updated_at);
+
+        const iBal = _getInsight('trade_flow','balance', geo);
+        document.getElementById('trade_balance_insight_text').textContent = (iBal && iBal.content) || '—';
+        document.getElementById('trade_balance_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iBal && iBal.source_updated_at);
+
+        // Corridors ranking (Top 5)
+        const topN = 5;
+        const vRows = (d.value_usd_top || []).slice(0, topN).map(r => ({
+          origin: r.origin,
+          dest: r.dest,
+          value_bil: r.value_usd != null ? (r.value_usd / 1e9) : null,
+        })).filter(r => r.value_bil != null);
+        const volRows = (d.volume_top || []).slice(0, topN).map(r => ({
+          origin: r.origin,
+          dest: r.dest,
+          volume_bilkg: r.volume_kg != null ? (r.volume_kg / 1e9) : null,
+        })).filter(r => r.volume_bilkg != null);
+
+        if (CORR_VAL_CHART) CORR_VAL_CHART.destroy();
+        if (CORR_VOL_CHART) CORR_VOL_CHART.destroy();
+        CORR_VAL_CHART = upsertCorridorBar('trade_corridors_value_chart', vRows, 'value_bil', 'rgba(96,165,250,0.55)', ' bn USD');
+        CORR_VOL_CHART = upsertCorridorBar('trade_corridors_volume_chart', volRows, 'volume_bilkg', 'rgba(52,211,153,0.55)', ' bn kg');
+
+        // If fewer than Top 5 are available (e.g. MVP stub), reflect it in the label.
+        const valN = vRows.length || 0;
+        const volN = volRows.length || 0;
+        const elVal = document.getElementById('trade_corridors_value_topn');
+        const elVol = document.getElementById('trade_corridors_volume_topn');
+        if (elVal) elVal.textContent = String(Math.min(topN, valN || topN));
+        if (elVol) elVol.textContent = String(Math.min(topN, volN || topN));
+
+        document.getElementById('trade_export').textContent = d.export_usd != null ? `$${fmtUSD(d.export_usd)}` : '—';
+        document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
+        document.getElementById('trade_balance').textContent = d.trade_balance_usd != null ? fmtSignedUSD(d.trade_balance_usd) : '—';
+
+        // --- per-tab commentary ---
+        const corridorsNote = (vRows.length || volRows.length)
+          ? `Commentary: value and volume leaders can differ; use this to spot reroutes or mix changes.`
+          : `Commentary: corridor leaders will appear once data is available.`;
+        document.getElementById('trade_corridors_commentary').textContent = corridorsNote;
+
+        const bal = d.trade_balance_usd;
+        const eximNote = (d.export_usd != null && d.import_usd != null)
+          ? `Commentary: ${geo} is currently a ${bal != null && bal >= 0 ? 'net exporter' : 'net importer'} in this period.`
+          : `Commentary: export/import will populate once data is available.`;
+        document.getElementById('trade_exim_commentary').textContent = eximNote;
+
+        const balanceNote = (bal != null)
+          ? `Commentary: ${bal >= 0 ? 'surplus' : 'deficit'} equals export minus import (simple identity).`
+          : `Commentary: balance will populate once data is available.`;
+        document.getElementById('trade_balance_commentary').textContent = balanceNote;
+
+        const wci = TRADE_DATA.wci || {};
+        const wciLine = wci.value_usd_per_40ft != null ? `$${wci.value_usd_per_40ft}/40ft` : '—';
+        document.getElementById('trade_wci').innerHTML = wci.value_usd_per_40ft != null
+          ? valueBubble(`${wciLine}`, { bg: 'bg-fuchsia-500/40', ring: 'ring-2 ring-fuchsia-300/70', text: 'text-slate-50' }, 76)
+          : '—';
+        document.getElementById('trade_wci_commentary').textContent = wci.commentary || 'Commentary: auto-extracted from source.';
+
+        const pw = TRADE_DATA.portwatch || {};
+        document.getElementById('trade_portwatch').textContent = pw.commentary || '—';
+        document.getElementById('trade_portwatch_commentary').textContent = `Commentary: port signals help validate whether trade changes are demand-led or capacity-led.`;
+
+        document.getElementById('trade_period').textContent = `Period: ${d.period || '—'} · WCI: ${wci.period || '—'} · PortWatch: ${pw.period || '—'}`;
+        document.getElementById('trade_source').textContent = `Source: ${TRADE_DATA.source} · Updated: ${TRADE_DATA.updated_at}`;
+      }
+
+      async function loadTrade() {
+        const data = DASHBOARD_DATA.trade_corridors || {};
+        TRADE_DATA = data;
+
+        const sel = document.getElementById('trade_geo');
+        sel.innerHTML = '';
+        (data.geos || ['Global']).forEach(g => {
+          const opt = document.createElement('option');
+          opt.value = g;
+          opt.textContent = g;
+          sel.appendChild(opt);
+        });
+        sel.value = 'Global';
+        sel.addEventListener('change', () => { renderTrade(); refreshChartsForGeo(sel.value); });
+
+        document.querySelectorAll('.trade-tab').forEach(b => {
+          b.addEventListener('click', () => setTradeTab(b.dataset.tab));
+        });
+        setTradeTab('corridors');
+
+        renderTrade();
+        refreshChartsForGeo('Global');
+      }
+
+      function setWealthTab(active) {
+        document.querySelectorAll('.wealth-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('wealth_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.wealth-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+      }
+
+      let WEALTH_GDP_CHART = null;
+      let WEALTH_CONS_CHART = null;
+      let WEALTH_AGE_CHART = null;
+
+      async function loadWealthIndicators(geo) {
+        const all = DASHBOARD_DATA.wealth_indicators_by_geo || {};
+        return all[geo] || { source: 'N/A', frequency: 'annual', date: '', series: [] };
+      }
+
+      async function loadDisposableLatest() {
+        return DASHBOARD_DATA.wealth_disposable_latest || { rows: {}, source: 'N/A', link: '' };
+      }
+
+      async function loadWealthAgeStructure(geo) {
+        const all = DASHBOARD_DATA.wealth_age_structure_by_geo || {};
+        return all[geo] || { source: 'N/A', frequency: 'annual', period: '', rows: [] };
+      }
+
+      function upsertWealthGdpChartCombined(allByGeo, activeGeo) {
+        const ctx = document.getElementById('wealth_gdp_pc_chart');
+        if (!ctx) return;
+
+        const geos = Object.keys(allByGeo || {});
+        // Prefer a stable ordering
+        const preferred = ['Global', 'India', 'Mexico', 'Singapore', 'Hong Kong'];
+        const ordered = preferred.filter(g => geos.includes(g)).concat(geos.filter(g => !preferred.includes(g)));
+
+        // Build a union of periods across geos
+        const periodSet = new Set();
+        ordered.forEach(g => {
+          const s = (allByGeo[g] && allByGeo[g].series) || [];
+          s.forEach(r => { if (r && r.period != null) periodSet.add(String(r.period)); });
+        });
+        const labels = Array.from(periodSet);
+        labels.sort(); // annual periods like '2020'...'2024'
+
+        function seriesToMap(payload){
+          const out = new Map();
+          ((payload && payload.series) || []).forEach(r => {
+            if (!r || r.period == null) return;
+            out.set(String(r.period), (r.gdp_per_capita_usd == null ? null : r.gdp_per_capita_usd));
+          });
+          return out;
+        }
+
+        const palette = {
+          'Global': '#fbbf24',
+          'India': '#60a5fa',
+          'Mexico': '#34d399',
+          'Singapore': '#a78bfa',
+          'Hong Kong': '#fb7185'
+        };
+
+        const datasets = ordered.map(g => {
+          const m = seriesToMap(allByGeo[g]);
+          const data = labels.map(p => m.has(p) ? m.get(p) : null);
+          const isActive = (g === activeGeo);
+          const color = palette[g] || '#a7f3d0';
+          return {
+            label: g,
+            data,
+            borderColor: color,
+            backgroundColor: 'rgba(148,163,184,0.06)',
+            tension: 0.25,
+            borderWidth: isActive ? 3 : 1.6,
+            pointRadius: isActive ? 2.2 : 1.6,
+            pointHoverRadius: 3,
+          };
+        });
+
+        const chartData = { labels, datasets };
+
+        const opts = {
+          responsive: true,
+          plugins: {
+            legend: {
+              labels: { color: '#cbd5e1' },
+              position: 'bottom'
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.parsed.y;
+                  return `${ctx.dataset.label}: ${v == null ? '—' : ('$' + Math.round(v).toLocaleString())}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: {
+              ticks: {
+                color: '#94a3b8',
+                callback: (v) => '$' + Number(v).toLocaleString(),
+              },
+              grid: { color: 'rgba(148,163,184,0.12)' }
+            },
+          }
+        };
+
+        if (WEALTH_GDP_CHART) WEALTH_GDP_CHART.destroy();
+        WEALTH_GDP_CHART = new Chart(ctx, { type: 'line', data: chartData, options: opts });
+
+        const meta = document.getElementById('wealth_gdp_pc_meta');
+        if (meta) meta.textContent = `Source: World Bank WDI (per-scope snapshots) · Metric: GDP per capita (current US$) · Highlight: ${activeGeo}`;
+
+        const c = document.getElementById('wealth_gdp_pc_commentary');
+        if (c) c.textContent = `Commentary (EN): Compare levels and momentum across geos; nominal USD is FX-sensitive, so interpret cross-country gaps with caution.`;
+      }
+
+      function upsertWealthConsChart(payload) {
+        const ctx = document.getElementById('wealth_cons_chart');
+        if (!ctx) return;
+        const labels = (payload.series || []).map(r => r.period);
+        const vals = (payload.series || []).map(r => r.consumption_expenditure_usd == null ? null : r.consumption_expenditure_usd/1e12);
+
+        const data = {
+          labels,
+          datasets: [
+            { label: 'Household consumption (US$, tn)', data: vals, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.12)', tension: 0.25 },
+          ]
+        };
+
+        const opts = {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+          }
+        };
+
+        if (WEALTH_CONS_CHART) WEALTH_CONS_CHART.destroy();
+        WEALTH_CONS_CHART = new Chart(ctx, { type: 'line', data, options: opts });
+
+        const meta = document.getElementById('wealth_cons_meta');
+        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
+
+        const s = (payload.series || []).filter(r => r.consumption_expenditure_usd != null);
+        const c = document.getElementById('wealth_cons_commentary');
+        if (c && s.length >= 2) {
+          const a = s[s.length-2].consumption_expenditure_usd;
+          const b = s[s.length-1].consumption_expenditure_usd;
+          const pct = ((b-a)/a)*100.0;
+          c.textContent = `Commentary (EN): consumption expenditure ${pct>=0?'rose':'fell'} ${Math.abs(pct).toFixed(1)}% in the latest year vs prior year (nominal USD).`;
+        }
+      }
+
+      async function refreshWealthForGeo(geo) {
+        const ind = await loadWealthIndicators(geo);
+        // GDP chart is combined across geos (Global + countries) for comparison
+        upsertWealthGdpChartCombined(DASHBOARD_DATA.wealth_indicators_by_geo || {}, geo);
+        upsertWealthConsChart(ind);
+
+        const iGdp = _getInsight('wealth','gdp_pc', geo);
+        document.getElementById('wealth_gdp_pc_insight_text').textContent = (iGdp && iGdp.content) || '—';
+        document.getElementById('wealth_gdp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iGdp && iGdp.source_updated_at);
+
+        const iCons = _getInsight('wealth','cons', geo);
+        document.getElementById('wealth_cons_insight_text').textContent = (iCons && iCons.content) || '—';
+        document.getElementById('wealth_cons_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCons && iCons.source_updated_at);
+
+        const disp = await loadDisposableLatest();
+        const row = (disp.rows || {})[geo] || null;
+        const pc = row && row.per_capita_usd != null ? `$${Math.round(row.per_capita_usd).toLocaleString()}` : '—';
+        const hh = row && row.per_household_usd != null ? `$${Math.round(row.per_household_usd).toLocaleString()}` : '—';
+
+        document.getElementById('wealth_disp_pc').textContent = pc;
+        document.getElementById('wealth_disp_hh').textContent = hh;
+        document.getElementById('wealth_disp_pc_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
+        document.getElementById('wealth_disp_hh_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
+        document.getElementById('wealth_disp_pc_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
+        document.getElementById('wealth_disp_hh_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
+
+        const iDispPc = _getInsight('wealth','disp_pc', geo);
+        document.getElementById('wealth_disp_pc_insight_text').textContent = (iDispPc && iDispPc.content) || '—';
+        document.getElementById('wealth_disp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispPc && iDispPc.source_updated_at);
+
+        const iDispHh = _getInsight('wealth','disp_hh', geo);
+        document.getElementById('wealth_disp_hh_insight_text').textContent = (iDispHh && iDispHh.content) || '—';
+        document.getElementById('wealth_disp_hh_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispHh && iDispHh.source_updated_at);
+
+        // Age structure (ring)
+        const age = await loadWealthAgeStructure(geo);
+        const ageLabels = (age.rows || []).map(r => r.label);
+        const ageVals = (age.rows || []).map(r => r.pct);
+        if (WEALTH_AGE_CHART) WEALTH_AGE_CHART.destroy();
+        WEALTH_AGE_CHART = new Chart(document.getElementById('wealth_age_chart'), {
+          type: 'doughnut',
+          data: { labels: ageLabels, datasets: [{ data: ageVals, backgroundColor: ['#60a5fa','#34d399','#fbbf24'], borderColor: 'rgba(15,23,42,0.65)', borderWidth: 2 }] },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '62%',
+            plugins: {
+              legend: { position: 'right', labels: { color: '#cbd5e1', boxWidth: 10, boxHeight: 10 } },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const label = ctx.label || '';
+                    const v = Number(ctx.parsed || 0);
+                    return `${label}: ${v.toFixed(1)}%`;
+                  }
+                }
+              }
+            }
+          }
+        });
+        const ageMeta = document.getElementById('wealth_age_meta');
+        if (ageMeta) ageMeta.textContent = `Source: ${age.source} · Frequency: ${age.frequency} · Period: ${age.period || '—'}`;
+        const ageCom = document.getElementById('wealth_age_commentary');
+        if (ageCom && ageVals.length === 3) {
+          ageCom.textContent = `Commentary (EN): working-age share (15–64) is ${ageVals[1].toFixed(1)}% in the latest year.`;
+        }
+
+        const iAge = _getInsight('wealth','age', geo);
+        document.getElementById('wealth_age_insight_text').textContent = (iAge && iAge.content) || '—';
+        document.getElementById('wealth_age_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iAge && iAge.source_updated_at);
+      }
+
+      async function loadWealth() {
+        const sel = document.getElementById('wealth_geo');
+        document.querySelectorAll('.wealth-tab').forEach(b => b.addEventListener('click', () => setWealthTab(b.dataset.tab)));
+        setWealthTab('gdp_pc');
+
+        sel.addEventListener('change', () => refreshWealthForGeo(sel.value));
+        await refreshWealthForGeo(sel.value || 'Global');
+      }
+
+      function setFinTab(active) {
+        document.querySelectorAll('.fin-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('fin_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.fin-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+      }
+
+      function setFinChartType(kind) {
+        FIN_CHART_TYPE = (kind === 'bar') ? 'bar' : 'ring';
+        document.querySelectorAll('.fin-chart').forEach(b => {
+          if (b.dataset.chart === FIN_CHART_TYPE) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+      }
+
+      function upsertFinChart(kind, id, label, labels, values, color) {
+        if (kind === 'bar') {
+          return upsertBar(id, label, labels, values, color);
+        }
+        return upsertRing(id, label, labels, values);
+      }
+
+      let FIN_IND_DEALS = null;
+      let FIN_IND_VALUE = null;
+      let FIN_CTY_DEALS = null;
+      let FIN_CTY_VALUE = null;
+      let FIN_CHART_TYPE = 'ring';
+
+      async function loadFinIndustry() {
+        return DASHBOARD_DATA.finance_ma_industry || { rows: [], source: 'N/A', link: '' };
+      }
+
+      async function loadFinCountry() {
+        return DASHBOARD_DATA.finance_ma_country || { rows: [], source: 'N/A', link: '' };
+      }
+
+      function _wrapLabel(s, maxLineLen=18, maxLines=3) {
+        if (!s) return s;
+        const words = String(s).split(/\s+/).filter(Boolean);
+        if (!words.length) return s;
+
+        const lines = [];
+        let cur = '';
+        for (const w of words) {
+          const next = cur ? (cur + ' ' + w) : w;
+          if (next.length <= maxLineLen) {
+            cur = next;
+          } else {
+            if (cur) lines.push(cur);
+            cur = w;
+          }
+          if (lines.length >= maxLines) break;
+        }
+        if (lines.length < maxLines && cur) lines.push(cur);
+
+        // If still too long, ellipsis the last line.
+        const joined = lines.join(' ');
+        if (joined.length < String(s).length) {
+          const last = lines[lines.length - 1];
+          lines[lines.length - 1] = last.length > maxLineLen - 1 ? (last.slice(0, maxLineLen - 1) + '…') : (last + '…');
+        }
+
+        return lines;
+      }
+
+      function barOpts() {
+        return {
+          responsive: true,
+          maintainAspectRatio: true,
+          indexAxis: 'y',
+          layout: { padding: { left: 10, right: 10, top: 6, bottom: 6 } },
+          plugins: {
+            legend: { labels: { color: '#cbd5e1' } },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const it = items && items[0];
+                  return it ? String(it.label) : '';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: {
+              ticks: {
+                color: '#94a3b8',
+                callback: function(value) {
+                  const lbl = this.getLabelForValue(value);
+                  return _wrapLabel(lbl, 18, 3);
+                }
+              },
+              grid: { color: 'rgba(148,163,184,0.12)' }
+            },
+          }
+        };
+      }
+
+      function upsertBar(id, label, labels, values, color) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return null;
+        return new Chart(ctx, {
+          type: 'bar',
+          data: { labels, datasets: [{ label, data: values, backgroundColor: color, barThickness: 10 }] },
+          options: barOpts(),
+        });
+      }
+
+      function corridorsBarOpts(xTickSuffix) {
+        return {
+          responsive: true,
+          maintainAspectRatio: true,
+          indexAxis: 'y',
+          layout: { padding: { left: 10, right: 10, top: 6, bottom: 6 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const it = items && items[0];
+                  return it ? String(it.label) : '';
+                },
+                label: (ctx) => {
+                  const v = Number(ctx.parsed && ctx.parsed.x != null ? ctx.parsed.x : ctx.parsed);
+                  return `${v.toLocaleString()}${xTickSuffix || ''}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: {
+              ticks: {
+                color: '#94a3b8',
+                callback: function(value) {
+                  const lbl = this.getLabelForValue(value);
+                  return _wrapLabel(lbl, 20, 2);
+                }
+              },
+              grid: { color: 'rgba(148,163,184,0.12)' }
+            },
+          }
+        };
+      }
+
+      function upsertCorridorBar(id, rows, valueKey, color, xTickSuffix) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return null;
+        const labels = (rows || []).map(r => `${r.origin} → ${r.dest}`);
+        const vals = (rows || []).map(r => r[valueKey]);
+        return new Chart(ctx, {
+          type: 'bar',
+          data: { labels, datasets: [{ data: vals, backgroundColor: color, barThickness: 10 }] },
+          options: corridorsBarOpts(xTickSuffix),
+        });
+      }
+
+      function ringOpts() {
+        return {
+          responsive: true,
+          maintainAspectRatio: true,
+          cutout: '62%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { color: '#cbd5e1', boxWidth: 10, boxHeight: 10 }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const label = ctx.label || '';
+                  const v = Number(ctx.parsed || 0);
+                  const ds = ctx.dataset && Array.isArray(ctx.dataset.data) ? ctx.dataset.data : [];
+                  const sum = ds.reduce((a, b) => a + Number(b || 0), 0) || 0;
+                  const pct = sum ? (v / sum * 100) : 0;
+                  const pv = pct ? `${pct.toFixed(1)}%` : '0%';
+                  return `${label}: ${v.toLocaleString()} (${pv})`;
+                }
+              }
+            }
+          }
+        };
+      }
+
+      function upsertRing(id, label, labels, values) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return null;
+        const palette = [
+          '#60a5fa', '#34d399', '#fbbf24', '#fb7185', '#a78bfa',
+          '#22d3ee', '#f472b6', '#fb923c', '#94a3b8', '#4ade80'
+        ];
+        const colors = labels.map((_, i) => palette[i % palette.length]);
+        return new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels, datasets: [{ label, data: values, backgroundColor: colors, borderColor: 'rgba(15,23,42,0.65)', borderWidth: 2 }] },
+          options: ringOpts(),
+        });
+      }
+
+      async function loadFinance() {
+        document.querySelectorAll('.fin-tab').forEach(b => b.addEventListener('click', () => setFinTab(b.dataset.tab)));
+        document.querySelectorAll('.fin-chart').forEach(b => b.addEventListener('click', () => { setFinChartType(b.dataset.chart); loadFinance(); }));
+        setFinTab('industry');
+        setFinChartType(FIN_CHART_TYPE);
+
+        // Industry
+        const ind = await loadFinIndustry();
+        const indRows = (ind.rows || []).slice(0, 10);
+        const indLabels = indRows.map(r => r.industry);
+        const indDeals = indRows.map(r => r.deals);
+        const indVal = indRows.map(r => r.value_usd_bil);
+        if (FIN_IND_DEALS) FIN_IND_DEALS.destroy();
+        if (FIN_IND_VALUE) FIN_IND_VALUE.destroy();
+        FIN_IND_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_deals', 'Deals (count)', indLabels, indDeals, 'rgba(96,165,250,0.55)');
+        FIN_IND_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal, 'rgba(244,114,182,0.55)');
+        document.getElementById('fin_industry_meta').innerHTML = `Source: ${ind.source} · Unit: ${ind.unit}${ind.currency}<br>Link: <a class="underline hover:text-fuchsia-300" href="${ind.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
+        document.getElementById('fin_industry_commentary').textContent = 'Commentary (EN): top industries by deal count and by total disclosed value (IMAA public stats).';
+
+        const iFinInd = _getInsight('finance','industry','global');
+        document.getElementById('fin_industry_insight_text').textContent = (iFinInd && iFinInd.content) || '—';
+        document.getElementById('fin_industry_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinInd && iFinInd.source_updated_at);
+
+        // Country
+        const cty = await loadFinCountry();
+        const ctyRows = (cty.rows || []).slice(0, 10);
+        const ctyLabels = ctyRows.map(r => r.country);
+        const ctyDeals = ctyRows.map(r => r.deals);
+        const ctyVal = ctyRows.map(r => r.value_bil);
+        const ccy = (ctyRows[0] && ctyRows[0].currency) ? ctyRows[0].currency : '';
+        if (FIN_CTY_DEALS) FIN_CTY_DEALS.destroy();
+        if (FIN_CTY_VALUE) FIN_CTY_VALUE.destroy();
+        FIN_CTY_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
+        FIN_CTY_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
+        document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
+        document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
+
+        const iFinCty = _getInsight('finance','country','global');
+        document.getElementById('fin_country_insight_text').textContent = (iFinCty && iFinCty.content) || '—';
+        document.getElementById('fin_country_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinCty && iFinCty.source_updated_at);
+      }
+
+      Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});
+    </script>
+
+    <section id="about" class="mt-6 card rounded-3xl p-6">
+      <h3 class="text-lg font-bold">Notes</h3>
+      <ul class="mt-3 text-sm text-slate-400 space-y-2 list-disc pl-5">
+        <li>All definitions should be explicit and source-linked (WTO/UN Comtrade/IMF/World Bank where applicable).</li>
+        <li>Methodology will distinguish <span class="text-slate-200">value</span>, <span class="text-slate-200">volume</span>, and <span class="text-slate-200">shipping capacity</span> to avoid ambiguity.</li>
+      </ul>
+    </section>
+
+    <footer class="mt-8 text-xs text-slate-600">
+      Global Trade Analysis · GTA · {{ now }}
+    </footer>
+  </div>
+</body>
+</html>
