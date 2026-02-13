@@ -62,49 +62,19 @@
       </nav>
     </header>
 
-    <section class="card rounded-3xl p-6 md:p-10 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-        <div class="md:col-span-2">
-          <h2 class="text-xl md:text-2xl font-bold text-slate-100">One dashboard for global trade signals</h2>
-          <p class="text-slate-400 mt-2 leading-relaxed">
-            This is the homepage scaffold for <span class="text-slate-200 font-semibold">Global Trade Analysis</span>.
-            The goal is to progressively add widgets (trade flows, tariffs, corridors, shipping, and risk) with transparent definitions and reproducible sources.
-          </p>
-        </div>
-        <div class="flex md:justify-end gap-3">
-          <a class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold" href="#widgets">Explore widgets</a>
-          <a class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold" href="#about">About</a>
-        </div>
-      </div>
-    </section>
-
     <!-- Executive summary (v3) -->
     <section class="card rounded-3xl p-6 md:p-8 mb-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div class="text-xs text-slate-400 font-mono">Management view</div>
-          <h2 class="text-xl md:text-2xl font-bold text-slate-100 mt-1">Overall commentary</h2>
-          <p class="text-sm text-slate-400 mt-2">At-a-glance observations (facts) and recommendations (analysis/forecast). Scope follows the selected dropdowns.</p>
+                    <h2 class="text-xl md:text-2xl font-bold text-slate-100 mt-1">Overall commentary</h2>
         </div>
         <div class="text-xs text-slate-500 font-mono">YoY = latest vs prior point</div>
       </div>
 
-      <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
-          <div class="text-xs text-slate-400 font-mono">Global Trade Flow</div>
-          <div class="mt-2 text-sm" id="exec_trade_obs"><span class="text-slate-500">Observations:</span> —</div>
-          <div class="mt-2 text-sm" id="exec_trade_rec"><span class="text-slate-500">Recommendations:</span> —</div>
-        </div>
-        <div class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
-          <div class="text-xs text-slate-400 font-mono">Global Wealth Distribution</div>
-          <div class="mt-2 text-sm" id="exec_wealth_obs"><span class="text-slate-500">Observations:</span> —</div>
-          <div class="mt-2 text-sm" id="exec_wealth_rec"><span class="text-slate-500">Recommendations:</span> —</div>
-        </div>
-        <div class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
-          <div class="text-xs text-slate-400 font-mono">Global Financial Flow</div>
-          <div class="mt-2 text-sm" id="exec_fin_obs"><span class="text-slate-500">Observations:</span> —</div>
-          <div class="mt-2 text-sm" id="exec_fin_rec"><span class="text-slate-500">Recommendations:</span> —</div>
-        </div>
+      <div class="mt-5 space-y-2">
+        <div id="exec_trade_line" class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4 text-sm">Trade: —</div>
+        <div id="exec_wealth_line" class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4 text-sm">Wealth: —</div>
+        <div id="exec_fin_line" class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4 text-sm">Finance: —</div>
       </div>
     </section>
 
@@ -112,7 +82,6 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-blue-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Trade Flow</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Exports/Imports, trade balance, corridors (value & volume), freight (WCI), and port signals. Cadence varies by source.</p>
         <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP scaffold</div>
 
         <div id="trade_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
@@ -218,7 +187,6 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-emerald-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Wealth Distribution</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">GDP per capita (WDI), disposable income (per capita/per household), and consumption expenditure (WDI). 5Y trend where available.</p>
         <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → indicators</div>
 
         <div id="wealth_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
@@ -306,7 +274,6 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-fuchsia-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Financial Flow</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">M&A activity breakdown by industry and country (IMAA). Deal-level “daily biggest” is not included.</p>
         <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → M&A breakdown</div>
 
         <div id="fin_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
@@ -472,11 +439,10 @@
           <div class="mt-1"><span class="text-slate-500 font-mono text-[11px]">Recommendations:</span> <span class="text-slate-300">${rec || '—'}</span></div>`;
       }
 
-      function _setExec(idObs, idRec, obs, rec) {
-        const o = document.getElementById(idObs);
-        const r = document.getElementById(idRec);
-        if (o) o.innerHTML = `<span class="text-slate-500">Observations:</span> ${obs || '—'}`;
-        if (r) r.innerHTML = `<span class="text-slate-500">Recommendations:</span> ${rec || '—'}`;
+      function _setExecLine(id, text) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text || '—';
       }
 
       function setTradeTab(active) {
@@ -737,12 +703,10 @@
         const pwRec = `Use ports to confirm whether changes are demand-led vs capacity-led; reconcile with corridor shifts.`;
         _setObsRec('trade_portwatch_commentary', pwObs, pwRec);
 
-        // Update executive summary (trade slice)
-        _setExec(
-          'exec_trade_obs',
-          'exec_trade_rec',
-          `${geo}: exports ${_fmtPct(yoyEx)} YoY, imports ${_fmtPct(yoyIm)} YoY; WCI ${wciLine}.`,
-          `Base case: expect trade momentum to follow the stronger of exports/imports; near-term risk is freight-driven cost pressure.`
+        // Update executive summary (trade slice) — single line
+        _setExecLine(
+          'exec_trade_line',
+          `Trade (${geo}): Ex ${_fmtPct(yoyEx)} YoY · Im ${_fmtPct(yoyIm)} YoY · WCI ${wciLine} · Watch freight-driven cost pressure.`
         );
 
         document.getElementById('trade_period').textContent = `Period: ${d.period || '—'} · WCI: ${wci.period || '—'} · PortWatch: ${pw.period || '—'}`;
@@ -1017,12 +981,10 @@
         document.getElementById('wealth_age_insight_text').textContent = (iAge && iAge.content) || '—';
         document.getElementById('wealth_age_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iAge && iAge.source_updated_at);
 
-        // Update executive summary (wealth slice)
-        _setExec(
-          'exec_wealth_obs',
-          'exec_wealth_rec',
-          `${geo}: GDP pc ${_fmtPct(yoyGdp)} YoY; consumption ${_fmtPct(yoyCons)} YoY; disposable pc ${pc}.`,
-          `Base case: softer consumption tends to lead weaker growth; watch whether GDP pc momentum and demographics reinforce or offset demand.`
+        // Update executive summary (wealth slice) — single line
+        _setExecLine(
+          'exec_wealth_line',
+          `Wealth (${geo}): GDPpc ${_fmtPct(yoyGdp)} YoY · Cons ${_fmtPct(yoyCons)} YoY · DispPC ${pc} · Watch demand momentum vs FX/inflation.`
         );
       }
 
@@ -1315,12 +1277,10 @@
           `Cross-country shifts can signal regulatory/risk repricing; normalize currencies when comparing levels.`
         );
 
-        // Update executive summary (finance slice)
-        _setExec(
-          'exec_fin_obs',
-          'exec_fin_rec',
-          `Top-10 industries: ${finTop10Deals.toLocaleString()} deals; ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'} bn USD value (disclosed).`,
-          `Base case: M&A activity remains uneven; expect continued selectivity—focus on where value concentrates and where it rotates.`
+        // Update executive summary (finance slice) — single line
+        _setExecLine(
+          'exec_fin_line',
+          `Finance: ${finTop10Deals.toLocaleString()} deals (top10) · ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'} bn USD value · Stay selective; watch rotation in value concentration.`
         );
 
         const iFinCty = _getInsight('finance','country','global');
