@@ -607,9 +607,9 @@ def _gen_insight(
         job_run_id=job_run_id,
         data_digest=data_digest,
         input_snapshot_keys=input_keys,
-        llm_provider=llm.provider if llm.ok else "",
-        llm_model=llm.model if llm.ok else "",
-        llm_prompt=user if llm.ok else "",
+        llm_provider=llm.provider if llm.ok else llm.provider,
+        llm_model=llm.model if llm.ok else llm.model,
+        llm_prompt=user,
         llm_error=(llm.error or "") if not llm.ok else "",
     )
 
