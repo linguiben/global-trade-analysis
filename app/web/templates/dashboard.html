@@ -75,10 +75,10 @@
 
         <div class="mt-4 text-sm">
           <div id="trade_panel_corridors" class="trade-panel">
-            <div class="text-slate-300 font-semibold">Active corridors (Top 5, Value)</div>
+            <div class="text-slate-300 font-semibold">Active corridors (Top <span id="trade_corridors_value_topn">5</span>, Value)</div>
             <canvas id="trade_corridors_value_chart" height="130" class="mt-2"></canvas>
 
-            <div class="text-slate-300 font-semibold mt-4">Active corridors (Top 5, Volume)</div>
+            <div class="text-slate-300 font-semibold mt-4">Active corridors (Top <span id="trade_corridors_volume_topn">5</span>, Volume)</div>
             <canvas id="trade_corridors_volume_chart" height="130" class="mt-2"></canvas>
 
             <div id="trade_corridors_commentary" class="text-slate-400 text-sm mt-2"></div>
@@ -530,6 +530,14 @@
         if (CORR_VOL_CHART) CORR_VOL_CHART.destroy();
         CORR_VAL_CHART = upsertCorridorBar('trade_corridors_value_chart', vRows, 'value_bil', 'rgba(96,165,250,0.55)', ' bn USD');
         CORR_VOL_CHART = upsertCorridorBar('trade_corridors_volume_chart', volRows, 'volume_bilkg', 'rgba(52,211,153,0.55)', ' bn kg');
+
+        // If fewer than Top 5 are available (e.g. MVP stub), reflect it in the label.
+        const valN = vRows.length || 0;
+        const volN = volRows.length || 0;
+        const elVal = document.getElementById('trade_corridors_value_topn');
+        const elVol = document.getElementById('trade_corridors_volume_topn');
+        if (elVal) elVal.textContent = String(Math.min(topN, valN || topN));
+        if (elVol) elVol.textContent = String(Math.min(topN, volN || topN));
 
         document.getElementById('trade_export').textContent = d.export_usd != null ? `$${fmtUSD(d.export_usd)}` : '—';
         document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
