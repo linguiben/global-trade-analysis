@@ -440,6 +440,7 @@ def _run_cleanup_snapshots(db: Session, params: dict[str, Any], job_run_id: int 
 
 
 from app.jobs.insights_llm import digest_for_inputs, generate_insight_with_llm
+from app.jobs.public_context import get_or_refresh_context, to_prompt_block
 
 
 def _save_insight(
@@ -617,7 +618,54 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
       (We use an optional LLM; if not configured, fallback to safe templates.)
     """
 
-    del params
+    lang = (params or {}).get("lang") or "en"
+    geo_list = _as_geo_list((params or {}).get("geo_list"))
+
+    # Public context URLs per card/tab (job-only fetch + DB cache)
+    URLS = {
+        ("trade_flow", "wci"): [
+            "https://www.drewry.co.uk/supply-chain-advisors/supply-chain-expertise/world-container-index-assessed-by-drewry",
+        ],
+        ("trade_flow", "portwatch"): [
+            "https://portwatch.imf.org/pages/data-and-methodology",
+        ],
+        ("trade_flow", "exim"): [
+            "https://data.worldbank.org/indicator/NE.EXP.GNFS.CD",
+            "https://data.worldbank.org/indicator/NE.IMP.GNFS.CD",
+        ],
+        ("wealth", "gdp_pc"): [
+            "https://data.worldbank.org/indicator/NY.GDP.PCAP.CD",
+        ],
+        ("wealth", "cons"): [
+            "https://data.worldbank.org/indicator/NE.CON.PRVT.CD",
+        ],
+        ("wealth", "age"): [
+            "https://data.worldbank.org/indicator/SP.POP.0014.TO.ZS",
+            "https://data.worldbank.org/indicator/SP.POP.1564.TO.ZS",
+            "https://data.worldbank.org/indicator/SP.POP.65UP.TO.ZS",
+        ],
+        ("wealth", "disp_pc"): [
+            "https://worldpopulationreview.com/country-rankings/disposable-income-by-country",
+            "https://data.worldbank.org/indicator/NE.CON.PRVT.PC.KD",
+        ],
+        ("wealth", "disp_hh"): [
+            "https://worldpopulationreview.com/country-rankings/disposable-income-by-country",
+            "https://data.worldbank.org/indicator/NE.CON.PRVT.PC.KD",
+        ],
+        ("finance", "industry"): [
+            "https://imaa-institute.org/mergers-and-acquisitions-statistics/ma-statistics-by-industries/",
+        ],
+        ("finance", "country"): [
+            "https://imaa-institute.org/mergers-and-acquisitions-statistics/ma-statistics-by-countries/",
+        ],
+    }
+
+    def ctx(card_key: str, tab_key: str) -> list[dict[str, Any]]:
+        blocks: list[dict[str, Any]] = []
+        for url in URLS.get((card_key, tab_key), []):
+            row = get_or_refresh_context(db, url=url)
+            blocks.append(to_prompt_block(row))
+        return blocks
 
     # Trade (global tabs)
     trade = get_latest_snapshot(db, "trade_corridors", "global")
@@ -627,9 +675,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             card_key="trade_flow",
             tab_key="corridors",
             scope="global",
-            lang="en",
+            lang=lang,
             snapshot_inputs=[trade],
-            extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at},
+            extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at, "public_contexts": ctx("trade_flow", "corridors")},
             fallback_text="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
             job_run_id=job_run_id,
         )
@@ -638,9 +686,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             card_key="trade_flow",
             tab_key="wci",
             scope="global",
-            lang="en",
+            lang=lang,
             snapshot_inputs=[trade],
-            extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy"},
+            extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy", "public_contexts": ctx("trade_flow", "wci")},
             fallback_text="Freight (WCI) reflects shipping-cost pressure; treat it as a proxy signal rather than customs trade value.",
             job_run_id=job_run_id,
         )
@@ -649,15 +697,15 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             card_key="trade_flow",
             tab_key="portwatch",
             scope="global",
-            lang="en",
+            lang=lang,
             snapshot_inputs=[trade],
-            extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy"},
+            extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy", "public_contexts": ctx("trade_flow", "portwatch")},
             fallback_text="PortWatch signals are nowcast/proxy indicators; always present them with explicit caveats.",
             job_run_id=job_run_id,
         )
 
     # Trade per-geo tabs
-    for geo in ALLOWED_GEOS:
+    for geo in geo_list:
         exim = get_latest_snapshot(db, "trade_exim_5y", geo)
         if not exim:
             continue
@@ -666,9 +714,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             card_key="trade_flow",
             tab_key="exim",
             scope=geo,
-            lang="en",
+            lang=lang,
             snapshot_inputs=[exim],
-            extra_context={"geo": geo, "source": exim.source, "source_updated_at": exim.source_updated_at},
+            extra_context={"geo": geo, "source": exim.source, "source_updated_at": exim.source_updated_at, "public_contexts": ctx("trade_flow", "exim")},
             fallback_text="Export/import snapshot is available; compare latest vs prior year to spot inflection points.",
             job_run_id=job_run_id,
         )
@@ -677,16 +725,16 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             card_key="trade_flow",
             tab_key="balance",
             scope=geo,
-            lang="en",
+            lang=lang,
             snapshot_inputs=[exim],
-            extra_context={"geo": geo, "definition": "balance = export - import"},
+            extra_context={"geo": geo, "definition": "balance = export - import", "public_contexts": ctx("trade_flow", "exim")},
             fallback_text="Trade balance is computed as export minus import; watch for large year-over-year moves.",
             job_run_id=job_run_id,
         )
 
     # Wealth per-geo
     disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
-    for geo in ALLOWED_GEOS:
+    for geo in geo_list:
         w = get_latest_snapshot(db, "wealth_indicators_5y", geo)
         if w:
             _gen_insight(
@@ -694,9 +742,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 card_key="wealth",
                 tab_key="gdp_pc",
                 scope=geo,
-                lang="en",
+                lang=lang,
                 snapshot_inputs=[w],
-                extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at},
+                extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at, "public_contexts": ctx("wealth", "gdp_pc")},
                 fallback_text="GDP per capita (nominal USD) can be noisy due to FX; interpret trends with caveats.",
                 job_run_id=job_run_id,
             )
@@ -705,9 +753,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 card_key="wealth",
                 tab_key="cons",
                 scope=geo,
-                lang="en",
+                lang=lang,
                 snapshot_inputs=[w],
-                extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at},
+                extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at, "public_contexts": ctx("wealth", "cons")},
                 fallback_text="Consumption can proxy domestic-demand momentum; compare with trade signals for context.",
                 job_run_id=job_run_id,
             )
@@ -719,23 +767,30 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 card_key="wealth",
                 tab_key="age",
                 scope=geo,
-                lang="en",
+                lang=lang,
                 snapshot_inputs=[age],
-                extra_context={"geo": geo, "source": age.source, "source_updated_at": age.source_updated_at},
+                extra_context={"geo": geo, "source": age.source, "source_updated_at": age.source_updated_at, "public_contexts": ctx("wealth", "age")},
                 fallback_text="Age structure provides demographic context; treat it as population composition (not income-by-age).",
                 job_run_id=job_run_id,
             )
 
-        # Disposable insights should follow geo (scope) as well
+        # Disposable insights should follow geo (scope)
         if disp:
+            # We do not have per-geo snapshots for disposable; we still generate per-geo insights
+            # by providing geo + per-geo row values in extra_context.
+            row = None
+            if isinstance(disp.payload, dict):
+                rows = disp.payload.get("rows")
+                if isinstance(rows, dict):
+                    row = rows.get(geo)
             _gen_insight(
                 db,
                 card_key="wealth",
                 tab_key="disp_pc",
                 scope=geo,
-                lang="en",
+                lang=lang,
                 snapshot_inputs=[disp],
-                extra_context={"geo": geo, "source": disp.source, "source_updated_at": disp.source_updated_at},
+                extra_context={"geo": geo, "disposable_row": row, "source": disp.source, "source_updated_at": disp.source_updated_at, "public_contexts": ctx("wealth", "disp_pc")},
                 fallback_text="Disposable income is best-effort: WPR scrape + World Bank proxy fallback; treat as indicative latest point.",
                 job_run_id=job_run_id,
             )
@@ -744,9 +799,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 card_key="wealth",
                 tab_key="disp_hh",
                 scope=geo,
-                lang="en",
+                lang=lang,
                 snapshot_inputs=[disp],
-                extra_context={"geo": geo, "source": disp.source, "source_updated_at": disp.source_updated_at},
+                extra_context={"geo": geo, "disposable_row": row, "source": disp.source, "source_updated_at": disp.source_updated_at, "public_contexts": ctx("wealth", "disp_hh")},
                 fallback_text="Household disposable values may be missing; consider OECD SDMX where coverage exists.",
                 job_run_id=job_run_id,
             )
@@ -759,9 +814,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             card_key="finance",
             tab_key="industry",
             scope="global",
-            lang="en",
+            lang=lang,
             snapshot_inputs=[fin_i],
-            extra_context={"source": fin_i.source, "source_updated_at": fin_i.source_updated_at},
+            extra_context={"source": fin_i.source, "source_updated_at": fin_i.source_updated_at, "public_contexts": ctx("finance", "industry")},
             fallback_text="Industry ranking reflects disclosed-deal reporting; treat as directional concentration of activity.",
             job_run_id=job_run_id,
         )
@@ -773,9 +828,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             card_key="finance",
             tab_key="country",
             scope="global",
-            lang="en",
+            lang=lang,
             snapshot_inputs=[fin_c],
-            extra_context={"source": fin_c.source, "source_updated_at": fin_c.source_updated_at},
+            extra_context={"source": fin_c.source, "source_updated_at": fin_c.source_updated_at, "public_contexts": ctx("finance", "country")},
             fallback_text="Country narratives may mix currencies; use normalized FX conversion for strict comparisons.",
             job_run_id=job_run_id,
         )

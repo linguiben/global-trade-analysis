@@ -129,6 +129,30 @@ CREATE INDEX IF NOT EXISTS idx_widget_snapshots_fetched_at
 
 -- Optional v2 tables (additive; safe to ignore if not used by app yet)
 
+-- Public context cache (used for Insight research prompts)
+CREATE TABLE IF NOT EXISTS public.public_contexts (
+    id BIGSERIAL PRIMARY KEY,
+    url TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    excerpt TEXT NOT NULL DEFAULT '',
+    ok BOOLEAN NOT NULL DEFAULT TRUE,
+    error TEXT NOT NULL DEFAULT '',
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.public_contexts IS 'Cached public web excerpts for LLM Insight research (job-only fetch).';
+COMMENT ON COLUMN public.public_contexts.url IS 'Source URL.';
+COMMENT ON COLUMN public.public_contexts.title IS 'HTML <title> best-effort.';
+COMMENT ON COLUMN public.public_contexts.excerpt IS 'Plain-text excerpt used in prompts.';
+COMMENT ON COLUMN public.public_contexts.ok IS 'Whether fetch succeeded.';
+COMMENT ON COLUMN public.public_contexts.error IS 'Error message if fetch failed.';
+COMMENT ON COLUMN public.public_contexts.fetched_at IS 'When this excerpt was fetched.';
+
+CREATE INDEX IF NOT EXISTS idx_public_contexts_url_fetched_at
+    ON public.public_contexts(url, fetched_at DESC);
+
+
 CREATE TABLE IF NOT EXISTS public.data_sources (
     source_key VARCHAR(80) PRIMARY KEY,
     name VARCHAR(160) NOT NULL,

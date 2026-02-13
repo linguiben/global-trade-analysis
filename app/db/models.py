@@ -109,6 +109,27 @@ class WidgetSnapshot(Base):
     )
 
 
+class PublicContext(Base):
+    __tablename__ = "public_contexts"
+
+    id: Mapped[int] = mapped_column(BIGINT, primary_key=True, autoincrement=True)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    excerpt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    ok: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class WidgetInsight(Base):
     __tablename__ = "widget_insights"
 
