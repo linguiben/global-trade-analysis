@@ -660,75 +660,42 @@
         return all[geo] || { source: 'N/A', frequency: 'annual', period: '', rows: [] };
       }
 
-      function upsertWealthGdpChartCombined(allByGeo, activeGeo) {
+      function upsertWealthGdpChart(payload, geoLabel) {
+        // v3 change: show one geo at a time (no multi-country overlay)
         const ctx = document.getElementById('wealth_gdp_pc_chart');
         if (!ctx) return;
 
-        const geos = Object.keys(allByGeo || {});
-        // Prefer a stable ordering
-        const preferred = ['Global', 'India', 'Mexico', 'Singapore', 'Hong Kong'];
-        const ordered = preferred.filter(g => geos.includes(g)).concat(geos.filter(g => !preferred.includes(g)));
+        const labels = (payload.series || []).map(r => r.period);
+        const vals = (payload.series || []).map(r => r.gdp_per_capita_usd == null ? null : r.gdp_per_capita_usd);
 
-        // Build a union of periods across geos
-        const periodSet = new Set();
-        ordered.forEach(g => {
-          const s = (allByGeo[g] && allByGeo[g].series) || [];
-          s.forEach(r => { if (r && r.period != null) periodSet.add(String(r.period)); });
-        });
-        const labels = Array.from(periodSet);
-        labels.sort(); // annual periods like '2020'...'2024'
-
-        function seriesToMap(payload){
-          const out = new Map();
-          ((payload && payload.series) || []).forEach(r => {
-            if (!r || r.period == null) return;
-            out.set(String(r.period), (r.gdp_per_capita_usd == null ? null : r.gdp_per_capita_usd));
-          });
-          return out;
-        }
-
-        const palette = {
-          'Global': '#fbbf24',
-          'India': '#60a5fa',
-          'Mexico': '#34d399',
-          'Singapore': '#a78bfa',
-          'Hong Kong': '#fb7185'
+        const data = {
+          labels,
+          datasets: [
+            {
+              label: `${geoLabel} GDP per capita (US$)`,
+              data: vals,
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251,191,36,0.10)',
+              tension: 0.25,
+              borderWidth: 2.5,
+              pointRadius: 2,
+              pointHoverRadius: 3,
+            },
+          ],
         };
-
-        const datasets = ordered.map(g => {
-          const m = seriesToMap(allByGeo[g]);
-          const data = labels.map(p => m.has(p) ? m.get(p) : null);
-          const isActive = (g === activeGeo);
-          const color = palette[g] || '#a7f3d0';
-          return {
-            label: g,
-            data,
-            borderColor: color,
-            backgroundColor: 'rgba(148,163,184,0.06)',
-            tension: 0.25,
-            borderWidth: isActive ? 3 : 1.6,
-            pointRadius: isActive ? 2.2 : 1.6,
-            pointHoverRadius: 3,
-          };
-        });
-
-        const chartData = { labels, datasets };
 
         const opts = {
           responsive: true,
           plugins: {
-            legend: {
-              labels: { color: '#cbd5e1' },
-              position: 'bottom'
-            },
+            legend: { labels: { color: '#cbd5e1' }, position: 'bottom' },
             tooltip: {
               callbacks: {
                 label: (ctx) => {
                   const v = ctx.parsed.y;
-                  return `${ctx.dataset.label}: ${v == null ? '—' : ('$' + Math.round(v).toLocaleString())}`;
-                }
-              }
-            }
+                  return `${geoLabel}: ${v == null ? '—' : ('$' + Math.round(v).toLocaleString())}`;
+                },
+              },
+            },
           },
           scales: {
             x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
@@ -737,19 +704,19 @@
                 color: '#94a3b8',
                 callback: (v) => '$' + Number(v).toLocaleString(),
               },
-              grid: { color: 'rgba(148,163,184,0.12)' }
+              grid: { color: 'rgba(148,163,184,0.12)' },
             },
-          }
+          },
         };
 
         if (WEALTH_GDP_CHART) WEALTH_GDP_CHART.destroy();
-        WEALTH_GDP_CHART = new Chart(ctx, { type: 'line', data: chartData, options: opts });
+        WEALTH_GDP_CHART = new Chart(ctx, { type: 'line', data, options: opts });
 
         const meta = document.getElementById('wealth_gdp_pc_meta');
-        if (meta) meta.textContent = `Source: World Bank WDI (per-scope snapshots) · Metric: GDP per capita (current US$) · Highlight: ${activeGeo}`;
+        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date} · Scope: ${geoLabel}`;
 
         const c = document.getElementById('wealth_gdp_pc_commentary');
-        if (c) c.textContent = `Commentary (EN): Compare levels and momentum across geos; nominal USD is FX-sensitive, so interpret cross-country gaps with caution.`;
+        if (c) c.textContent = `Commentary (EN): Single-scope view; switch scope in the dropdown to compare countries one by one.`;
       }
 
       function upsertWealthConsChart(payload) {
@@ -792,8 +759,8 @@
 
       async function refreshWealthForGeo(geo) {
         const ind = await loadWealthIndicators(geo);
-        // GDP chart is combined across geos (Global + countries) for comparison
-        upsertWealthGdpChartCombined(DASHBOARD_DATA.wealth_indicators_by_geo || {}, geo);
+        // GDP chart: single geo at a time (switch in dropdown)
+        upsertWealthGdpChart(ind, geo);
         upsertWealthConsChart(ind);
 
         const iGdp = _getInsight('wealth','gdp_pc', geo);
