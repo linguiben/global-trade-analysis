@@ -70,11 +70,11 @@ def _jobs_redirect_url(request: Request, msg: str) -> str:
 
 
 def _latest_insights_map(db: Session) -> dict:
-    """Return latest insights keyed by (card_key, tab_key, scope)."""
+    """Return latest LLM insights keyed by (card_key, tab_key, scope)."""
     rows: list[WidgetInsight] = (
         db.query(WidgetInsight)
-        .order_by(WidgetInsight.card_key.asc(), WidgetInsight.tab_key.asc(), WidgetInsight.scope.asc(), WidgetInsight.created_at.desc())
-        .limit(2000)
+        .filter(WidgetInsight.generated_by == "llm")
+        .order_by(WidgetInsight.card_key.asc(), WidgetInsight.tab_key.asc(), WidgetInsight.scope.asc(), WidgetInsight.id.desc())
         .all()
     )
 

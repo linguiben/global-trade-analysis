@@ -1026,12 +1026,6 @@ def _seed_job_definitions(db: Session) -> None:
                     default_params=spec.default_params,
                 )
             )
-            continue
-
-        # Enforce every-10-minute cadence (product requirement).
-        # If you later need per-job cadence, relax this to only migrate legacy schedules.
-        if row.cron_expr != spec.cron_expr:
-            row.cron_expr = spec.cron_expr
     db.commit()
 
 
