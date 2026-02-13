@@ -341,14 +341,17 @@ def _register_base_path_aliases() -> None:
     ]
 
     for spec in alias_specs:
-        router.add_api_route(
-            spec["path"],
-            endpoint=spec["endpoint"],
-            methods=spec["methods"],
-            response_class=spec.get("response_class"),
-            include_in_schema=False,
-            name=spec["name"],
-        )
+        kwargs = {
+            "endpoint": spec["endpoint"],
+            "methods": spec["methods"],
+            "include_in_schema": False,
+            "name": spec["name"],
+        }
+        # Only pass response_class when explicitly provided; passing None breaks FastAPI.
+        if "response_class" in spec and spec["response_class"] is not None:
+            kwargs["response_class"] = spec["response_class"]
+
+        router.add_api_route(spec["path"], **kwargs)
 
 
 _register_base_path_aliases()
