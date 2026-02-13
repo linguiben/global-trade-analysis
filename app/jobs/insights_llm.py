@@ -12,7 +12,10 @@ from app.config import settings
 
 
 def _extract_json_object(text: str) -> dict:
-    """Best-effort extraction of a JSON object from LLM text."""
+    """Best-effort extraction of a JSON object from LLM text.
+
+    Gemini sometimes returns almost-JSON with unescaped newlines inside strings; we add a regex fallback.
+    """
     if not text:
         return {}
     t = text.strip()
@@ -29,10 +32,16 @@ def _extract_json_object(text: str) -> dict:
     m = re.search(r"\{[\s\S]*\}", t)
     if not m:
         return {}
+    block = m.group(0)
     try:
-        obj = json.loads(m.group(0))
+        obj = json.loads(block)
         return obj if isinstance(obj, dict) else {}
     except Exception:
+        # Regex fallback: extract insight string even if JSON is slightly malformed.
+        mm = re.search(r"\"insight\"\s*:\s*\"([\s\S]*?)\"\s*,\s*\"references\"", block)
+        if mm:
+            insight = mm.group(1)
+            return {"insight": insight, "references": []}
         return {}
 
 
