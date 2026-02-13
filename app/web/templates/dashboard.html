@@ -75,10 +75,12 @@
 
         <div class="mt-4 text-sm">
           <div id="trade_panel_corridors" class="trade-panel">
-            <div class="text-slate-300 font-semibold">Top corridor (Value)</div>
-            <div id="trade_value_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
-            <div class="text-slate-300 font-semibold mt-3">Top corridor (Volume)</div>
-            <div id="trade_volume_top" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
+            <div class="text-slate-300 font-semibold">Active corridors (Top 5, Value)</div>
+            <canvas id="trade_corridors_value_chart" height="130" class="mt-2"></canvas>
+
+            <div class="text-slate-300 font-semibold mt-4">Active corridors (Top 5, Volume)</div>
+            <canvas id="trade_corridors_volume_chart" height="130" class="mt-2"></canvas>
+
             <div id="trade_corridors_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
@@ -122,8 +124,10 @@
             <div id="trade_portwatch_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
 
-          <div id="trade_period" class="text-xs text-slate-500 mt-4 font-mono"></div>
-          <div id="trade_source" class="text-xs text-slate-500 mt-1 font-mono"></div>
+          <div class="mt-4 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+            <div id="trade_period" class="text-xs text-slate-400 font-mono"></div>
+            <div id="trade_source" class="text-xs text-slate-500 font-mono mt-1"></div>
+          </div>
         </div>
       </div>
 
@@ -292,6 +296,8 @@
       let TRADE_DATA = null;
       let EXIM_CHART = null;
       let BAL_CHART = null;
+      let CORR_VAL_CHART = null;
+      let CORR_VOL_CHART = null;
 
       async function loadEximSeries(geo) {
         const all = DASHBOARD_DATA.trade_exim_by_geo || {};
@@ -399,24 +405,23 @@
         const geo = document.getElementById('trade_geo').value || 'Global';
         const d = (TRADE_DATA.by_geo || {})[geo] || {};
 
-        const v = (d.value_usd_top || [])[0];
-        const vol = (d.volume_top || [])[0];
-        document.getElementById('trade_value_top').innerHTML = v
-          ? corridorBubbles(
-              v.origin,
-              v.dest,
-              `$${fmtUSD(v.value_usd)}`,
-              { bg: 'bg-blue-500/35', ring: 'ring-2 ring-blue-400/60', text: 'text-slate-50' }
-            )
-          : '—';
-        document.getElementById('trade_volume_top').innerHTML = vol
-          ? corridorBubbles(
-              vol.origin,
-              vol.dest,
-              `${fmtKG(vol.volume_kg)}`,
-              { bg: 'bg-emerald-500/35', ring: 'ring-2 ring-emerald-400/60', text: 'text-slate-50' }
-            )
-          : '—';
+        // Corridors ranking (Top 5)
+        const topN = 5;
+        const vRows = (d.value_usd_top || []).slice(0, topN).map(r => ({
+          origin: r.origin,
+          dest: r.dest,
+          value_bil: r.value_usd != null ? (r.value_usd / 1e9) : null,
+        })).filter(r => r.value_bil != null);
+        const volRows = (d.volume_top || []).slice(0, topN).map(r => ({
+          origin: r.origin,
+          dest: r.dest,
+          volume_bilkg: r.volume_kg != null ? (r.volume_kg / 1e9) : null,
+        })).filter(r => r.volume_bilkg != null);
+
+        if (CORR_VAL_CHART) CORR_VAL_CHART.destroy();
+        if (CORR_VOL_CHART) CORR_VOL_CHART.destroy();
+        CORR_VAL_CHART = upsertCorridorBar('trade_corridors_value_chart', vRows, 'value_bil', 'rgba(96,165,250,0.55)', ' bn USD');
+        CORR_VOL_CHART = upsertCorridorBar('trade_corridors_volume_chart', volRows, 'volume_bilkg', 'rgba(52,211,153,0.55)', ' bn kg');
 
         document.getElementById('trade_export').textContent = d.export_usd != null ? `$${fmtUSD(d.export_usd)}` : '—';
         document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
@@ -707,6 +712,55 @@
           type: 'bar',
           data: { labels, datasets: [{ label, data: values, backgroundColor: color, barThickness: 10 }] },
           options: barOpts(),
+        });
+      }
+
+      function corridorsBarOpts(xTickSuffix) {
+        return {
+          responsive: true,
+          maintainAspectRatio: true,
+          indexAxis: 'y',
+          layout: { padding: { left: 10, right: 10, top: 6, bottom: 6 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const it = items && items[0];
+                  return it ? String(it.label) : '';
+                },
+                label: (ctx) => {
+                  const v = Number(ctx.parsed && ctx.parsed.x != null ? ctx.parsed.x : ctx.parsed);
+                  return `${v.toLocaleString()}${xTickSuffix || ''}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } },
+            y: {
+              ticks: {
+                color: '#94a3b8',
+                callback: function(value) {
+                  const lbl = this.getLabelForValue(value);
+                  return _wrapLabel(lbl, 20, 2);
+                }
+              },
+              grid: { color: 'rgba(148,163,184,0.12)' }
+            },
+          }
+        };
+      }
+
+      function upsertCorridorBar(id, rows, valueKey, color, xTickSuffix) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return null;
+        const labels = (rows || []).map(r => `${r.origin} → ${r.dest}`);
+        const vals = (rows || []).map(r => r[valueKey]);
+        return new Chart(ctx, {
+          type: 'bar',
+          data: { labels, datasets: [{ data: vals, backgroundColor: color, barThickness: 10 }] },
+          options: corridorsBarOpts(xTickSuffix),
         });
       }
 
