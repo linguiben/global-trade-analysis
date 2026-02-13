@@ -78,12 +78,44 @@
       </div>
     </section>
 
+    <!-- Executive summary (v3) -->
+    <section class="card rounded-3xl p-6 md:p-8 mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-xs text-slate-400 font-mono">Management view</div>
+          <h2 class="text-xl md:text-2xl font-bold text-slate-100 mt-1">Overall commentary</h2>
+          <p class="text-sm text-slate-400 mt-2">At-a-glance observations (facts) and recommendations (analysis/forecast). Scope follows the selected dropdowns.</p>
+        </div>
+        <div class="text-xs text-slate-500 font-mono">YoY = latest vs prior point</div>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
+          <div class="text-xs text-slate-400 font-mono">Global Trade Flow</div>
+          <div class="mt-2 text-sm" id="exec_trade_obs"><span class="text-slate-500">Observations:</span> —</div>
+          <div class="mt-2 text-sm" id="exec_trade_rec"><span class="text-slate-500">Recommendations:</span> —</div>
+        </div>
+        <div class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
+          <div class="text-xs text-slate-400 font-mono">Global Wealth Distribution</div>
+          <div class="mt-2 text-sm" id="exec_wealth_obs"><span class="text-slate-500">Observations:</span> —</div>
+          <div class="mt-2 text-sm" id="exec_wealth_rec"><span class="text-slate-500">Recommendations:</span> —</div>
+        </div>
+        <div class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
+          <div class="text-xs text-slate-400 font-mono">Global Financial Flow</div>
+          <div class="mt-2 text-sm" id="exec_fin_obs"><span class="text-slate-500">Observations:</span> —</div>
+          <div class="mt-2 text-sm" id="exec_fin_rec"><span class="text-slate-500">Recommendations:</span> —</div>
+        </div>
+      </div>
+    </section>
+
     <section id="widgets" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="card rounded-3xl p-6 transition-all hover:border-blue-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Trade Flow</div>
         <p class="mt-2 text-sm text-slate-400 leading-relaxed">Exports/Imports, trade balance, corridors (value & volume), freight (WCI), and port signals. Cadence varies by source.</p>
         <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP scaffold</div>
+
+        <div id="trade_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
         <div class="mt-4 flex flex-wrap items-center gap-2">
           <label class="text-xs text-slate-400 font-mono">Scope</label>
@@ -189,6 +221,8 @@
         <p class="mt-2 text-sm text-slate-400 leading-relaxed">GDP per capita (WDI), disposable income (per capita/per household), and consumption expenditure (WDI). 5Y trend where available.</p>
         <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → indicators</div>
 
+        <div id="wealth_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
+
         <div class="mt-4 flex flex-wrap items-center gap-2">
           <label class="text-xs text-slate-400 font-mono">Scope</label>
           <select id="wealth_geo" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
@@ -274,6 +308,8 @@
         <div class="mt-1 text-xl font-bold">Global Financial Flow</div>
         <p class="mt-2 text-sm text-slate-400 leading-relaxed">M&A activity breakdown by industry and country (IMAA). Deal-level “daily biggest” is not included.</p>
         <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → M&A breakdown</div>
+
+        <div id="fin_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
         <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-mono">
           <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">By industry</button>
@@ -383,6 +419,64 @@
       function _getInsight(card, tab, scope) {
         const m = (DASHBOARD_DATA.insights || {});
         return (((m[card] || {})[tab] || {})[scope] || null);
+      }
+
+      // --- v3 executive helpers ---
+      function _safeNum(x) {
+        const n = Number(x);
+        return Number.isFinite(n) ? n : null;
+      }
+
+      function _lastTwoPoints(series, field) {
+        const s = (series || []).filter(r => r && r[field] != null);
+        if (s.length < 2) return [null, null];
+        const prev = _safeNum(s[s.length - 2][field]);
+        const last = _safeNum(s[s.length - 1][field]);
+        return [prev, last];
+      }
+
+      function _yoyPct(series, field) {
+        const [prev, last] = _lastTwoPoints(series, field);
+        if (prev == null || last == null || prev === 0) return null;
+        return ((last - prev) / Math.abs(prev)) * 100.0;
+      }
+
+      function _fmtPct(p) {
+        if (p == null) return '—';
+        const sign = p >= 0 ? '+' : '−';
+        return sign + Math.abs(p).toFixed(1) + '%';
+      }
+
+      function _pill(label, value, tone) {
+        // tone: 'blue'|'emerald'|'fuchsia'|'amber'|'slate'
+        const tones = {
+          blue: 'border-blue-500/40 bg-blue-500/10 text-blue-200',
+          emerald: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
+          fuchsia: 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200',
+          amber: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
+          slate: 'border-slate-600/60 bg-slate-900/30 text-slate-200',
+        };
+        const cls = tones[tone] || tones.slate;
+        return `
+          <div class="rounded-xl border ${cls} px-3 py-2">
+            <div class="text-[10px] opacity-80">${label}</div>
+            <div class="text-sm font-semibold mt-0.5">${value}</div>
+          </div>`;
+      }
+
+      function _setObsRec(containerId, obs, rec) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        el.innerHTML = `
+          <div><span class="text-slate-500 font-mono text-[11px]">Observations:</span> <span class="text-slate-300">${obs || '—'}</span></div>
+          <div class="mt-1"><span class="text-slate-500 font-mono text-[11px]">Recommendations:</span> <span class="text-slate-300">${rec || '—'}</span></div>`;
+      }
+
+      function _setExec(idObs, idRec, obs, rec) {
+        const o = document.getElementById(idObs);
+        const r = document.getElementById(idRec);
+        if (o) o.innerHTML = `<span class="text-slate-500">Observations:</span> ${obs || '—'}`;
+        if (r) r.innerHTML = `<span class="text-slate-500">Recommendations:</span> ${rec || '—'}`;
       }
 
       function setTradeTab(active) {
@@ -503,11 +597,19 @@
             const dx = ((b.export_usd - a.export_usd) / a.export_usd) * 100.0;
             const dm = ((b.import_usd - a.import_usd) / a.import_usd) * 100.0;
             const db = ((b.balance_usd - a.balance_usd) / (Math.abs(a.balance_usd) || 1)) * 100.0;
-            document.getElementById('trade_exim_commentary').textContent = `Commentary: exports ${dx >= 0 ? 'rose' : 'fell'} ${Math.abs(dx).toFixed(1)}% while imports ${dm >= 0 ? 'rose' : 'fell'} ${Math.abs(dm).toFixed(1)}% (latest vs prior year).`;
-            document.getElementById('trade_balance_commentary').textContent = `Commentary: trade balance moved to ${fmtSignedUSD(b.balance_usd)} in ${b.period} (vs ${fmtSignedUSD(a.balance_usd)} in ${a.period}).`;
+            _setObsRec(
+              'trade_exim_commentary',
+              `Exports ${dx >= 0 ? 'rose' : 'fell'} ${Math.abs(dx).toFixed(1)}% YoY; imports ${dm >= 0 ? 'rose' : 'fell'} ${Math.abs(dm).toFixed(1)}% YoY.`,
+              `If this divergence persists, expect balance and FX sensitivity to increase; confirm with next release.`
+            );
+            _setObsRec(
+              'trade_balance_commentary',
+              `Balance moved to ${fmtSignedUSD(b.balance_usd)} in ${b.period} (vs ${fmtSignedUSD(a.balance_usd)} in ${a.period}).`,
+              `Large inflections in balance tend to lead policy/logistics responses; monitor corridors and freight costs.`
+            );
           } else {
-            document.getElementById('trade_exim_commentary').textContent = 'Commentary: not enough historical points yet.';
-            document.getElementById('trade_balance_commentary').textContent = 'Commentary: not enough historical points yet.';
+            _setObsRec('trade_exim_commentary', 'Not enough history to compute YoY yet.', 'Wait for one more point before drawing trend conclusions.');
+            _setObsRec('trade_balance_commentary', 'Not enough history to compute YoY yet.', 'Wait for one more point before drawing trend conclusions.');
           }
         } catch (e) {
           // ignore
@@ -570,33 +672,78 @@
         document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
         document.getElementById('trade_balance').textContent = d.trade_balance_usd != null ? fmtSignedUSD(d.trade_balance_usd) : '—';
 
-        // --- per-tab commentary ---
-        const corridorsNote = (vRows.length || volRows.length)
-          ? `Commentary: value and volume leaders can differ; use this to spot reroutes or mix changes.`
-          : `Commentary: corridor leaders will appear once data is available.`;
-        document.getElementById('trade_corridors_commentary').textContent = corridorsNote;
-
+        // --- v3 executive layer: KPIs + observations/recommendations ---
         const bal = d.trade_balance_usd;
-        const eximNote = (d.export_usd != null && d.import_usd != null)
-          ? `Commentary: ${geo} is currently a ${bal != null && bal >= 0 ? 'net exporter' : 'net importer'} in this period.`
-          : `Commentary: export/import will populate once data is available.`;
-        document.getElementById('trade_exim_commentary').textContent = eximNote;
-
-        const balanceNote = (bal != null)
-          ? `Commentary: ${bal >= 0 ? 'surplus' : 'deficit'} equals export minus import (simple identity).`
-          : `Commentary: balance will populate once data is available.`;
-        document.getElementById('trade_balance_commentary').textContent = balanceNote;
+        const geoExim = (DASHBOARD_DATA.trade_exim_by_geo || {})[geo] || { series: [], source: 'N/A', frequency: 'annual', date: '' };
+        const yoyEx = _yoyPct(geoExim.series, 'export_usd');
+        const yoyIm = _yoyPct(geoExim.series, 'import_usd');
+        const yoyBal = _yoyPct(geoExim.series, 'balance_usd');
 
         const wci = TRADE_DATA.wci || {};
         const wciLine = wci.value_usd_per_40ft != null ? `$${wci.value_usd_per_40ft}/40ft` : '—';
+
+        // KPI strip (at-a-glance)
+        const kpi = document.getElementById('trade_kpi');
+        if (kpi) {
+          kpi.innerHTML = [
+            _pill(`Export (${geo}) YoY`, _fmtPct(yoyEx), 'blue'),
+            _pill(`Import (${geo}) YoY`, _fmtPct(yoyIm), 'emerald'),
+            _pill(`Balance (${geo}) YoY`, _fmtPct(yoyBal), (yoyBal != null && yoyBal >= 0) ? 'amber' : 'fuchsia'),
+            _pill('Freight (WCI)', wciLine, 'fuchsia'),
+          ].join('');
+        }
+
+        // Corridors (fact vs recommendation)
+        const corrObs = (vRows.length || volRows.length)
+          ? `Top corridors available (value & volume may diverge).`
+          : `Corridor rankings not available yet.`;
+        const corrRec = (vRows.length || volRows.length)
+          ? `Watch for changes in leaders to detect reroutes or mix shifts; validate with WCI and PortWatch.`
+          : `Treat corridor signal as low-confidence until snapshots are populated.`;
+        _setObsRec('trade_corridors_commentary', corrObs, corrRec);
+
+        // Export/Import
+        const exObs = (yoyEx != null || yoyIm != null)
+          ? `Exports ${_fmtPct(yoyEx)} YoY; imports ${_fmtPct(yoyIm)} YoY.`
+          : `Not enough history to compute YoY yet.`;
+        const exRec = (yoyEx != null && yoyIm != null)
+          ? `If import growth outpaces export growth, expect balance pressure; monitor next release and shipping cost trend.`
+          : `Wait for one more data point before acting on export/import trend.`;
+        _setObsRec('trade_exim_commentary', exObs, exRec);
+
+        // Balance
+        const balObs = (bal != null)
+          ? `${geo} is currently a ${bal >= 0 ? 'net exporter' : 'net importer'} (balance: ${fmtSignedUSD(bal)}).`
+          : `Balance not available yet.`;
+        const balRec = (bal != null)
+          ? `Use balance direction to stress-test exposure (FX, demand, supply-chain); focus on large YoY inflections.`
+          : `Treat balance signal as pending until series is available.`;
+        _setObsRec('trade_balance_commentary', balObs, balRec);
+
+        // WCI
         document.getElementById('trade_wci').innerHTML = wci.value_usd_per_40ft != null
           ? valueBubble(`${wciLine}`, { bg: 'bg-fuchsia-500/40', ring: 'ring-2 ring-fuchsia-300/70', text: 'text-slate-50' }, 76)
           : '—';
-        document.getElementById('trade_wci_commentary').textContent = wci.commentary || 'Commentary: auto-extracted from source.';
+        const wciObs = (wci.value_usd_per_40ft != null)
+          ? `WCI at ${wciLine} (${wci.period || 'latest'}).`
+          : `WCI not available yet.`;
+        const wciRec = `If freight costs remain elevated, expect margin compression and inventory timing effects; watch 4–8 week lagged impact.`;
+        _setObsRec('trade_wci_commentary', wciObs, wciRec);
 
+        // PortWatch
         const pw = TRADE_DATA.portwatch || {};
         document.getElementById('trade_portwatch').textContent = pw.commentary || '—';
-        document.getElementById('trade_portwatch_commentary').textContent = `Commentary: port signals help validate whether trade changes are demand-led or capacity-led.`;
+        const pwObs = pw.commentary ? `PortWatch signal: ${pw.commentary}` : `PortWatch not available yet.`;
+        const pwRec = `Use ports to confirm whether changes are demand-led vs capacity-led; reconcile with corridor shifts.`;
+        _setObsRec('trade_portwatch_commentary', pwObs, pwRec);
+
+        // Update executive summary (trade slice)
+        _setExec(
+          'exec_trade_obs',
+          'exec_trade_rec',
+          `${geo}: exports ${_fmtPct(yoyEx)} YoY, imports ${_fmtPct(yoyIm)} YoY; WCI ${wciLine}.`,
+          `Base case: expect trade momentum to follow the stronger of exports/imports; near-term risk is freight-driven cost pressure.`
+        );
 
         document.getElementById('trade_period').textContent = `Period: ${d.period || '—'} · WCI: ${wci.period || '—'} · PortWatch: ${pw.period || '—'}`;
         document.getElementById('trade_source').textContent = `Source: ${TRADE_DATA.source} · Updated: ${TRADE_DATA.updated_at}`;
@@ -620,7 +767,7 @@
         document.querySelectorAll('.trade-tab').forEach(b => {
           b.addEventListener('click', () => setTradeTab(b.dataset.tab));
         });
-        setTradeTab('corridors');
+        setTradeTab('exim');
 
         renderTrade();
         refreshChartsForGeo('Global');
@@ -715,8 +862,11 @@
         const meta = document.getElementById('wealth_gdp_pc_meta');
         if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date} · Scope: ${geoLabel}`;
 
-        const c = document.getElementById('wealth_gdp_pc_commentary');
-        if (c) c.textContent = `Commentary (EN): Single-scope view; switch scope in the dropdown to compare countries one by one.`;
+        _setObsRec(
+          'wealth_gdp_pc_commentary',
+          `GDP per capita shown for ${geoLabel} (single-scope view).`,
+          `Use YoY direction to gauge demand capacity; switch scope to compare countries one by one.`
+        );
       }
 
       function upsertWealthConsChart(payload) {
@@ -748,12 +898,17 @@
         if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
 
         const s = (payload.series || []).filter(r => r.consumption_expenditure_usd != null);
-        const c = document.getElementById('wealth_cons_commentary');
-        if (c && s.length >= 2) {
+        if (s.length >= 2) {
           const a = s[s.length-2].consumption_expenditure_usd;
           const b = s[s.length-1].consumption_expenditure_usd;
           const pct = ((b-a)/a)*100.0;
-          c.textContent = `Commentary (EN): consumption expenditure ${pct>=0?'rose':'fell'} ${Math.abs(pct).toFixed(1)}% in the latest year vs prior year (nominal USD).`;
+          _setObsRec(
+            'wealth_cons_commentary',
+            `Consumption expenditure ${pct>=0?'rose':'fell'} ${Math.abs(pct).toFixed(1)}% YoY (nominal USD).`,
+            `If consumption is decelerating, expect weaker domestic demand; watch inflation/FX effects on nominal series.`
+          );
+        } else {
+          _setObsRec('wealth_cons_commentary', 'Not enough history to compute YoY yet.', 'Wait for one more point before drawing trend conclusions.');
         }
       }
 
@@ -762,6 +917,17 @@
         // GDP chart: single geo at a time (switch in dropdown)
         upsertWealthGdpChart(ind, geo);
         upsertWealthConsChart(ind);
+
+        // v3 KPI strip (at-a-glance)
+        const yoyGdp = _yoyPct(ind.series || [], 'gdp_per_capita_usd');
+        const yoyCons = _yoyPct(ind.series || [], 'consumption_expenditure_usd');
+        const kpi = document.getElementById('wealth_kpi');
+        if (kpi) {
+          kpi.innerHTML = [
+            _pill(`GDP pc (${geo}) YoY`, _fmtPct(yoyGdp), 'amber'),
+            _pill(`Consumption (${geo}) YoY`, _fmtPct(yoyCons), 'emerald'),
+          ].join('');
+        }
 
         const iGdp = _getInsight('wealth','gdp_pc', geo);
         document.getElementById('wealth_gdp_pc_insight_text').textContent = (iGdp && iGdp.content) || '—';
@@ -776,12 +942,30 @@
         const pc = row && row.per_capita_usd != null ? `$${Math.round(row.per_capita_usd).toLocaleString()}` : '—';
         const hh = row && row.per_household_usd != null ? `$${Math.round(row.per_household_usd).toLocaleString()}` : '—';
 
+        // extend KPI strip with latest disposable snapshots
+        const kpi2 = document.getElementById('wealth_kpi');
+        if (kpi2) {
+          const existing = kpi2.innerHTML || '';
+          kpi2.innerHTML = existing + [
+            _pill(`Disposable pc (${geo})`, pc, 'blue'),
+            _pill(`Disposable hh (${geo})`, hh, 'blue'),
+          ].join('');
+        }
+
         document.getElementById('wealth_disp_pc').textContent = pc;
         document.getElementById('wealth_disp_hh').textContent = hh;
         document.getElementById('wealth_disp_pc_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
         document.getElementById('wealth_disp_hh_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
-        document.getElementById('wealth_disp_pc_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
-        document.getElementById('wealth_disp_hh_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
+        _setObsRec(
+          'wealth_disp_pc_commentary',
+          `Latest disposable income per capita: ${pc}.`,
+          `Use as a quick affordability proxy; add historical series once source cadence is stable.`
+        );
+        _setObsRec(
+          'wealth_disp_hh_commentary',
+          `Latest disposable income per household: ${hh}.`,
+          `Track as a household-level buffer; add historical series once source cadence is stable.`
+        );
 
         const iDispPc = _getInsight('wealth','disp_pc', geo);
         document.getElementById('wealth_disp_pc_insight_text').textContent = (iDispPc && iDispPc.content) || '—';
@@ -819,14 +1003,27 @@
         });
         const ageMeta = document.getElementById('wealth_age_meta');
         if (ageMeta) ageMeta.textContent = `Source: ${age.source} · Frequency: ${age.frequency} · Period: ${age.period || '—'}`;
-        const ageCom = document.getElementById('wealth_age_commentary');
-        if (ageCom && ageVals.length === 3) {
-          ageCom.textContent = `Commentary (EN): working-age share (15–64) is ${ageVals[1].toFixed(1)}% in the latest year.`;
+        if (ageVals.length === 3) {
+          _setObsRec(
+            'wealth_age_commentary',
+            `Working-age share (15–64) is ${ageVals[1].toFixed(1)}% (latest).`,
+            `Higher working-age share generally supports growth; watch for aging drag and policy responses over the medium term.`
+          );
+        } else {
+          _setObsRec('wealth_age_commentary', 'Age structure not available yet.', 'Treat demographic signal as pending until snapshot is populated.');
         }
 
         const iAge = _getInsight('wealth','age', geo);
         document.getElementById('wealth_age_insight_text').textContent = (iAge && iAge.content) || '—';
         document.getElementById('wealth_age_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iAge && iAge.source_updated_at);
+
+        // Update executive summary (wealth slice)
+        _setExec(
+          'exec_wealth_obs',
+          'exec_wealth_rec',
+          `${geo}: GDP pc ${_fmtPct(yoyGdp)} YoY; consumption ${_fmtPct(yoyCons)} YoY; disposable pc ${pc}.`,
+          `Base case: softer consumption tends to lead weaker growth; watch whether GDP pc momentum and demographics reinforce or offset demand.`
+        );
       }
 
       async function loadWealth() {
@@ -878,7 +1075,7 @@
       let FIN_IND_VALUE = null;
       let FIN_CTY_DEALS = null;
       let FIN_CTY_VALUE = null;
-      let FIN_CHART_TYPE = 'ring';
+      let FIN_CHART_TYPE = 'bar';
 
       async function loadFinIndustry() {
         return DASHBOARD_DATA.finance_ma_industry || { rows: [], source: 'N/A', link: '' };
@@ -1068,7 +1265,27 @@
         FIN_IND_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_deals', 'Deals (count)', indLabels, indDeals, 'rgba(96,165,250,0.55)');
         FIN_IND_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal, 'rgba(244,114,182,0.55)');
         document.getElementById('fin_industry_meta').innerHTML = `Source: ${ind.source} · Unit: ${ind.unit}${ind.currency}<br>Link: <a class="underline hover:text-fuchsia-300" href="${ind.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
-        document.getElementById('fin_industry_commentary').textContent = 'Commentary (EN): top industries by deal count and by total disclosed value (IMAA public stats).';
+
+        const totalDeals = indRows.reduce((a, r) => a + Number(r.deals || 0), 0);
+        const totalVal = indRows.reduce((a, r) => a + Number(r.value_usd_bil || 0), 0);
+        const topIndByVal = indRows.slice().sort((a,b) => Number(b.value_usd_bil||0) - Number(a.value_usd_bil||0))[0];
+
+        // KPI strip (finance)
+        const fk = document.getElementById('fin_kpi');
+        if (fk) {
+          fk.innerHTML = [
+            _pill('Deal count (top 10)', totalDeals.toLocaleString(), 'blue'),
+            _pill('Deal value (top 10, bn USD)', totalVal ? totalVal.toFixed(1) : '—', 'fuchsia'),
+            _pill('Top industry by value', topIndByVal ? topIndByVal.industry : '—', 'amber'),
+            _pill('Chart default', 'Bar', 'slate'),
+          ].join('');
+        }
+
+        _setObsRec(
+          'fin_industry_commentary',
+          `Top industries concentrated: ${topIndByVal ? (topIndByVal.industry + ' leads by value') : 'leaders pending'}.`,
+          `If concentration rises, cycle risk increases; watch whether deal value shifts to defensive sectors as rates tighten.`
+        );
 
         const iFinInd = _getInsight('finance','industry','global');
         document.getElementById('fin_industry_insight_text').textContent = (iFinInd && iFinInd.content) || '—';
@@ -1086,7 +1303,21 @@
         FIN_CTY_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
         FIN_CTY_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
         document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
-        document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
+
+        const topCtyByVal = ctyRows.slice().sort((a,b) => Number(b.value_bil||0) - Number(a.value_bil||0))[0];
+        _setObsRec(
+          'fin_country_commentary',
+          `Top country by value: ${topCtyByVal ? (topCtyByVal.country + ' (' + (topCtyByVal.currency || '') + ')') : '—'}.`,
+          `Cross-country shifts can signal regulatory/risk repricing; normalize currencies when comparing levels.`
+        );
+
+        // Update executive summary (finance slice)
+        _setExec(
+          'exec_fin_obs',
+          'exec_fin_rec',
+          `Top-10 industries: ${totalDeals.toLocaleString()} deals; ${totalVal ? totalVal.toFixed(1) : '—'} bn USD value (disclosed).`,
+          `Base case: M&A activity remains uneven; expect continued selectivity—focus on where value concentrates and where it rotates.`
+        );
 
         const iFinCty = _getInsight('finance','country','global');
         document.getElementById('fin_country_insight_text').textContent = (iFinCty && iFinCty.content) || '—';
