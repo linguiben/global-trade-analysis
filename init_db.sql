@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS public.widget_commentaries (
     scope VARCHAR(80) NOT NULL DEFAULT 'global',
     lang VARCHAR(16) NOT NULL DEFAULT 'en',
     content TEXT NOT NULL,
-    references JSONB NOT NULL DEFAULT '[]'::jsonb,
+    reference_list JSONB NOT NULL DEFAULT '[]'::jsonb,
     generated_by VARCHAR(80) NOT NULL DEFAULT '',
     job_run_id BIGINT NULL REFERENCES public.job_runs(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

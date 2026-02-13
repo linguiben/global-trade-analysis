@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS public.widget_commentaries (
     scope VARCHAR(80) NOT NULL DEFAULT 'global',
     lang VARCHAR(16) NOT NULL DEFAULT 'en',
     content TEXT NOT NULL,
-    references JSONB NOT NULL DEFAULT '[]'::jsonb,
+    reference_list JSONB NOT NULL DEFAULT '[]'::jsonb,
     generated_by VARCHAR(80) NOT NULL DEFAULT '',
     job_run_id BIGINT NULL REFERENCES public.job_runs(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -200,7 +200,7 @@ COMMENT ON COLUMN public.widget_commentaries.widget_key IS 'Widget identifier th
 COMMENT ON COLUMN public.widget_commentaries.scope IS 'Scope / geo / segment key.';
 COMMENT ON COLUMN public.widget_commentaries.lang IS 'Language code (e.g., en, zh).';
 COMMENT ON COLUMN public.widget_commentaries.content IS 'Commentary content (markdown/plain text).';
-COMMENT ON COLUMN public.widget_commentaries.references IS 'Citations list (JSON array of {title,url,publisher,date}).';
+COMMENT ON COLUMN public.widget_commentaries.reference_list IS 'Citations list (JSON array of {title,url,publisher,date}).';
 COMMENT ON COLUMN public.widget_commentaries.generated_by IS 'Generator tag (template/llm/human).';
 COMMENT ON COLUMN public.widget_commentaries.job_run_id IS 'FK to job_runs for provenance.';
 COMMENT ON COLUMN public.widget_commentaries.created_at IS 'Row creation time.';
