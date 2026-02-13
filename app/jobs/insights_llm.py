@@ -101,11 +101,12 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
             j = json.loads(raw)
             text = j["choices"][0]["message"]["content"]
             out = _extract_json_object(text)
-            content = str(out.get("insight") or "").strip()
+            content = str(out.get("insight") or out.get("Insight") or out.get("output") or out.get("result") or "").strip()
             refs = out.get("references")
             references = refs if isinstance(refs, list) else []
             if not content:
-                return LLMResult(ok=False, content="", references=references, provider=provider, model=model, error="empty insight")
+                snippet = (text or "")[:200].replace("\n", " ")
+                return LLMResult(ok=False, content="", references=references, provider=provider, model=model, error=f"empty insight; raw={snippet}")
             return LLMResult(ok=True, content=content, references=references, provider=provider, model=model)
         except Exception as e:  # noqa: BLE001
             return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=str(e))
@@ -152,11 +153,12 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
             if not text:
                 return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="empty response")
             out = _extract_json_object(text)
-            content = str(out.get("insight") or "").strip()
+            content = str(out.get("insight") or out.get("Insight") or out.get("output") or out.get("result") or "").strip()
             refs = out.get("references")
             references = refs if isinstance(refs, list) else []
             if not content:
-                return LLMResult(ok=False, content="", references=references, provider=provider, model=model, error="empty insight")
+                snippet = (text or "")[:200].replace("\n", " ")
+                return LLMResult(ok=False, content="", references=references, provider=provider, model=model, error=f"empty insight; raw={snippet}")
             return LLMResult(ok=True, content=content, references=references, provider=provider, model=model)
         except Exception as e:  # noqa: BLE001
             return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=str(e))
