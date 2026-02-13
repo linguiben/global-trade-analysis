@@ -534,7 +534,8 @@ def _gen_insight(
     data_digest = digest_for_inputs(input_obj)
 
     prev = _latest_insight_digest(db, card_key=card_key, tab_key=tab_key, scope=scope, lang=lang)
-    if prev == data_digest:
+    force_regen = bool((extra_context or {}).get("force_regen"))
+    if (not force_regen) and prev == data_digest:
         return
 
     # Ask LLM to do research-style synthesis (optional). It should be grounded in provided data and cite sources.
@@ -628,6 +629,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
     lang = (params or {}).get("lang") or "en"
     requested_geos = (params or {}).get("geo_list")
     geo_list = _as_geo_list(requested_geos)
+    force_regen = bool((params or {}).get("force_regen"))
 
     # Batching cursor (rotate geos across runs)
     from app.db.models import WidgetInsightJobState
@@ -717,7 +719,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             scope="global",
             lang=lang,
             snapshot_inputs=[trade],
-            extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at, "public_contexts": ctx("trade_flow", "corridors")},
+            extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at, "public_contexts": ctx("trade_flow", "corridors"), "force_regen": force_regen},
             fallback_text="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
             job_run_id=job_run_id,
         )
@@ -728,7 +730,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             scope="global",
             lang=lang,
             snapshot_inputs=[trade],
-            extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy", "public_contexts": ctx("trade_flow", "wci")},
+            extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy", "public_contexts": ctx("trade_flow", "wci"), "force_regen": force_regen},
             fallback_text="Freight (WCI) reflects shipping-cost pressure; treat it as a proxy signal rather than customs trade value.",
             job_run_id=job_run_id,
         )
@@ -739,7 +741,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             scope="global",
             lang=lang,
             snapshot_inputs=[trade],
-            extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy", "public_contexts": ctx("trade_flow", "portwatch")},
+            extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy", "public_contexts": ctx("trade_flow", "portwatch"), "force_regen": force_regen},
             fallback_text="PortWatch signals are nowcast/proxy indicators; always present them with explicit caveats.",
             job_run_id=job_run_id,
         )
