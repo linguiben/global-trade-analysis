@@ -883,7 +883,8 @@ JOB_SPECS: dict[str, JobSpec] = {
         job_id="generate_homepage_insights",
         name="Generate Homepage Insights",
         description="Generate Insights text for homepage cards/tabs and save to DB.",
-        cron_expr=DEFAULT_CRON_EVERY_10_MIN,
+        # run once per day (Asia/Shanghai) to control cost
+        cron_expr="0 7 * * *",
         timezone=settings.TZ,
         default_params={},
         normalize_params=lambda raw: {},
