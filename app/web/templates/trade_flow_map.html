@@ -160,8 +160,8 @@
 
     async function loadAll(){
       const [world, centroids, data] = await Promise.all([
-        fetch('/static/world-110m.json').then(r=>r.json()),
-        fetch('/static/country_centroids.json').then(r=>r.json()),
+        fetch(`${BASE}/static/world-110m.json`).then(r=>r.json()),
+        fetch(`${BASE}/static/country_centroids.json`).then(r=>r.json()),
         fetch(`${BASE}/api/trade/exim-latest-all${MODE==='top5'?'?top_n=5':''}`).then(r=>r.json())
       ]);
       state.world = world;
