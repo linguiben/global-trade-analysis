@@ -82,6 +82,11 @@
             <canvas id="trade_corridors_volume_chart" height="130" class="mt-2"></canvas>
 
             <div id="trade_corridors_commentary" class="text-slate-400 text-sm mt-2"></div>
+          <div id="trade_corridors_insight" class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+            <div class="text-xs text-slate-400 font-mono">Insight</div>
+            <div class="text-slate-300 text-sm mt-1" id="trade_corridors_insight_text">—</div>
+            <div class="text-xs text-slate-500 font-mono mt-2" id="trade_corridors_source_updated">Source updated: —</div>
+          </div>
           </div>
 
           <div id="trade_panel_exim" class="trade-panel hidden">
@@ -100,6 +105,11 @@
               <div id="trade_exim_chart_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             </div>
             <div id="trade_exim_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="trade_exim_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="trade_exim_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div id="trade_panel_balance" class="trade-panel hidden">
@@ -110,18 +120,33 @@
               <div id="trade_balance_chart_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             </div>
             <div id="trade_balance_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="trade_balance_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="trade_balance_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div id="trade_panel_wci" class="trade-panel hidden">
             <div class="text-slate-300 font-semibold">World Container Index (Drewry)</div>
             <div id="trade_wci" class="text-slate-400 text-sm mt-1 font-mono">—</div>
             <div id="trade_wci_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="trade_wci_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="trade_wci_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div id="trade_panel_portwatch" class="trade-panel hidden">
             <div class="text-slate-300 font-semibold">IMF PortWatch</div>
             <div id="trade_portwatch" class="text-slate-400 text-sm mt-1 font-mono">—</div>
             <div id="trade_portwatch_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="trade_portwatch_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="trade_portwatch_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div class="mt-4 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
@@ -161,6 +186,11 @@
             <canvas id="wealth_gdp_pc_chart" height="120"></canvas>
             <div id="wealth_gdp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_gdp_pc_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_gdp_pc_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_gdp_pc_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div id="wealth_panel_disp_pc" class="wealth-panel hidden">
@@ -168,6 +198,11 @@
             <div id="wealth_disp_pc" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
             <div id="wealth_disp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_disp_pc_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_disp_pc_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_disp_pc_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div id="wealth_panel_disp_hh" class="wealth-panel hidden">
@@ -175,12 +210,22 @@
             <div id="wealth_disp_hh" class="text-slate-400 text-sm mt-1 font-mono">Loading…</div>
             <div id="wealth_disp_hh_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_disp_hh_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_disp_hh_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_disp_hh_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div id="wealth_panel_cons" class="wealth-panel hidden">
             <canvas id="wealth_cons_chart" height="120"></canvas>
             <div id="wealth_cons_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_cons_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_cons_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_cons_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div id="wealth_panel_age" class="wealth-panel hidden">
@@ -188,6 +233,11 @@
             <canvas id="wealth_age_chart" height="160" class="mt-2"></canvas>
             <div id="wealth_age_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_age_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="wealth_age_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="wealth_age_source_updated">Source updated: —</div>
+            </div>
           </div>
         </div>
       </div>
@@ -216,6 +266,11 @@
 
             <div id="fin_industry_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
             <div id="fin_industry_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="fin_industry_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="fin_industry_source_updated">Source updated: —</div>
+            </div>
           </div>
 
           <div id="fin_panel_country" class="fin-panel hidden">
@@ -227,6 +282,11 @@
 
             <div id="fin_country_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
             <div id="fin_country_commentary" class="text-slate-400 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-xs text-slate-400 font-mono">Insight</div>
+              <div class="text-slate-300 text-sm mt-1" id="fin_country_insight_text">—</div>
+              <div class="text-xs text-slate-500 font-mono mt-2" id="fin_country_source_updated">Source updated: —</div>
+            </div>
           </div>
         </div>
       </div>
@@ -280,6 +340,22 @@
                 style="width:${sizePx}px;height:${sizePx}px;">
             <span class="text-center leading-tight text-[12px] font-semibold">${text}</span>
           </span>`;
+      }
+
+      function _fmtSourceUpdated(iso) {
+        if (!iso) return '—';
+        try {
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return String(iso);
+          return d.toISOString().replace('T',' ').replace('.000Z',' UTC');
+        } catch {
+          return String(iso);
+        }
+      }
+
+      function _getInsight(card, tab, scope) {
+        const m = (DASHBOARD_DATA.insights || {});
+        return (((m[card] || {})[tab] || {})[scope] || null);
       }
 
       function setTradeTab(active) {
@@ -415,6 +491,27 @@
         if (!TRADE_DATA) return;
         const geo = document.getElementById('trade_geo').value || 'Global';
         const d = (TRADE_DATA.by_geo || {})[geo] || {};
+
+        // Insights (from DB)
+        const iCorr = _getInsight('trade_flow','corridors','global');
+        document.getElementById('trade_corridors_insight_text').textContent = (iCorr && iCorr.content) || '—';
+        document.getElementById('trade_corridors_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCorr && iCorr.source_updated_at);
+
+        const iWci = _getInsight('trade_flow','wci','global');
+        document.getElementById('trade_wci_insight_text').textContent = (iWci && iWci.content) || '—';
+        document.getElementById('trade_wci_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iWci && iWci.source_updated_at);
+
+        const iPw = _getInsight('trade_flow','portwatch','global');
+        document.getElementById('trade_portwatch_insight_text').textContent = (iPw && iPw.content) || '—';
+        document.getElementById('trade_portwatch_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iPw && iPw.source_updated_at);
+
+        const iEx = _getInsight('trade_flow','exim', geo);
+        document.getElementById('trade_exim_insight_text').textContent = (iEx && iEx.content) || '—';
+        document.getElementById('trade_exim_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iEx && iEx.source_updated_at);
+
+        const iBal = _getInsight('trade_flow','balance', geo);
+        document.getElementById('trade_balance_insight_text').textContent = (iBal && iBal.content) || '—';
+        document.getElementById('trade_balance_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iBal && iBal.source_updated_at);
 
         // Corridors ranking (Top 5)
         const topN = 5;
@@ -609,6 +706,14 @@
         upsertWealthGdpChart(ind);
         upsertWealthConsChart(ind);
 
+        const iGdp = _getInsight('wealth','gdp_pc', geo);
+        document.getElementById('wealth_gdp_pc_insight_text').textContent = (iGdp && iGdp.content) || '—';
+        document.getElementById('wealth_gdp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iGdp && iGdp.source_updated_at);
+
+        const iCons = _getInsight('wealth','cons', geo);
+        document.getElementById('wealth_cons_insight_text').textContent = (iCons && iCons.content) || '—';
+        document.getElementById('wealth_cons_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCons && iCons.source_updated_at);
+
         const disp = await loadDisposableLatest();
         const row = (disp.rows || {})[geo] || null;
         const pc = row && row.per_capita_usd != null ? `$${Math.round(row.per_capita_usd).toLocaleString()}` : '—';
@@ -620,6 +725,14 @@
         document.getElementById('wealth_disp_hh_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
         document.getElementById('wealth_disp_pc_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
         document.getElementById('wealth_disp_hh_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
+
+        const iDispPc = _getInsight('wealth','disp_pc','global');
+        document.getElementById('wealth_disp_pc_insight_text').textContent = (iDispPc && iDispPc.content) || '—';
+        document.getElementById('wealth_disp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispPc && iDispPc.source_updated_at);
+
+        const iDispHh = _getInsight('wealth','disp_hh','global');
+        document.getElementById('wealth_disp_hh_insight_text').textContent = (iDispHh && iDispHh.content) || '—';
+        document.getElementById('wealth_disp_hh_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispHh && iDispHh.source_updated_at);
 
         // Age structure (ring)
         const age = await loadWealthAgeStructure(geo);
@@ -653,6 +766,10 @@
         if (ageCom && ageVals.length === 3) {
           ageCom.textContent = `Commentary (EN): working-age share (15–64) is ${ageVals[1].toFixed(1)}% in the latest year.`;
         }
+
+        const iAge = _getInsight('wealth','age', geo);
+        document.getElementById('wealth_age_insight_text').textContent = (iAge && iAge.content) || '—';
+        document.getElementById('wealth_age_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iAge && iAge.source_updated_at);
       }
 
       async function loadWealth() {
@@ -896,6 +1013,10 @@
         document.getElementById('fin_industry_meta').innerHTML = `Source: ${ind.source} · Unit: ${ind.unit}${ind.currency}<br>Link: <a class="underline hover:text-fuchsia-300" href="${ind.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_industry_commentary').textContent = 'Commentary (EN): top industries by deal count and by total disclosed value (IMAA public stats).';
 
+        const iFinInd = _getInsight('finance','industry','global');
+        document.getElementById('fin_industry_insight_text').textContent = (iFinInd && iFinInd.content) || '—';
+        document.getElementById('fin_industry_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinInd && iFinInd.source_updated_at);
+
         // Country
         const cty = await loadFinCountry();
         const ctyRows = (cty.rows || []).slice(0, 10);
@@ -909,6 +1030,10 @@
         FIN_CTY_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
         document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
+
+        const iFinCty = _getInsight('finance','country','global');
+        document.getElementById('fin_country_insight_text').textContent = (iFinCty && iFinCty.content) || '—';
+        document.getElementById('fin_country_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinCty && iFinCty.source_updated_at);
       }
 
       Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});

@@ -12,7 +12,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.models import JobDefinition, JobRun, WidgetSnapshot
+from app.db.models import JobDefinition, JobRun, WidgetInsight, WidgetSnapshot
 from app.db.session import SessionLocal
 from app.web import widget_data
 from app.web.imaa import fetch_ma_by_country, fetch_ma_by_industry
@@ -122,6 +122,8 @@ def _record_snapshot(
     source: str,
     is_stale: bool,
     job_run_id: int | None,
+    source_updated_at: datetime | None = None,
+    source_updated_at_note: str = "",
 ) -> None:
     db.add(
         WidgetSnapshot(
@@ -131,6 +133,8 @@ def _record_snapshot(
             source=source,
             is_stale=is_stale,
             fetched_at=_now_utc(),
+            source_updated_at=source_updated_at,
+            source_updated_at_note=source_updated_at_note or "",
             job_run_id=job_run_id,
         )
     )
@@ -209,6 +213,11 @@ def _normalize_cleanup(raw: dict[str, Any]) -> dict[str, Any]:
 def _run_trade_corridors(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     payload = widget_data.trade_corridors_mvp(force_wci=params["force_wci"])
     wci_error = bool((payload.get("wci") or {}).get("error"))
+
+    # MVP stub has no real source time; keep NULL.
+    src_at = None
+    src_note = "MVP stub; source time not applicable"
+
     _record_snapshot(
         db,
         widget_key="trade_corridors",
@@ -217,8 +226,26 @@ def _run_trade_corridors(db: Session, params: dict[str, Any], job_run_id: int | 
         source=payload.get("source", ""),
         is_stale=wci_error,
         job_run_id=job_run_id,
+        source_updated_at=src_at,
+        source_updated_at_note=src_note,
     )
     return "trade corridors snapshot saved"
+
+
+def _infer_annual_source_updated_at(period: str | None) -> tuple[datetime | None, str]:
+    """Infer a reasonable 'source updated' time for annual series.
+
+    If the source only provides a year (e.g. '2024'), we infer it as year-end (Dec 31) in UTC.
+    """
+    if not period:
+        return None, "source does not declare an as-of date"
+    s = str(period).strip()
+    if not s.isdigit():
+        return None, f"unrecognized period format: {s}"
+    y = int(s)
+    if y < 1900 or y > 2200:
+        return None, f"out-of-range year: {y}"
+    return datetime(y, 12, 31, tzinfo=timezone.utc), "inferred from annual period year-end"
 
 
 def _run_trade_exim(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
@@ -235,6 +262,15 @@ def _run_trade_exim(db: Session, params: dict[str, Any], job_run_id: int | None)
             force=params["force"],
         )
         payload["geo"] = geo
+
+        # choose the latest non-null period from the merged series
+        latest_period = None
+        for row in reversed(payload.get("series") or []):
+            if row.get("export_usd") is not None or row.get("import_usd") is not None:
+                latest_period = row.get("period")
+                break
+        src_at, src_note = _infer_annual_source_updated_at(latest_period)
+
         stale = not bool(payload.get("ok"))
         if stale:
             failed += 1
@@ -246,6 +282,8 @@ def _run_trade_exim(db: Session, params: dict[str, Any], job_run_id: int | None)
             source=payload.get("source", ""),
             is_stale=stale,
             job_run_id=job_run_id,
+            source_updated_at=src_at,
+            source_updated_at_note=src_note,
         )
         count += 1
     return f"trade exim snapshots saved: {count}, stale: {failed}"
@@ -265,6 +303,14 @@ def _run_wealth_indicators(db: Session, params: dict[str, Any], job_run_id: int 
             force=params["force"],
         )
         payload["geo"] = geo
+
+        latest_period = None
+        for row in reversed(payload.get("series") or []):
+            if row.get("gdp_per_capita_usd") is not None or row.get("consumption_expenditure_usd") is not None:
+                latest_period = row.get("period")
+                break
+        src_at, src_note = _infer_annual_source_updated_at(latest_period)
+
         stale = not bool(payload.get("ok"))
         if stale:
             failed += 1
@@ -276,6 +322,8 @@ def _run_wealth_indicators(db: Session, params: dict[str, Any], job_run_id: int 
             source=payload.get("source", ""),
             is_stale=stale,
             job_run_id=job_run_id,
+            source_updated_at=src_at,
+            source_updated_at_note=src_note,
         )
         count += 1
     return f"wealth indicator snapshots saved: {count}, stale: {failed}"
@@ -283,6 +331,11 @@ def _run_wealth_indicators(db: Session, params: dict[str, Any], job_run_id: int 
 
 def _run_wealth_disposable(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     payload = fetch_disposable_income_latest(force=params["force"])
+
+    # WPR does not reliably declare an update timestamp in the HTML table; keep NULL and explain.
+    src_at = None
+    src_note = "source update time not declared by WPR page; kept NULL"
+
     stale = not bool(payload.get("ok"))
     _record_snapshot(
         db,
@@ -292,6 +345,8 @@ def _run_wealth_disposable(db: Session, params: dict[str, Any], job_run_id: int 
         source=payload.get("source", ""),
         is_stale=stale,
         job_run_id=job_run_id,
+        source_updated_at=src_at,
+        source_updated_at_note=src_note,
     )
     return "wealth disposable snapshot saved"
 
@@ -310,6 +365,9 @@ def _run_wealth_age_structure(db: Session, params: dict[str, Any], job_run_id: i
             force=params["force"],
         )
         payload["geo"] = geo
+
+        src_at, src_note = _infer_annual_source_updated_at(payload.get("period"))
+
         stale = not bool(payload.get("ok"))
         if stale:
             failed += 1
@@ -321,6 +379,8 @@ def _run_wealth_age_structure(db: Session, params: dict[str, Any], job_run_id: i
             source=payload.get("source", ""),
             is_stale=stale,
             job_run_id=job_run_id,
+            source_updated_at=src_at,
+            source_updated_at_note=src_note,
         )
         count += 1
     return f"wealth age-structure snapshots saved: {count}, stale: {failed}"
@@ -328,6 +388,11 @@ def _run_wealth_age_structure(db: Session, params: dict[str, Any], job_run_id: i
 
 def _run_finance_industry(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     payload = fetch_ma_by_industry(force=params["force"])
+
+    # IMAA public table does not clearly expose a last-updated timestamp; keep NULL.
+    src_at = None
+    src_note = "source update time not declared by IMAA page; kept NULL"
+
     stale = not bool(payload.get("ok"))
     _record_snapshot(
         db,
@@ -337,12 +402,18 @@ def _run_finance_industry(db: Session, params: dict[str, Any], job_run_id: int |
         source=payload.get("source", ""),
         is_stale=stale,
         job_run_id=job_run_id,
+        source_updated_at=src_at,
+        source_updated_at_note=src_note,
     )
     return "finance industry snapshot saved"
 
 
 def _run_finance_country(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     payload = fetch_ma_by_country(force=params["force"])
+
+    src_at = None
+    src_note = "source update time not declared by IMAA page; kept NULL"
+
     stale = not bool(payload.get("ok"))
     _record_snapshot(
         db,
@@ -352,6 +423,8 @@ def _run_finance_country(db: Session, params: dict[str, Any], job_run_id: int | 
         source=payload.get("source", ""),
         is_stale=stale,
         job_run_id=job_run_id,
+        source_updated_at=src_at,
+        source_updated_at_note=src_note,
     )
     return "finance country snapshot saved"
 
@@ -366,7 +439,255 @@ def _run_cleanup_snapshots(db: Session, params: dict[str, Any], job_run_id: int 
     return f"cleanup done: snapshots={snapshots_deleted}, runs={runs_deleted}, keep_days={params['keep_days']}"
 
 
+def _save_insight(
+    db: Session,
+    *,
+    card_key: str,
+    tab_key: str,
+    scope: str,
+    lang: str,
+    content: str,
+    reference_list: list[dict[str, Any]] | None,
+    source_updated_at: datetime | None,
+    generated_by: str,
+    job_run_id: int | None,
+) -> None:
+    db.add(
+        WidgetInsight(
+            card_key=card_key,
+            tab_key=tab_key,
+            scope=scope,
+            lang=lang,
+            content=content,
+            reference_list=reference_list or [],
+            source_updated_at=source_updated_at,
+            generated_by=generated_by,
+            job_run_id=job_run_id,
+        )
+    )
+
+
+def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
+    """Generate Insights for homepage cards/tabs.
+
+    This job must not run in web requests; it reads latest widget snapshots and writes insights to DB.
+    """
+    del params
+
+    # Trade Flow
+    trade = get_latest_snapshot(db, "trade_corridors", "global")
+    if trade and isinstance(trade.payload, dict):
+        # corridors
+        _save_insight(
+            db,
+            card_key="trade_flow",
+            tab_key="corridors",
+            scope="global",
+            lang="en",
+            content="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
+            reference_list=[],
+            source_updated_at=trade.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+        # wci
+        wci = (trade.payload.get("wci") or {}) if isinstance(trade.payload.get("wci"), dict) else {}
+        wci_val = wci.get("value_usd_per_40ft")
+        if wci_val is not None:
+            wci_text = f"Freight costs (WCI) are {wci_val} USD/40ft in the latest scrape; interpret as shipping-cost pressure rather than customs trade value."
+        else:
+            wci_text = "Freight (WCI) is unavailable in the latest run; check Drewry page structure and scraping caveats."
+        _save_insight(
+            db,
+            card_key="trade_flow",
+            tab_key="wci",
+            scope="global",
+            lang="en",
+            content=wci_text,
+            reference_list=[],
+            source_updated_at=trade.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+        _save_insight(
+            db,
+            card_key="trade_flow",
+            tab_key="portwatch",
+            scope="global",
+            lang="en",
+            content="PortWatch signals are nowcast/proxy indicators; always present them with explicit caveats (not final customs statistics).",
+            reference_list=[],
+            source_updated_at=trade.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+
+    # Trade Exim insight per geo
+    for geo in ALLOWED_GEOS:
+        exim = get_latest_snapshot(db, "trade_exim_5y", geo)
+        if not exim or not isinstance(exim.payload, dict):
+            continue
+        s = (exim.payload.get("series") or [])
+        s = [r for r in s if isinstance(r, dict) and r.get("export_usd") is not None and r.get("import_usd") is not None]
+        if len(s) >= 1:
+            last = s[-1]
+            bal = last.get("balance_usd")
+            if bal is None:
+                txt = "Latest export/import values are present but balance could not be computed (missing data)."
+            else:
+                txt = f"Latest year shows a {'surplus' if bal >= 0 else 'deficit'}; monitor whether exports and imports diverge as a macro signal."
+        else:
+            txt = "Not enough data points to compute a meaningful export/import insight yet."
+        _save_insight(
+            db,
+            card_key="trade_flow",
+            tab_key="exim",
+            scope=geo,
+            lang="en",
+            content=txt,
+            reference_list=[],
+            source_updated_at=exim.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+        _save_insight(
+            db,
+            card_key="trade_flow",
+            tab_key="balance",
+            scope=geo,
+            lang="en",
+            content="Trade balance is computed as export minus import; treat it as an identity check and watch for large year-over-year moves.",
+            reference_list=[],
+            source_updated_at=exim.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+
+    # Wealth
+    for geo in ALLOWED_GEOS:
+        w = get_latest_snapshot(db, "wealth_indicators_5y", geo)
+        if w:
+            _save_insight(
+                db,
+                card_key="wealth",
+                tab_key="gdp_pc",
+                scope=geo,
+                lang="en",
+                content="GDP per capita (nominal USD) can be noisy due to FX; interpret trends with caveats and consider constant-price alternatives if needed.",
+                reference_list=[],
+                source_updated_at=w.source_updated_at,
+                generated_by="job",
+                job_run_id=job_run_id,
+            )
+            _save_insight(
+                db,
+                card_key="wealth",
+                tab_key="cons",
+                scope=geo,
+                lang="en",
+                content="Household consumption helps cross-check domestic-demand momentum; combine with trade indicators for a fuller demand picture.",
+                reference_list=[],
+                source_updated_at=w.source_updated_at,
+                generated_by="job",
+                job_run_id=job_run_id,
+            )
+
+        age = get_latest_snapshot(db, "wealth_age_structure_latest", geo)
+        if age and isinstance(age.payload, dict):
+            rows = age.payload.get("rows") or []
+            work = None
+            for r in rows:
+                if isinstance(r, dict) and r.get("label") == "15-64":
+                    work = r.get("pct")
+            if work is not None:
+                txt = f"Working-age share (15–64) is {float(work):.1f}% in the latest year; demographic structure affects labor supply and demand composition."
+            else:
+                txt = "Age structure snapshot is present; use it as demographic context (not income-by-age)."
+            _save_insight(
+                db,
+                card_key="wealth",
+                tab_key="age",
+                scope=geo,
+                lang="en",
+                content=txt,
+                reference_list=[],
+                source_updated_at=age.source_updated_at,
+                generated_by="job",
+                job_run_id=job_run_id,
+            )
+
+    disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
+    if disp:
+        _save_insight(
+            db,
+            card_key="wealth",
+            tab_key="disp_pc",
+            scope="global",
+            lang="en",
+            content="Disposable income is best-effort: primary WPR scrape + World Bank proxy fallback; treat as an indicative latest-point snapshot.",
+            reference_list=[],
+            source_updated_at=disp.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+        _save_insight(
+            db,
+            card_key="wealth",
+            tab_key="disp_hh",
+            scope="global",
+            lang="en",
+            content="Per-household disposable values may be missing for many geos; consider OECD SDMX for household-level measures where coverage exists.",
+            reference_list=[],
+            source_updated_at=disp.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+
+    # Finance
+    fin_i = get_latest_snapshot(db, "finance_ma_industry", "global")
+    if fin_i:
+        _save_insight(
+            db,
+            card_key="finance",
+            tab_key="industry",
+            scope="global",
+            lang="en",
+            content="Industry rankings reflect disclosed-deal reporting; treat as a directional view of deal activity concentration.",
+            reference_list=[],
+            source_updated_at=fin_i.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+
+    fin_c = get_latest_snapshot(db, "finance_ma_country", "global")
+    if fin_c:
+        _save_insight(
+            db,
+            card_key="finance",
+            tab_key="country",
+            scope="global",
+            lang="en",
+            content="Country narratives may mix currencies (USD/EUR). Use normalized currency conversion if you need strict cross-country value comparisons.",
+            reference_list=[],
+            source_updated_at=fin_c.source_updated_at,
+            generated_by="job",
+            job_run_id=job_run_id,
+        )
+
+    return "homepage insights saved"
+
+
 JOB_SPECS: dict[str, JobSpec] = {
+    "generate_homepage_insights": JobSpec(
+        job_id="generate_homepage_insights",
+        name="Generate Homepage Insights",
+        description="Generate Insights text for homepage cards/tabs and save to DB.",
+        cron_expr=DEFAULT_CRON_EVERY_10_MIN,
+        timezone=settings.TZ,
+        default_params={},
+        normalize_params=lambda raw: {},
+        runner=_run_generate_homepage_insights,
+    ),
     "trade_corridors": JobSpec(
         job_id="trade_corridors",
         name="Trade Corridors Snapshot",

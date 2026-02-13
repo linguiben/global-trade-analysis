@@ -82,16 +82,58 @@ class WidgetSnapshot(Base):
     widget_key: Mapped[str] = mapped_column(String(100), nullable=False)
     scope: Mapped[str] = mapped_column(String(80), nullable=False, default="global")
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+    # Legacy plain-text attribution (prefer payload.source + payload.period for UI)
     source: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Job fetch time (when we fetched & materialized this snapshot)
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
+
+    # Source-declared or reasonably inferred timestamp of the *data point* itself.
+    # This is NOT the job run time.
+    source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    source_updated_at_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
     is_stale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     job_run_id: Mapped[int | None] = mapped_column(
         BIGINT, ForeignKey("job_runs.id", ondelete="SET NULL"), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class WidgetInsight(Base):
+    __tablename__ = "widget_insights"
+
+    id: Mapped[int] = mapped_column(BIGINT, primary_key=True, autoincrement=True)
+
+    # homepage card key, e.g. trade_flow / wealth / finance
+    card_key: Mapped[str] = mapped_column(String(80), nullable=False)
+
+    # tab key inside the card, e.g. corridors/exim/balance/wci/portwatch
+    tab_key: Mapped[str] = mapped_column(String(80), nullable=False)
+
+    scope: Mapped[str] = mapped_column(String(80), nullable=False, default="global")
+    lang: Mapped[str] = mapped_column(String(16), nullable=False, default="en")
+
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    reference_list: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+
+    # Source data timestamp used in this insight (declared or inferred)
+    source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    generated_by: Mapped[str] = mapped_column(String(80), nullable=False, default="job")
+    job_run_id: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("job_runs.id", ondelete="SET NULL"), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

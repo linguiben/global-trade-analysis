@@ -23,7 +23,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.models import JobRun, UserVisitLog, WidgetSnapshot
+from app.db.models import JobRun, UserVisitLog, WidgetInsight, WidgetSnapshot
 from app.db.session import get_db
 
 router = APIRouter()
@@ -46,7 +46,18 @@ def _fmt_utc(dt: datetime | None) -> str:
 
 def _snapshot_payload(snapshot: WidgetSnapshot | None, fallback: dict | None = None) -> dict:
     if snapshot and isinstance(snapshot.payload, dict):
-        return snapshot.payload
+        # Attach DB-level metadata without changing job payload contract.
+        payload = dict(snapshot.payload)
+        payload.setdefault("_meta", {})
+        if isinstance(payload.get("_meta"), dict):
+            payload["_meta"].update(
+                {
+                    "fetched_at": snapshot.fetched_at.isoformat() if snapshot.fetched_at else None,
+                    "source_updated_at": snapshot.source_updated_at.isoformat() if snapshot.source_updated_at else None,
+                    "source_updated_at_note": snapshot.source_updated_at_note or "",
+                }
+            )
+        return payload
     return fallback or {}
 
 
@@ -55,6 +66,32 @@ def _jobs_redirect_url(request: Request, msg: str) -> str:
     use_prefixed = bool(base) and request.url.path.startswith(f"{base}/")
     path = f"{base}/jobs" if use_prefixed else "/jobs"
     return f"{path}?msg={quote(msg)}"
+
+
+def _latest_insights_map(db: Session) -> dict:
+    """Return latest insights keyed by (card_key, tab_key, scope)."""
+    rows: list[WidgetInsight] = (
+        db.query(WidgetInsight)
+        .order_by(WidgetInsight.card_key.asc(), WidgetInsight.tab_key.asc(), WidgetInsight.scope.asc(), WidgetInsight.created_at.desc())
+        .limit(2000)
+        .all()
+    )
+
+    out: dict[str, dict[str, dict[str, dict]]] = {}
+    for r in rows:
+        card = r.card_key
+        tab = r.tab_key
+        scope = r.scope
+        out.setdefault(card, {}).setdefault(tab, {})
+        if scope in out[card][tab]:
+            continue
+        out[card][tab][scope] = {
+            "content": r.content,
+            "reference_list": r.reference_list or [],
+            "source_updated_at": r.source_updated_at.isoformat() if r.source_updated_at else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+    return out
 
 
 def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
@@ -94,6 +131,7 @@ def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
         "wealth_disposable_latest": _snapshot_payload(wealth_disp, fallback={"rows": {}, "source": "N/A", "link": ""}),
         "finance_ma_industry": _snapshot_payload(fin_ind, fallback={"rows": [], "source": "N/A", "link": ""}),
         "finance_ma_country": _snapshot_payload(fin_cty, fallback={"rows": [], "source": "N/A", "link": ""}),
+        "insights": _latest_insights_map(db),
     }
     return payload, latest_at, is_stale
 
