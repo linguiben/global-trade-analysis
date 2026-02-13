@@ -439,6 +439,9 @@ def _run_cleanup_snapshots(db: Session, params: dict[str, Any], job_run_id: int 
     return f"cleanup done: snapshots={snapshots_deleted}, runs={runs_deleted}, keep_days={params['keep_days']}"
 
 
+from app.jobs.insights_llm import digest_for_inputs, generate_insight_with_llm
+
+
 def _save_insight(
     db: Session,
     *,
@@ -451,6 +454,11 @@ def _save_insight(
     source_updated_at: datetime | None,
     generated_by: str,
     job_run_id: int | None,
+    data_digest: str,
+    input_snapshot_keys: list[dict[str, Any]],
+    llm_provider: str = "",
+    llm_model: str = "",
+    llm_prompt: str = "",
 ) -> None:
     db.add(
         WidgetInsight(
@@ -461,216 +469,293 @@ def _save_insight(
             content=content,
             reference_list=reference_list or [],
             source_updated_at=source_updated_at,
+            data_digest=data_digest,
+            input_snapshot_keys=input_snapshot_keys or [],
+            llm_provider=llm_provider or "",
+            llm_model=llm_model or "",
+            llm_prompt=llm_prompt or "",
             generated_by=generated_by,
             job_run_id=job_run_id,
         )
     )
 
 
+def _latest_insight_digest(db: Session, *, card_key: str, tab_key: str, scope: str, lang: str) -> str | None:
+    row = (
+        db.query(WidgetInsight)
+        .filter(
+            WidgetInsight.card_key == card_key,
+            WidgetInsight.tab_key == tab_key,
+            WidgetInsight.scope == scope,
+            WidgetInsight.lang == lang,
+        )
+        .order_by(desc(WidgetInsight.created_at))
+        .first()
+    )
+    return row.data_digest if row else None
+
+
+def _gen_insight(
+    db: Session,
+    *,
+    card_key: str,
+    tab_key: str,
+    scope: str,
+    lang: str,
+    snapshot_inputs: list[WidgetSnapshot],
+    extra_context: dict[str, Any],
+    fallback_text: str,
+    job_run_id: int | None,
+) -> None:
+    # Build a stable input object
+    input_keys = []
+    for s in snapshot_inputs:
+        input_keys.append(
+            {
+                "widget_key": s.widget_key,
+                "scope": s.scope,
+                "snapshot_id": int(s.id),
+                "fetched_at": s.fetched_at.isoformat() if s.fetched_at else None,
+                "source_updated_at": s.source_updated_at.isoformat() if s.source_updated_at else None,
+            }
+        )
+
+    input_obj = {
+        "card_key": card_key,
+        "tab_key": tab_key,
+        "scope": scope,
+        "lang": lang,
+        "snapshots": [{"key": s.widget_key, "scope": s.scope, "payload": s.payload} for s in snapshot_inputs],
+        "extra": extra_context,
+    }
+    data_digest = digest_for_inputs(input_obj)
+
+    prev = _latest_insight_digest(db, card_key=card_key, tab_key=tab_key, scope=scope, lang=lang)
+    if prev == data_digest:
+        return
+
+    # Ask LLM to do research-style synthesis (optional). It should be grounded in provided data and cite sources.
+    system = (
+        "You are a senior analyst. Write one short Insight for a dashboard card/tab. "
+        "Ground the insight in the provided data and sources. If you make assumptions, label them. "
+        "Output JSON with keys: insight (string), references (array of {title,url,publisher,date})."
+    )
+    user = json.dumps(
+        {
+            "task": "Generate dashboard Insight",
+            "card_key": card_key,
+            "tab_key": tab_key,
+            "scope": scope,
+            "constraints": {
+                "length": "1-2 sentences",
+                "must_reference_data": True,
+                "avoid_job_time": True,
+            },
+            "inputs": input_obj,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )
+
+    llm = generate_insight_with_llm(system=system, user=user)
+    content = llm.content if llm.ok else fallback_text
+    references = llm.references if llm.ok else []
+
+    # Prefer the freshest source_updated_at among inputs (NOT fetched_at)
+    src_at = None
+    for s in snapshot_inputs:
+        if s.source_updated_at and (src_at is None or s.source_updated_at > src_at):
+            src_at = s.source_updated_at
+
+    _save_insight(
+        db,
+        card_key=card_key,
+        tab_key=tab_key,
+        scope=scope,
+        lang=lang,
+        content=content,
+        reference_list=references,
+        source_updated_at=src_at,
+        generated_by="llm" if llm.ok else "job",
+        job_run_id=job_run_id,
+        data_digest=data_digest,
+        input_snapshot_keys=input_keys,
+        llm_provider=llm.provider,
+        llm_model=llm.model,
+        llm_prompt=user,
+    )
+
+
 def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     """Generate Insights for homepage cards/tabs.
 
-    This job must not run in web requests; it reads latest widget snapshots and writes insights to DB.
+    Requirement:
+    - Insight must change with scope + tab.
+    - Content should be synthesized from real widget data + sources + source update time and other public info.
+      (We use an optional LLM; if not configured, fallback to safe templates.)
     """
+
     del params
 
-    # Trade Flow
+    # Trade (global tabs)
     trade = get_latest_snapshot(db, "trade_corridors", "global")
-    if trade and isinstance(trade.payload, dict):
-        # corridors
-        _save_insight(
+    if trade:
+        _gen_insight(
             db,
             card_key="trade_flow",
             tab_key="corridors",
             scope="global",
             lang="en",
-            content="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
-            reference_list=[],
-            source_updated_at=trade.source_updated_at,
-            generated_by="job",
+            snapshot_inputs=[trade],
+            extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at},
+            fallback_text="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
             job_run_id=job_run_id,
         )
-        # wci
-        wci = (trade.payload.get("wci") or {}) if isinstance(trade.payload.get("wci"), dict) else {}
-        wci_val = wci.get("value_usd_per_40ft")
-        if wci_val is not None:
-            wci_text = f"Freight costs (WCI) are {wci_val} USD/40ft in the latest scrape; interpret as shipping-cost pressure rather than customs trade value."
-        else:
-            wci_text = "Freight (WCI) is unavailable in the latest run; check Drewry page structure and scraping caveats."
-        _save_insight(
+        _gen_insight(
             db,
             card_key="trade_flow",
             tab_key="wci",
             scope="global",
             lang="en",
-            content=wci_text,
-            reference_list=[],
-            source_updated_at=trade.source_updated_at,
-            generated_by="job",
+            snapshot_inputs=[trade],
+            extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy"},
+            fallback_text="Freight (WCI) reflects shipping-cost pressure; treat it as a proxy signal rather than customs trade value.",
             job_run_id=job_run_id,
         )
-        _save_insight(
+        _gen_insight(
             db,
             card_key="trade_flow",
             tab_key="portwatch",
             scope="global",
             lang="en",
-            content="PortWatch signals are nowcast/proxy indicators; always present them with explicit caveats (not final customs statistics).",
-            reference_list=[],
-            source_updated_at=trade.source_updated_at,
-            generated_by="job",
+            snapshot_inputs=[trade],
+            extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy"},
+            fallback_text="PortWatch signals are nowcast/proxy indicators; always present them with explicit caveats.",
             job_run_id=job_run_id,
         )
 
-    # Trade Exim insight per geo
+    # Trade per-geo tabs
     for geo in ALLOWED_GEOS:
         exim = get_latest_snapshot(db, "trade_exim_5y", geo)
-        if not exim or not isinstance(exim.payload, dict):
+        if not exim:
             continue
-        s = (exim.payload.get("series") or [])
-        s = [r for r in s if isinstance(r, dict) and r.get("export_usd") is not None and r.get("import_usd") is not None]
-        if len(s) >= 1:
-            last = s[-1]
-            bal = last.get("balance_usd")
-            if bal is None:
-                txt = "Latest export/import values are present but balance could not be computed (missing data)."
-            else:
-                txt = f"Latest year shows a {'surplus' if bal >= 0 else 'deficit'}; monitor whether exports and imports diverge as a macro signal."
-        else:
-            txt = "Not enough data points to compute a meaningful export/import insight yet."
-        _save_insight(
+        _gen_insight(
             db,
             card_key="trade_flow",
             tab_key="exim",
             scope=geo,
             lang="en",
-            content=txt,
-            reference_list=[],
-            source_updated_at=exim.source_updated_at,
-            generated_by="job",
+            snapshot_inputs=[exim],
+            extra_context={"geo": geo, "source": exim.source, "source_updated_at": exim.source_updated_at},
+            fallback_text="Export/import snapshot is available; compare latest vs prior year to spot inflection points.",
             job_run_id=job_run_id,
         )
-        _save_insight(
+        _gen_insight(
             db,
             card_key="trade_flow",
             tab_key="balance",
             scope=geo,
             lang="en",
-            content="Trade balance is computed as export minus import; treat it as an identity check and watch for large year-over-year moves.",
-            reference_list=[],
-            source_updated_at=exim.source_updated_at,
-            generated_by="job",
+            snapshot_inputs=[exim],
+            extra_context={"geo": geo, "definition": "balance = export - import"},
+            fallback_text="Trade balance is computed as export minus import; watch for large year-over-year moves.",
             job_run_id=job_run_id,
         )
 
-    # Wealth
+    # Wealth per-geo
+    disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
     for geo in ALLOWED_GEOS:
         w = get_latest_snapshot(db, "wealth_indicators_5y", geo)
         if w:
-            _save_insight(
+            _gen_insight(
                 db,
                 card_key="wealth",
                 tab_key="gdp_pc",
                 scope=geo,
                 lang="en",
-                content="GDP per capita (nominal USD) can be noisy due to FX; interpret trends with caveats and consider constant-price alternatives if needed.",
-                reference_list=[],
-                source_updated_at=w.source_updated_at,
-                generated_by="job",
+                snapshot_inputs=[w],
+                extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at},
+                fallback_text="GDP per capita (nominal USD) can be noisy due to FX; interpret trends with caveats.",
                 job_run_id=job_run_id,
             )
-            _save_insight(
+            _gen_insight(
                 db,
                 card_key="wealth",
                 tab_key="cons",
                 scope=geo,
                 lang="en",
-                content="Household consumption helps cross-check domestic-demand momentum; combine with trade indicators for a fuller demand picture.",
-                reference_list=[],
-                source_updated_at=w.source_updated_at,
-                generated_by="job",
+                snapshot_inputs=[w],
+                extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at},
+                fallback_text="Consumption can proxy domestic-demand momentum; compare with trade signals for context.",
                 job_run_id=job_run_id,
             )
 
         age = get_latest_snapshot(db, "wealth_age_structure_latest", geo)
-        if age and isinstance(age.payload, dict):
-            rows = age.payload.get("rows") or []
-            work = None
-            for r in rows:
-                if isinstance(r, dict) and r.get("label") == "15-64":
-                    work = r.get("pct")
-            if work is not None:
-                txt = f"Working-age share (15–64) is {float(work):.1f}% in the latest year; demographic structure affects labor supply and demand composition."
-            else:
-                txt = "Age structure snapshot is present; use it as demographic context (not income-by-age)."
-            _save_insight(
+        if age:
+            _gen_insight(
                 db,
                 card_key="wealth",
                 tab_key="age",
                 scope=geo,
                 lang="en",
-                content=txt,
-                reference_list=[],
-                source_updated_at=age.source_updated_at,
-                generated_by="job",
+                snapshot_inputs=[age],
+                extra_context={"geo": geo, "source": age.source, "source_updated_at": age.source_updated_at},
+                fallback_text="Age structure provides demographic context; treat it as population composition (not income-by-age).",
                 job_run_id=job_run_id,
             )
 
-    disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
-    if disp:
-        _save_insight(
-            db,
-            card_key="wealth",
-            tab_key="disp_pc",
-            scope="global",
-            lang="en",
-            content="Disposable income is best-effort: primary WPR scrape + World Bank proxy fallback; treat as an indicative latest-point snapshot.",
-            reference_list=[],
-            source_updated_at=disp.source_updated_at,
-            generated_by="job",
-            job_run_id=job_run_id,
-        )
-        _save_insight(
-            db,
-            card_key="wealth",
-            tab_key="disp_hh",
-            scope="global",
-            lang="en",
-            content="Per-household disposable values may be missing for many geos; consider OECD SDMX for household-level measures where coverage exists.",
-            reference_list=[],
-            source_updated_at=disp.source_updated_at,
-            generated_by="job",
-            job_run_id=job_run_id,
-        )
+        # Disposable insights should follow geo (scope) as well
+        if disp:
+            _gen_insight(
+                db,
+                card_key="wealth",
+                tab_key="disp_pc",
+                scope=geo,
+                lang="en",
+                snapshot_inputs=[disp],
+                extra_context={"geo": geo, "source": disp.source, "source_updated_at": disp.source_updated_at},
+                fallback_text="Disposable income is best-effort: WPR scrape + World Bank proxy fallback; treat as indicative latest point.",
+                job_run_id=job_run_id,
+            )
+            _gen_insight(
+                db,
+                card_key="wealth",
+                tab_key="disp_hh",
+                scope=geo,
+                lang="en",
+                snapshot_inputs=[disp],
+                extra_context={"geo": geo, "source": disp.source, "source_updated_at": disp.source_updated_at},
+                fallback_text="Household disposable values may be missing; consider OECD SDMX where coverage exists.",
+                job_run_id=job_run_id,
+            )
 
-    # Finance
+    # Finance (global)
     fin_i = get_latest_snapshot(db, "finance_ma_industry", "global")
     if fin_i:
-        _save_insight(
+        _gen_insight(
             db,
             card_key="finance",
             tab_key="industry",
             scope="global",
             lang="en",
-            content="Industry rankings reflect disclosed-deal reporting; treat as a directional view of deal activity concentration.",
-            reference_list=[],
-            source_updated_at=fin_i.source_updated_at,
-            generated_by="job",
+            snapshot_inputs=[fin_i],
+            extra_context={"source": fin_i.source, "source_updated_at": fin_i.source_updated_at},
+            fallback_text="Industry ranking reflects disclosed-deal reporting; treat as directional concentration of activity.",
             job_run_id=job_run_id,
         )
 
     fin_c = get_latest_snapshot(db, "finance_ma_country", "global")
     if fin_c:
-        _save_insight(
+        _gen_insight(
             db,
             card_key="finance",
             tab_key="country",
             scope="global",
             lang="en",
-            content="Country narratives may mix currencies (USD/EUR). Use normalized currency conversion if you need strict cross-country value comparisons.",
-            reference_list=[],
-            source_updated_at=fin_c.source_updated_at,
-            generated_by="job",
+            snapshot_inputs=[fin_c],
+            extra_context={"source": fin_c.source, "source_updated_at": fin_c.source_updated_at},
+            fallback_text="Country narratives may mix currencies; use normalized FX conversion for strict comparisons.",
             job_run_id=job_run_id,
         )
 

@@ -1,0 +1,91 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+from urllib.request import Request, urlopen
+
+from app.config import settings
+
+
+def digest_for_inputs(obj: Any) -> str:
+    raw = json.dumps(obj, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+@dataclass(frozen=True)
+class LLMResult:
+    ok: bool
+    content: str
+    references: list[dict[str, Any]]
+    provider: str
+    model: str
+    error: str | None = None
+
+
+def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
+    """Generate insight text using an optional LLM provider.
+
+    Provider is controlled via env:
+    - INSIGHT_LLM_PROVIDER=openai|none
+    - OPENAI_API_KEY
+
+    If provider is unavailable, returns ok=False.
+    """
+
+    provider = (settings.INSIGHT_LLM_PROVIDER or "").strip().lower()
+    model = (settings.INSIGHT_LLM_MODEL or "").strip() or "gpt-4o-mini"
+
+    if provider in {"", "none", "off"}:
+        return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="llm disabled")
+
+    if provider != "openai":
+        return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=f"unsupported provider: {provider}")
+
+    api_key = (settings.OPENAI_API_KEY or "").strip()
+    if not api_key:
+        return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="OPENAI_API_KEY missing")
+
+    # We ask the model to output JSON so we can store references.
+    # Keep it short to reduce cost and latency.
+    payload = {
+        "model": model,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": 0.2,
+    }
+
+    req = Request(
+        "https://api.openai.com/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "GTA-insight-job",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(req, timeout=40) as resp:
+            raw = resp.read().decode("utf-8", errors="ignore")
+        j = json.loads(raw)
+        text = j["choices"][0]["message"]["content"]
+        out = json.loads(text)
+        content = str(out.get("insight") or "").strip()
+        refs = out.get("references")
+        references = refs if isinstance(refs, list) else []
+        if not content:
+            return LLMResult(ok=False, content="", references=references, provider=provider, model=model, error="empty insight")
+        return LLMResult(ok=True, content=content, references=references, provider=provider, model=model)
+    except Exception as e:  # noqa: BLE001
+        return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=str(e))
+
+
+def now_iso() -> str:
+    return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")

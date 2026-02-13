@@ -124,13 +124,33 @@ CREATE TABLE IF NOT EXISTS public.widget_insights (
     content TEXT NOT NULL,
     reference_list JSONB NOT NULL DEFAULT '[]'::jsonb,
     source_updated_at TIMESTAMPTZ NULL,
+
+    -- de-dup / traceability
+    data_digest VARCHAR(64) NOT NULL DEFAULT '',
+    input_snapshot_keys JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    -- llm provenance (optional)
+    llm_provider VARCHAR(40) NOT NULL DEFAULT '',
+    llm_model VARCHAR(80) NOT NULL DEFAULT '',
+    llm_prompt TEXT NOT NULL DEFAULT '',
+
     generated_by VARCHAR(80) NOT NULL DEFAULT 'job',
     job_run_id BIGINT NULL REFERENCES public.job_runs(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Online migration for existing DBs
+ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS data_digest VARCHAR(64) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS input_snapshot_keys JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS llm_provider VARCHAR(40) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS llm_model VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS llm_prompt TEXT NOT NULL DEFAULT '';
+
 CREATE INDEX IF NOT EXISTS idx_widget_insights_lookup
     ON public.widget_insights(card_key, tab_key, scope, lang, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_widget_insights_digest
+    ON public.widget_insights(card_key, tab_key, scope, lang, data_digest);
 
 CREATE INDEX IF NOT EXISTS idx_widget_commentaries_lookup
     ON public.widget_commentaries(widget_key, scope, lang, created_at DESC);

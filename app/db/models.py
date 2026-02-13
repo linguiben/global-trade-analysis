@@ -129,6 +129,14 @@ class WidgetInsight(Base):
     # Source data timestamp used in this insight (declared or inferred)
     source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Provenance / de-dup
+    data_digest: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    input_snapshot_keys: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+
+    llm_provider: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    llm_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    llm_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
     generated_by: Mapped[str] = mapped_column(String(80), nullable=False, default="job")
     job_run_id: Mapped[int | None] = mapped_column(
         BIGINT, ForeignKey("job_runs.id", ondelete="SET NULL"), nullable=True

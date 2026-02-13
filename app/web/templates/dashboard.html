@@ -726,11 +726,11 @@
         document.getElementById('wealth_disp_pc_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
         document.getElementById('wealth_disp_hh_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
 
-        const iDispPc = _getInsight('wealth','disp_pc','global');
+        const iDispPc = _getInsight('wealth','disp_pc', geo);
         document.getElementById('wealth_disp_pc_insight_text').textContent = (iDispPc && iDispPc.content) || '—';
         document.getElementById('wealth_disp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispPc && iDispPc.source_updated_at);
 
-        const iDispHh = _getInsight('wealth','disp_hh','global');
+        const iDispHh = _getInsight('wealth','disp_hh', geo);
         document.getElementById('wealth_disp_hh_insight_text').textContent = (iDispHh && iDispHh.content) || '—';
         document.getElementById('wealth_disp_hh_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispHh && iDispHh.source_updated_at);
 
