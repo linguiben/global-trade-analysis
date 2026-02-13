@@ -332,6 +332,7 @@ def _register_base_path_aliases() -> None:
         {"path": f"{base}/api/finance/big-transactions", "endpoint": api_finance_big_transactions, "methods": ["GET"], "name": "prefixed_api_finance_big_transactions"},
         {"path": f"{base}/api/wealth/indicators-5y", "endpoint": api_wealth_indicators_5y, "methods": ["GET"], "name": "prefixed_api_wealth_indicators_5y"},
         {"path": f"{base}/api/wealth/disposable-latest", "endpoint": api_wealth_disposable_latest, "methods": ["GET"], "name": "prefixed_api_wealth_disposable_latest"},
+        {"path": f"{base}/api/wealth/age-structure-latest", "endpoint": api_wealth_age_structure_latest, "methods": ["GET"], "name": "prefixed_api_wealth_age_structure_latest"},
         {"path": f"{base}/api/finance/ma/industry", "endpoint": api_finance_ma_industry, "methods": ["GET"], "name": "prefixed_api_finance_ma_industry"},
         {"path": f"{base}/api/finance/ma/country", "endpoint": api_finance_ma_country, "methods": ["GET"], "name": "prefixed_api_finance_ma_country"},
         {"path": f"{base}/jobs", "endpoint": jobs_page, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_jobs_page"},
