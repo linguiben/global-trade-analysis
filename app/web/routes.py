@@ -371,17 +371,17 @@ def api_trade_exim_latest_all(top_n: int | None = None, db: Session = Depends(ge
             }
         )
 
-    # Optional top_n selection by absolute exports (fallback to import, then balance)
+    # Optional top_n selection by trade volume = export + import.
+    # For 'top 5 countries', we exclude the aggregate 'Global' row.
     if top_n and top_n > 0:
-        def keyfn(r: dict[str, Any]) -> float:
-            v = r.get("export_usd")
-            if v is None:
-                v = r.get("import_usd")
-            if v is None:
-                v = abs(r.get("balance_usd") or 0.0)
-            return float(v or 0.0)
+        filtered = [r for r in rows if r.get("geo") not in ("Global", "global")]
 
-        rows = sorted(rows, key=keyfn, reverse=True)[: int(top_n)]
+        def keyfn(r: dict[str, Any]) -> float:
+            ex = float(r.get("export_usd") or 0.0)
+            im = float(r.get("import_usd") or 0.0)
+            return ex + im
+
+        rows = sorted(filtered, key=keyfn, reverse=True)[: int(top_n)]
 
     year_mode = max(years) if years else None
     return {"ok": True, "year": year_mode, "rows": rows}
