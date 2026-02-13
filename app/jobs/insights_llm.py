@@ -118,17 +118,19 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
         # Google Generative Language API (REST). Model id example: gemini-3-flash-preview
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
         payload = {
+            "systemInstruction": {"parts": [{"text": system}]},
             "contents": [
                 {
                     "role": "user",
                     "parts": [
-                        {"text": f"SYSTEM:\n{system}\n\nUSER:\n{user}"},
+                        {"text": user},
                     ],
                 }
             ],
             "generationConfig": {
                 "temperature": 0.2,
                 "maxOutputTokens": 512,
+                "responseMimeType": "application/json",
             },
         }
 
