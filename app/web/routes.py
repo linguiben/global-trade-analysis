@@ -62,6 +62,7 @@ def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
     trade_exim = get_latest_snapshots_by_key(db, "trade_exim_5y")
     wealth_ind = get_latest_snapshots_by_key(db, "wealth_indicators_5y")
     wealth_disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
+    wealth_age = get_latest_snapshots_by_key(db, "wealth_age_structure_latest")
     fin_ind = get_latest_snapshot(db, "finance_ma_industry", "global")
     fin_cty = get_latest_snapshot(db, "finance_ma_country", "global")
 
@@ -72,13 +73,15 @@ def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
 
     trade_exim_by_geo = {}
     wealth_ind_by_geo = {}
+    wealth_age_by_geo = {}
     for geo in geos:
         trade_exim_by_geo[geo] = _snapshot_payload(trade_exim.get(geo), fallback={"series": [], "source": "N/A", "frequency": "annual", "date": ""})
         wealth_ind_by_geo[geo] = _snapshot_payload(wealth_ind.get(geo), fallback={"series": [], "source": "N/A", "frequency": "annual", "date": ""})
+        wealth_age_by_geo[geo] = _snapshot_payload(wealth_age.get(geo), fallback={"rows": [], "source": "N/A", "frequency": "annual", "period": ""})
 
     all_snaps: list[WidgetSnapshot] = [
         s for s in [trade, wealth_disp, fin_ind, fin_cty] if s is not None
-    ] + [s for s in trade_exim.values() if s is not None] + [s for s in wealth_ind.values() if s is not None]
+    ] + [s for s in trade_exim.values() if s is not None] + [s for s in wealth_ind.values() if s is not None] + [s for s in wealth_age.values() if s is not None]
 
     latest_at = max((s.fetched_at for s in all_snaps), default=None)
     is_stale = any(bool(s.is_stale) for s in all_snaps)
@@ -87,6 +90,7 @@ def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
         "trade_corridors": trade_payload,
         "trade_exim_by_geo": trade_exim_by_geo,
         "wealth_indicators_by_geo": wealth_ind_by_geo,
+        "wealth_age_structure_by_geo": wealth_age_by_geo,
         "wealth_disposable_latest": _snapshot_payload(wealth_disp, fallback={"rows": {}, "source": "N/A", "link": ""}),
         "finance_ma_industry": _snapshot_payload(fin_ind, fallback={"rows": [], "source": "N/A", "link": ""}),
         "finance_ma_country": _snapshot_payload(fin_cty, fallback={"rows": [], "source": "N/A", "link": ""}),
@@ -180,6 +184,14 @@ def api_wealth_disposable_latest(db: Session = Depends(get_db)):
     if snapshot:
         return snapshot.payload
     return {"ok": False, "error": "snapshot not ready", "rows": {}}
+
+
+@router.get("/api/wealth/age-structure-latest")
+def api_wealth_age_structure_latest(geo: str = "Global", db: Session = Depends(get_db)):
+    snapshot = get_latest_snapshot(db, "wealth_age_structure_latest", geo)
+    if snapshot:
+        return snapshot.payload
+    return {"ok": False, "error": f"snapshot not ready for geo={geo}", "rows": []}
 
 
 @router.get("/api/finance/ma/industry")

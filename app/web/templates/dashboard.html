@@ -153,6 +153,7 @@
           <button data-tab="disp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable pc</button>
           <button data-tab="disp_hh" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable hh</button>
           <button data-tab="cons" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Consumption</button>
+          <button data-tab="age" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Age</button>
         </div>
 
         <div class="mt-4 text-sm">
@@ -180,6 +181,13 @@
             <canvas id="wealth_cons_chart" height="120"></canvas>
             <div id="wealth_cons_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_cons_commentary" class="text-slate-400 text-sm mt-2"></div>
+          </div>
+
+          <div id="wealth_panel_age" class="wealth-panel hidden">
+            <div class="text-slate-300 font-semibold">Age structure (% of population, latest)</div>
+            <canvas id="wealth_age_chart" height="160" class="mt-2"></canvas>
+            <div id="wealth_age_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_age_commentary" class="text-slate-400 text-sm mt-2"></div>
           </div>
         </div>
       </div>
@@ -501,6 +509,7 @@
 
       let WEALTH_GDP_CHART = null;
       let WEALTH_CONS_CHART = null;
+      let WEALTH_AGE_CHART = null;
 
       async function loadWealthIndicators(geo) {
         const all = DASHBOARD_DATA.wealth_indicators_by_geo || {};
@@ -509,6 +518,11 @@
 
       async function loadDisposableLatest() {
         return DASHBOARD_DATA.wealth_disposable_latest || { rows: {}, source: 'N/A', link: '' };
+      }
+
+      async function loadWealthAgeStructure(geo) {
+        const all = DASHBOARD_DATA.wealth_age_structure_by_geo || {};
+        return all[geo] || { source: 'N/A', frequency: 'annual', period: '', rows: [] };
       }
 
       function upsertWealthGdpChart(payload) {
@@ -603,6 +617,39 @@
         document.getElementById('wealth_disp_hh_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
         document.getElementById('wealth_disp_pc_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
         document.getElementById('wealth_disp_hh_commentary').textContent = 'Commentary (EN): latest snapshot only; add historical series once a stable API/source is confirmed.';
+
+        // Age structure (ring)
+        const age = await loadWealthAgeStructure(geo);
+        const ageLabels = (age.rows || []).map(r => r.label);
+        const ageVals = (age.rows || []).map(r => r.pct);
+        if (WEALTH_AGE_CHART) WEALTH_AGE_CHART.destroy();
+        WEALTH_AGE_CHART = new Chart(document.getElementById('wealth_age_chart'), {
+          type: 'doughnut',
+          data: { labels: ageLabels, datasets: [{ data: ageVals, backgroundColor: ['#60a5fa','#34d399','#fbbf24'], borderColor: 'rgba(15,23,42,0.65)', borderWidth: 2 }] },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '62%',
+            plugins: {
+              legend: { position: 'right', labels: { color: '#cbd5e1', boxWidth: 10, boxHeight: 10 } },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const label = ctx.label || '';
+                    const v = Number(ctx.parsed || 0);
+                    return `${label}: ${v.toFixed(1)}%`;
+                  }
+                }
+              }
+            }
+          }
+        });
+        const ageMeta = document.getElementById('wealth_age_meta');
+        if (ageMeta) ageMeta.textContent = `Source: ${age.source} · Frequency: ${age.frequency} · Period: ${age.period || '—'}`;
+        const ageCom = document.getElementById('wealth_age_commentary');
+        if (ageCom && ageVals.length === 3) {
+          ageCom.textContent = `Commentary (EN): working-age share (15–64) is ${ageVals[1].toFixed(1)}% in the latest year.`;
+        }
       }
 
       async function loadWealth() {

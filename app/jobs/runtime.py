@@ -16,7 +16,7 @@ from app.db.models import JobDefinition, JobRun, WidgetSnapshot
 from app.db.session import SessionLocal
 from app.web import widget_data
 from app.web.imaa import fetch_ma_by_country, fetch_ma_by_industry
-from app.web.worldbank import fetch_trade_exim_5y, fetch_wealth_indicators_5y
+from app.web.worldbank import fetch_age_structure_latest, fetch_trade_exim_5y, fetch_wealth_indicators_5y
 from app.web.worldpopreview import fetch_disposable_income_latest
 
 ALLOWED_GEOS = ["Global", "India", "Mexico", "Singapore", "Hong Kong"]
@@ -184,6 +184,20 @@ def _normalize_wealth_disposable(raw: dict[str, Any]) -> dict[str, Any]:
     return {"force": _as_bool(raw.get("force"), False)}
 
 
+def _normalize_wealth_age_structure(raw: dict[str, Any]) -> dict[str, Any]:
+    end_year = raw.get("end_year")
+    if end_year is None:
+        normalized_end_year = _now_utc().year - 1
+    else:
+        normalized_end_year = _as_int(end_year, _now_utc().year - 1, 1960, _now_utc().year)
+    return {
+        "geo_list": _as_geo_list(raw.get("geo_list")),
+        "end_year": normalized_end_year,
+        "lookback_years": _as_int(raw.get("lookback_years"), 20, 5, 60),
+        "force": _as_bool(raw.get("force"), False),
+    }
+
+
 def _normalize_finance(raw: dict[str, Any]) -> dict[str, Any]:
     return {"force": _as_bool(raw.get("force"), False)}
 
@@ -282,6 +296,36 @@ def _run_wealth_disposable(db: Session, params: dict[str, Any], job_run_id: int 
     return "wealth disposable snapshot saved"
 
 
+def _run_wealth_age_structure(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
+    count = 0
+    failed = 0
+    for geo in params["geo_list"]:
+        code = GEO_TO_WDI.get(geo)
+        if not code:
+            continue
+        payload = fetch_age_structure_latest(
+            code,
+            end_year=params["end_year"],
+            lookback_years=params["lookback_years"],
+            force=params["force"],
+        )
+        payload["geo"] = geo
+        stale = not bool(payload.get("ok"))
+        if stale:
+            failed += 1
+        _record_snapshot(
+            db,
+            widget_key="wealth_age_structure_latest",
+            scope=geo,
+            payload=payload,
+            source=payload.get("source", ""),
+            is_stale=stale,
+            job_run_id=job_run_id,
+        )
+        count += 1
+    return f"wealth age-structure snapshots saved: {count}, stale: {failed}"
+
+
 def _run_finance_industry(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     payload = fetch_ma_by_industry(force=params["force"])
     stale = not bool(payload.get("ok"))
@@ -362,6 +406,16 @@ JOB_SPECS: dict[str, JobSpec] = {
         default_params={"force": False},
         normalize_params=_normalize_wealth_disposable,
         runner=_run_wealth_disposable,
+    ),
+    "wealth_age_structure_latest": JobSpec(
+        job_id="wealth_age_structure_latest",
+        name="Age Structure Latest",
+        description="Refresh latest age-structure (% population) snapshot from World Bank WDI.",
+        cron_expr=DEFAULT_CRON_EVERY_10_MIN,
+        timezone=settings.TZ,
+        default_params={"geo_list": ALLOWED_GEOS, "end_year": None, "lookback_years": 20, "force": False},
+        normalize_params=_normalize_wealth_age_structure,
+        runner=_run_wealth_age_structure,
     ),
     "finance_ma_industry": JobSpec(
         job_id="finance_ma_industry",

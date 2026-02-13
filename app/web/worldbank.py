@@ -205,3 +205,68 @@ def fetch_wealth_indicators_5y(
             "consumption_expenditure": "NE.CON.PRVT.CD (current US$)",
         },
     }
+
+
+def fetch_age_structure_latest(
+    country: str,
+    *,
+    end_year: int,
+    lookback_years: int = 20,
+    ttl_seconds: int = 24 * 60 * 60,
+    force: bool = False,
+) -> Dict[str, Any]:
+    """Age structure (% of total population), latest non-null point.
+
+    Indicators:
+    - SP.POP.0014.TO.ZS  (0-14)
+    - SP.POP.1564.TO.ZS  (15-64)
+    - SP.POP.65UP.TO.ZS  (65+)
+    """
+
+    start_year = max(1960, end_year - lookback_years + 1)
+    date = f"{start_year}:{end_year}"
+
+    s0014 = fetch_wdi_indicator(country, "SP.POP.0014.TO.ZS", date=date, ttl_seconds=ttl_seconds, force=force)
+    s1564 = fetch_wdi_indicator(country, "SP.POP.1564.TO.ZS", date=date, ttl_seconds=ttl_seconds, force=force)
+    s65up = fetch_wdi_indicator(country, "SP.POP.65UP.TO.ZS", date=date, ttl_seconds=ttl_seconds, force=force)
+
+    def latest_non_null(series):
+        for row in reversed(series or []):
+            v = row.get("value")
+            if v is not None:
+                return row.get("period"), float(v)
+        return None, None
+
+    p1, v1 = latest_non_null(s0014.get("series"))
+    p2, v2 = latest_non_null(s1564.get("series"))
+    p3, v3 = latest_non_null(s65up.get("series"))
+
+    # choose a period if they differ: prefer the minimum common/latest available
+    periods = [p for p in [p1, p2, p3] if p]
+    period = max(periods) if periods else None
+
+    ok = bool(s0014.get("ok")) and bool(s1564.get("ok")) and bool(s65up.get("ok")) and (v1 is not None and v2 is not None and v3 is not None)
+
+    rows = []
+    if v1 is not None:
+        rows.append({"label": "0-14", "pct": v1})
+    if v2 is not None:
+        rows.append({"label": "15-64", "pct": v2})
+    if v3 is not None:
+        rows.append({"label": "65+", "pct": v3})
+
+    return {
+        "source": "World Bank WDI",
+        "frequency": "annual",
+        "country": country,
+        "date": date,
+        "period": period,
+        "ok": ok,
+        "errors": [x for x in [s0014.get("error"), s1564.get("error"), s65up.get("error")] if x],
+        "rows": rows,
+        "definitions": {
+            "0_14": "SP.POP.0014.TO.ZS (% of total population)",
+            "15_64": "SP.POP.1564.TO.ZS (% of total population)",
+            "65_up": "SP.POP.65UP.TO.ZS (% of total population)",
+        },
+    }
