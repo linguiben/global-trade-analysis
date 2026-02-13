@@ -18,6 +18,10 @@
       <div>
         <h1 class="text-2xl font-bold">Jobs Console</h1>
         <p class="text-slate-400 text-sm">Scheduled data refresh and manual execution</p>
+        <p class="text-slate-500 text-xs mt-2 font-mono">
+          Note: current product cadence is enforced to run every <b>10 minutes</b> (*/10 * * * *). You can edit fields here for reference,
+          but the scheduler may normalize back to the enforced cadence on restart.
+        </p>
       </div>
       <div class="text-xs text-slate-500 font-mono text-right">
         {{ now }}<br>

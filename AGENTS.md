@@ -3,8 +3,9 @@
 ## Project Structure & Module Organization
 - `app/main.py`: FastAPI app entrypoint, router registration, and static/test mounts.
 - `app/web/routes.py`: homepage and internal API routes (`/api/...`).
-- `app/web/templates/dashboard.html`: main UI and browser-side `fetch` calls.
+- `app/web/templates/dashboard.html`: main UI (reads internal APIs / server-rendered snapshots; no direct external data calls).
 - `app/web/worldbank.py`, `app/web/worldpopreview.py`, `app/web/external_sources.py`, `app/web/imaa.py`: upstream data adapters and parsing logic.
+- `app/jobs/runtime.py`: job runners + scheduler wiring (including `generate_homepage_insights`).
 - `app/db/`: SQLAlchemy session/model definitions.
 - `app/web/test/`: lightweight HTML prototype pages.
 - `doc/`: business/domain notes. Runtime config lives in `.env` (see `env.example`).

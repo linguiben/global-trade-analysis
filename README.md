@@ -59,7 +59,10 @@ JOBS_ENABLED=true
 - `false`: scheduler does not start; manual/job API execution is also blocked.
 
 ## Job Inventory
-All jobs live in `app/jobs/runtime.py` (`JOB_SPECS`):
+All jobs live in `app/jobs/runtime.py` (`JOB_SPECS`).
+
+> Note: Current product requirement enforces a global cadence of **every 10 minutes**.
+
 
 1. `trade_corridors`
    - Refreshes trade corridors summary; includes Drewry WCI extraction.
@@ -82,6 +85,9 @@ All jobs live in `app/jobs/runtime.py` (`JOB_SPECS`):
 7. `cleanup_snapshots`
    - Removes snapshots and run logs older than retention window.
    - Default params: `{"keep_days": 30}`
+8. `generate_homepage_insights`
+   - Generates “Insight” text for homepage cards/tabs and stores it in DB.
+   - Output table: `widget_insights`
 
 ## External Data Sources
 Below are the external data sources currently used by the application jobs.
