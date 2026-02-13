@@ -29,10 +29,12 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
     """Generate insight text using an optional LLM provider.
 
     Provider is controlled via env:
-    - INSIGHT_LLM_PROVIDER=openai|none
-    - OPENAI_API_KEY
+    - INSIGHT_LLM_PROVIDER=openai|gemini|none
+    - OPENAI_API_KEY / GEMINI_API_KEY
 
-    If provider is unavailable, returns ok=False.
+    Notes:
+    - Keys are secrets. Never log or print them.
+    - This function returns JSON-parsed {insight, references[]}.
     """
 
     provider = (settings.INSIGHT_LLM_PROVIDER or "").strip().lower()
@@ -41,50 +43,97 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
     if provider in {"", "none", "off"}:
         return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="llm disabled")
 
-    if provider != "openai":
-        return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=f"unsupported provider: {provider}")
+    if provider == "openai":
+        api_key = (settings.OPENAI_API_KEY or "").strip()
+        if not api_key:
+            return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="OPENAI_API_KEY missing")
 
-    api_key = (settings.OPENAI_API_KEY or "").strip()
-    if not api_key:
-        return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="OPENAI_API_KEY missing")
+        payload = {
+            "model": model,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": 0.2,
+        }
 
-    # We ask the model to output JSON so we can store references.
-    # Keep it short to reduce cost and latency.
-    payload = {
-        "model": model,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        "temperature": 0.2,
-    }
+        req = Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "GTA-insight-job",
+            },
+            method="POST",
+        )
 
-    req = Request(
-        "https://api.openai.com/v1/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "User-Agent": "GTA-insight-job",
-        },
-        method="POST",
-    )
+        try:
+            with urlopen(req, timeout=40) as resp:
+                raw = resp.read().decode("utf-8", errors="ignore")
+            j = json.loads(raw)
+            text = j["choices"][0]["message"]["content"]
+            out = json.loads(text)
+            content = str(out.get("insight") or "").strip()
+            refs = out.get("references")
+            references = refs if isinstance(refs, list) else []
+            if not content:
+                return LLMResult(ok=False, content="", references=references, provider=provider, model=model, error="empty insight")
+            return LLMResult(ok=True, content=content, references=references, provider=provider, model=model)
+        except Exception as e:  # noqa: BLE001
+            return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=str(e))
 
-    try:
-        with urlopen(req, timeout=40) as resp:
-            raw = resp.read().decode("utf-8", errors="ignore")
-        j = json.loads(raw)
-        text = j["choices"][0]["message"]["content"]
-        out = json.loads(text)
-        content = str(out.get("insight") or "").strip()
-        refs = out.get("references")
-        references = refs if isinstance(refs, list) else []
-        if not content:
-            return LLMResult(ok=False, content="", references=references, provider=provider, model=model, error="empty insight")
-        return LLMResult(ok=True, content=content, references=references, provider=provider, model=model)
-    except Exception as e:  # noqa: BLE001
-        return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=str(e))
+    if provider == "gemini":
+        api_key = (settings.GEMINI_API_KEY or "").strip()
+        if not api_key:
+            return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="GEMINI_API_KEY missing")
+
+        # Google Generative Language API (REST). Model id example: gemini-3-flash-preview
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        payload = {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [
+                        {"text": f"SYSTEM:\n{system}\n\nUSER:\n{user}"},
+                    ],
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 512,
+            },
+        }
+
+        req = Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "GTA-insight-job"},
+            method="POST",
+        )
+
+        try:
+            with urlopen(req, timeout=40) as resp:
+                raw = resp.read().decode("utf-8", errors="ignore")
+            j = json.loads(raw)
+            # candidates[0].content.parts[0].text
+            text = (
+                (((j.get("candidates") or [])[0] or {}).get("content") or {}).get("parts") or [{}]
+            )[0].get("text")
+            if not text:
+                return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error="empty response")
+            out = json.loads(text)
+            content = str(out.get("insight") or "").strip()
+            refs = out.get("references")
+            references = refs if isinstance(refs, list) else []
+            if not content:
+                return LLMResult(ok=False, content="", references=references, provider=provider, model=model, error="empty insight")
+            return LLMResult(ok=True, content=content, references=references, provider=provider, model=model)
+        except Exception as e:  # noqa: BLE001
+            return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=str(e))
+
+    return LLMResult(ok=False, content="", references=[], provider=provider, model=model, error=f"unsupported provider: {provider}")
 
 
 def now_iso() -> str:
