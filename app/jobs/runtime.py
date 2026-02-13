@@ -761,7 +761,7 @@ def _gen_insight(
         "Do NOT mention job execution times. Do NOT invent numbers. "
         "If data is proxy/nowcast/scraped, explicitly caveat. "
         "Style: 2-4 short bullet points max, each bullet actionable or interpretive. "
-        "Keep the JSON output compact (<= ~1200 chars). "
+        "Keep the JSON output compact (<= ~10000 chars). "
         "Return STRICT JSON with keys: insight (string), references (array of {title,url,publisher,date})."
     )
 
@@ -790,7 +790,7 @@ def _gen_insight(
                 "must_use_source_updated_at": True,
                 "avoid_job_time": True,
                 "no_fabrication": True,
-                "json_max_chars": 1200,
+                "json_max_chars": 10000,
             },
             "inputs": input_obj,
             "candidate_public_urls": public_urls,

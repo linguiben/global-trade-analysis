@@ -266,6 +266,9 @@ ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS llm_provid
 ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS llm_model VARCHAR(80) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS llm_prompt TEXT NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public.widget_insights ADD COLUMN IF NOT EXISTS llm_error TEXT NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.widget_insights ALTER COLUMN content TYPE TEXT;
+ALTER TABLE IF EXISTS public.widget_insights ALTER COLUMN llm_prompt TYPE TEXT;
+ALTER TABLE IF EXISTS public.widget_insights ALTER COLUMN llm_error TYPE TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_widget_insights_lookup
     ON public.widget_insights(card_key, tab_key, scope, lang, created_at DESC);
@@ -305,6 +308,14 @@ CREATE INDEX IF NOT EXISTS idx_insight_generate_logs_job_created
     ON public.insight_generate_logs(job_run_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insight_generate_logs_lookup
     ON public.insight_generate_logs(card_key, tab_key, scope, lang, created_at DESC);
+ALTER TABLE IF EXISTS public.insight_generate_logs ALTER COLUMN endpoint TYPE TEXT;
+ALTER TABLE IF EXISTS public.insight_generate_logs ALTER COLUMN request_system TYPE TEXT;
+ALTER TABLE IF EXISTS public.insight_generate_logs ALTER COLUMN request_user TYPE TEXT;
+ALTER TABLE IF EXISTS public.insight_generate_logs ALTER COLUMN request_payload TYPE JSONB USING request_payload::jsonb;
+ALTER TABLE IF EXISTS public.insight_generate_logs ALTER COLUMN response_raw TYPE TEXT;
+ALTER TABLE IF EXISTS public.insight_generate_logs ALTER COLUMN parsed_content TYPE TEXT;
+ALTER TABLE IF EXISTS public.insight_generate_logs ALTER COLUMN parsed_references TYPE JSONB USING parsed_references::jsonb;
+ALTER TABLE IF EXISTS public.insight_generate_logs ALTER COLUMN error TYPE TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_widget_commentaries_lookup
     ON public.widget_commentaries(widget_key, scope, lang, created_at DESC);

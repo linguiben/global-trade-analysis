@@ -117,6 +117,12 @@ def _extract_json_object(text: str) -> dict:
         insight = mm3.group(1).strip()
         return {"insight": insight, "references": _extract_references_from_text(t)}
 
+    # Truncated JSON fallback: insight string started but not closed (e.g. MAX_TOKENS).
+    mm4 = re.search(r"\"insight\"\s*:\s*\"([\s\S]*)\Z", block, flags=re.DOTALL)
+    if mm4:
+        insight = mm4.group(1).strip()
+        return {"insight": insight, "references": _extract_references_from_text(block)}
+
     return {}
 
 
@@ -322,7 +328,8 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
             ],
             "generationConfig": {
                 "temperature": 0.2,
-                "maxOutputTokens": 1024,
+                # Allow long Insight bodies while reducing MAX_TOKENS truncation risk.
+                "maxOutputTokens": 8192,
                 "responseMimeType": "application/json",
             },
         }
@@ -361,6 +368,7 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
                 raw,
             )
             j = json.loads(raw)
+            finish_reason = (((j.get("candidates") or [])[0] or {}).get("finishReason") or "").strip()
             # candidates[0].content.parts[0].text
             text = (
                 (((j.get("candidates") or [])[0] or {}).get("content") or {}).get("parts") or [{}]
@@ -376,7 +384,7 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
                     request_payload=payload,
                     response_status=status,
                     response_raw=raw,
-                    error="empty response",
+                    error=f"empty response; finishReason={finish_reason or 'unknown'}",
                 )
             out = _extract_json_object(text)
             content = str(out.get("insight") or out.get("Insight") or out.get("output") or out.get("result") or "").strip()
@@ -402,7 +410,7 @@ def generate_insight_with_llm(*, system: str, user: str) -> LLMResult:
                     request_payload=payload,
                     response_status=status,
                     response_raw=raw,
-                    error=f"empty insight; raw={snippet}",
+                    error=f"empty insight; finishReason={finish_reason or 'unknown'}; raw={snippet}",
                 )
             return LLMResult(
                 ok=True,
