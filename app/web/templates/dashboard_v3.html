@@ -1254,6 +1254,10 @@
         setFinTab('industry');
         setFinChartType(FIN_CHART_TYPE);
 
+        // Keep a few aggregates for the executive summary (shared across tabs)
+        let finTop10Deals = 0;
+        let finTop10ValueBnUsd = 0;
+
         // Industry
         const ind = await loadFinIndustry();
         const indRows = (ind.rows || []).slice(0, 10);
@@ -1266,16 +1270,16 @@
         FIN_IND_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal, 'rgba(244,114,182,0.55)');
         document.getElementById('fin_industry_meta').innerHTML = `Source: ${ind.source} · Unit: ${ind.unit}${ind.currency}<br>Link: <a class="underline hover:text-fuchsia-300" href="${ind.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
 
-        const totalDeals = indRows.reduce((a, r) => a + Number(r.deals || 0), 0);
-        const totalVal = indRows.reduce((a, r) => a + Number(r.value_usd_bil || 0), 0);
+        finTop10Deals = indRows.reduce((a, r) => a + Number(r.deals || 0), 0);
+        finTop10ValueBnUsd = indRows.reduce((a, r) => a + Number(r.value_usd_bil || 0), 0);
         const topIndByVal = indRows.slice().sort((a,b) => Number(b.value_usd_bil||0) - Number(a.value_usd_bil||0))[0];
 
         // KPI strip (finance)
         const fk = document.getElementById('fin_kpi');
         if (fk) {
           fk.innerHTML = [
-            _pill('Deal count (top 10)', totalDeals.toLocaleString(), 'blue'),
-            _pill('Deal value (top 10, bn USD)', totalVal ? totalVal.toFixed(1) : '—', 'fuchsia'),
+            _pill('Deal count (top 10)', finTop10Deals.toLocaleString(), 'blue'),
+            _pill('Deal value (top 10, bn USD)', finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—', 'fuchsia'),
             _pill('Top industry by value', topIndByVal ? topIndByVal.industry : '—', 'amber'),
             _pill('Chart default', 'Bar', 'slate'),
           ].join('');
@@ -1315,7 +1319,7 @@
         _setExec(
           'exec_fin_obs',
           'exec_fin_rec',
-          `Top-10 industries: ${totalDeals.toLocaleString()} deals; ${totalVal ? totalVal.toFixed(1) : '—'} bn USD value (disclosed).`,
+          `Top-10 industries: ${finTop10Deals.toLocaleString()} deals; ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'} bn USD value (disclosed).`,
           `Base case: M&A activity remains uneven; expect continued selectivity—focus on where value concentrates and where it rotates.`
         );
 
