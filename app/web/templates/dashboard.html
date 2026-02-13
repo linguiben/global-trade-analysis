@@ -198,9 +198,12 @@
         <p class="mt-2 text-sm text-slate-400 leading-relaxed">M&A activity breakdown by industry and country (IMAA). Deal-level “daily biggest” is not included.</p>
         <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → M&A breakdown</div>
 
-        <div class="mt-4 flex flex-wrap gap-2 text-xs font-mono">
+        <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-mono">
           <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">By industry</button>
           <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">By country</button>
+          <span class="ml-auto text-slate-500">Chart</span>
+          <button data-chart="ring" class="fin-chart px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Ring</button>
+          <button data-chart="bar" class="fin-chart px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Bar</button>
         </div>
 
         <div class="mt-4 text-sm">
@@ -677,10 +680,31 @@
         });
       }
 
+      function setFinChartType(kind) {
+        FIN_CHART_TYPE = (kind === 'bar') ? 'bar' : 'ring';
+        document.querySelectorAll('.fin-chart').forEach(b => {
+          if (b.dataset.chart === FIN_CHART_TYPE) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+      }
+
+      function upsertFinChart(kind, id, label, labels, values, color) {
+        if (kind === 'bar') {
+          return upsertBar(id, label, labels, values, color);
+        }
+        return upsertRing(id, label, labels, values);
+      }
+
       let FIN_IND_DEALS = null;
       let FIN_IND_VALUE = null;
       let FIN_CTY_DEALS = null;
       let FIN_CTY_VALUE = null;
+      let FIN_CHART_TYPE = 'ring';
 
       async function loadFinIndustry() {
         return DASHBOARD_DATA.finance_ma_industry || { rows: [], source: 'N/A', link: '' };
@@ -855,7 +879,9 @@
 
       async function loadFinance() {
         document.querySelectorAll('.fin-tab').forEach(b => b.addEventListener('click', () => setFinTab(b.dataset.tab)));
+        document.querySelectorAll('.fin-chart').forEach(b => b.addEventListener('click', () => { setFinChartType(b.dataset.chart); loadFinance(); }));
         setFinTab('industry');
+        setFinChartType(FIN_CHART_TYPE);
 
         // Industry
         const ind = await loadFinIndustry();
@@ -865,8 +891,8 @@
         const indVal = indRows.map(r => r.value_usd_bil);
         if (FIN_IND_DEALS) FIN_IND_DEALS.destroy();
         if (FIN_IND_VALUE) FIN_IND_VALUE.destroy();
-        FIN_IND_DEALS = upsertRing('fin_industry_deals', 'Deals (count)', indLabels, indDeals);
-        FIN_IND_VALUE = upsertRing('fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal);
+        FIN_IND_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_deals', 'Deals (count)', indLabels, indDeals, 'rgba(96,165,250,0.55)');
+        FIN_IND_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal, 'rgba(244,114,182,0.55)');
         document.getElementById('fin_industry_meta').innerHTML = `Source: ${ind.source} · Unit: ${ind.unit}${ind.currency}<br>Link: <a class="underline hover:text-fuchsia-300" href="${ind.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_industry_commentary').textContent = 'Commentary (EN): top industries by deal count and by total disclosed value (IMAA public stats).';
 
@@ -879,8 +905,8 @@
         const ccy = (ctyRows[0] && ctyRows[0].currency) ? ctyRows[0].currency : '';
         if (FIN_CTY_DEALS) FIN_CTY_DEALS.destroy();
         if (FIN_CTY_VALUE) FIN_CTY_VALUE.destroy();
-        FIN_CTY_DEALS = upsertRing('fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals);
-        FIN_CTY_VALUE = upsertRing('fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal);
+        FIN_CTY_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
+        FIN_CTY_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
         document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
         document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
       }
