@@ -27,6 +27,21 @@ GEO_TO_WDI = {
     "Singapore": "SGP",
     "Hong Kong": "HKG",
 }
+ALLOWED_INSIGHT_CARD_KEYS = {"trade_flow", "wealth", "finance"}
+ALLOWED_INSIGHT_TAB_KEYS = {
+    "corridors",
+    "wci",
+    "portwatch",
+    "exim",
+    "balance",
+    "gdp_pc",
+    "cons",
+    "age",
+    "disp_pc",
+    "disp_hh",
+    "industry",
+    "country",
+}
 
 RUNNABLE_STATUSES = {"success", "failed", "skipped"}
 JOB_RUN_BY = {"scheduler", "manual", "startup", "api"}
@@ -99,6 +114,31 @@ def _as_geo_list(value: Any) -> list[str]:
         if geo not in out:
             out.append(geo)
     return out or list(ALLOWED_GEOS)
+
+
+def _canonical_scope(value: Any) -> str | None:
+    s = str(value or "").strip()
+    if not s:
+        return None
+    if s.lower() == "global":
+        return "global"
+    canonical_map = {g.lower(): g for g in ALLOWED_GEOS}
+    return canonical_map.get(s.lower())
+
+
+def _normalize_scope_list(value: Any) -> list[str]:
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        items = value
+    else:
+        items = [value]
+    out: list[str] = []
+    for item in items:
+        scope = _canonical_scope(item)
+        if scope and scope not in out:
+            out.append(scope)
+    return out
 
 
 def _parse_json_object(raw: str | None, fallback: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -208,6 +248,28 @@ def _normalize_finance(raw: dict[str, Any]) -> dict[str, Any]:
 
 def _normalize_cleanup(raw: dict[str, Any]) -> dict[str, Any]:
     return {"keep_days": _as_int(raw.get("keep_days"), settings.JOB_RETENTION_DAYS, 1, 365)}
+
+
+def _normalize_generate_homepage_insights(raw: dict[str, Any]) -> dict[str, Any]:
+    card_key = str(raw.get("card_key") or "").strip()
+    if card_key not in ALLOWED_INSIGHT_CARD_KEYS:
+        card_key = ""
+
+    tab_key = str(raw.get("tab_key") or raw.get("type") or "").strip()
+    if tab_key not in ALLOWED_INSIGHT_TAB_KEYS:
+        tab_key = ""
+
+    lang = str(raw.get("lang") or "en").strip().lower() or "en"
+
+    return {
+        "lang": lang,
+        "geo_list": _as_geo_list(raw.get("geo_list")),
+        "scope": _normalize_scope_list(raw.get("scope")),
+        "card_key": card_key,
+        "tab_key": tab_key,
+        "force_regen": _as_bool(raw.get("force_regen"), False),
+        "force_all": _as_bool(raw.get("force_all"), False),
+    }
 
 
 def _run_trade_corridors(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
@@ -625,11 +687,12 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
     Time budget:
     - Must finish within ~5 minutes. We do batching: always generate global tabs + rotate 1 geo per run.
     """
+    before_count = db.query(func.count(WidgetInsight.id)).scalar() or 0
 
-    lang = (params or {}).get("lang") or "en"
+    lang = str((params or {}).get("lang") or "en").strip() or "en"
     requested_geos = (params or {}).get("geo_list")
     geo_list = _as_geo_list(requested_geos)
-    force_regen = bool((params or {}).get("force_regen"))
+    force_regen = _as_bool((params or {}).get("force_regen"), False)
 
     # Optional manual filtering: scope/card/tab
     # - scope: 'global' or geo name (e.g. 'India') or list
@@ -638,17 +701,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
     card_filter = ((params or {}).get("card_key") or "").strip()
     tab_filter = ((params or {}).get("tab_key") or (params or {}).get("type") or "").strip()
     scope_param = (params or {}).get("scope")
-
-    def _norm_scope_list(v: Any) -> list[str]:
-        if not v:
-            return []
-        if isinstance(v, str):
-            return [v]
-        if isinstance(v, list):
-            return [str(x) for x in v if x]
-        return [str(v)]
-
-    scope_filters = _norm_scope_list(scope_param)
+    scope_filters = _normalize_scope_list(scope_param)
 
     # Batching cursor (rotate geos across runs) when scopes not manually specified
     from app.db.models import WidgetInsightJobState
@@ -662,11 +715,11 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
 
     # If caller specifies scope(s), override geo batching
     if scope_filters:
-        geos_to_process = [s for s in scope_filters if s not in ("global", "Global")]
+        geos_to_process = [s for s in scope_filters if s != "global"]
     else:
         geo_idx = int((state.value or {}).get("geo_idx") or 0)
         # If caller explicitly passed geo_list, we still only process 1 geo per run unless forced.
-        force_all = bool((params or {}).get("force_all"))
+        force_all = _as_bool((params or {}).get("force_all"), False)
         if force_all:
             geos_to_process = geo_list
         else:
@@ -681,14 +734,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             return False
         if tab_filter and tab_key != tab_filter:
             return False
-        if scope_filters and scope not in scope_filters:
+        if scope_filters and _canonical_scope(scope) not in scope_filters:
             return False
         return True
-
-    # Always include Global for geo selector-driven cards where it makes sense.
-    if "Global" not in geos_to_process and "Global" in geo_list:
-        # do not force; UI usually uses geo-specific scopes; keep rotation stable
-        pass
 
     # Public context URLs per card/tab (job-only fetch + DB cache)
     URLS = {
@@ -913,7 +961,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             job_run_id=job_run_id,
         )
 
-    return "homepage insights saved"
+    after_count = db.query(func.count(WidgetInsight.id)).scalar() or 0
+    added = int(after_count) - int(before_count)
+    return f"homepage insights saved: +{added}"
 
 
 JOB_SPECS: dict[str, JobSpec] = {
@@ -925,7 +975,7 @@ JOB_SPECS: dict[str, JobSpec] = {
         cron_expr="0 7 * * *",
         timezone=settings.TZ,
         default_params={},
-        normalize_params=lambda raw: {},
+        normalize_params=_normalize_generate_homepage_insights,
         runner=_run_generate_homepage_insights,
     ),
     "trade_corridors": JobSpec(
@@ -1164,6 +1214,7 @@ def reload_scheduler_jobs() -> None:
             trigger = CronTrigger.from_crontab(row.cron_expr, timezone=row.timezone or settings.TZ)
         except Exception:
             continue
+        misfire_grace_time = 3600 if row.job_id == "generate_homepage_insights" else 120
         scheduler.add_job(
             run_job_now,
             trigger=trigger,
@@ -1171,7 +1222,7 @@ def reload_scheduler_jobs() -> None:
             replace_existing=True,
             max_instances=1,
             coalesce=True,
-            misfire_grace_time=120,
+            misfire_grace_time=misfire_grace_time,
             args=[row.job_id, None, "scheduler"],
         )
 
@@ -1185,15 +1236,20 @@ def _schedule_startup_warmup() -> None:
     if has_any:
         return
 
+    warmup_jobs = [job_id for job_id in JOB_SPECS if job_id not in {"cleanup_snapshots", "generate_homepage_insights"}]
+    warmup_jobs.append("generate_homepage_insights")
+
     delay_seconds = 2
-    for job_id in JOB_SPECS:
-        if job_id == "cleanup_snapshots":
-            continue
+    for job_id in warmup_jobs:
+        run_at = _now_utc() + timedelta(seconds=delay_seconds)
+        if job_id == "generate_homepage_insights":
+            # Run insight generation after upstream snapshot jobs have had time to materialize.
+            run_at = _now_utc() + timedelta(seconds=max(delay_seconds, 90))
         scheduler.add_job(
             run_job_now,
             id=f"warmup:{job_id}",
             replace_existing=True,
-            next_run_time=_now_utc() + timedelta(seconds=delay_seconds),
+            next_run_time=run_at,
             args=[job_id, None, "startup"],
         )
         delay_seconds += 2

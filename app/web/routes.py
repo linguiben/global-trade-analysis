@@ -390,7 +390,10 @@ def api_trade_exim_latest_all(top_n: int | None = None, db: Session = Depends(ge
 @router.get("/jobs", response_class=HTMLResponse)
 def jobs_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
     jobs = []
-    for row in list_job_definitions(db):
+    rows = list_job_definitions(db)
+    rows.sort(key=lambda r: (0 if r.job_id == "generate_homepage_insights" else 1, r.job_id))
+
+    for row in rows:
         next_run = get_next_run_time(row.job_id)
         jobs.append(
             {
