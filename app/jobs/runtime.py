@@ -515,7 +515,6 @@ def _save_insight(
     content: str,
     reference_list: list[dict[str, Any]] | None,
     source_updated_at: datetime | None,
-    generated_by: str,
     job_run_id: int | None,
     data_digest: str,
     input_snapshot_keys: list[dict[str, Any]],
@@ -539,25 +538,138 @@ def _save_insight(
             llm_model=llm_model or "",
             llm_prompt=llm_prompt or "",
             llm_error=llm_error or "",
-            generated_by=generated_by,
+            generated_by="llm",
             job_run_id=job_run_id,
         )
     )
 
 
-def _latest_insight_digest(db: Session, *, card_key: str, tab_key: str, scope: str, lang: str) -> str | None:
-    row = (
-        db.query(WidgetInsight)
-        .filter(
-            WidgetInsight.card_key == card_key,
-            WidgetInsight.tab_key == tab_key,
-            WidgetInsight.scope == scope,
-            WidgetInsight.lang == lang,
-        )
-        .order_by(desc(WidgetInsight.created_at))
-        .first()
-    )
-    return row.data_digest if row else None
+def _latest_trade_year_row(exim_payload: dict[str, Any]) -> dict[str, Any] | None:
+    series = exim_payload.get("series")
+    if not isinstance(series, list):
+        return None
+    for row in reversed(series):
+        if not isinstance(row, dict):
+            continue
+        if row.get("export_usd") is None and row.get("import_usd") is None:
+            continue
+        ex_raw = row.get("export_usd")
+        im_raw = row.get("import_usd")
+        try:
+            ex = float(ex_raw) if ex_raw is not None else None
+        except Exception:
+            ex = None
+        try:
+            im = float(im_raw) if im_raw is not None else None
+        except Exception:
+            im = None
+        bal = None
+        if ex is not None or im is not None:
+            bal = (ex or 0) - (im or 0)
+        return {
+            "period": row.get("period"),
+            "export_usd": ex,
+            "import_usd": im,
+            "balance_usd": bal,
+        }
+    return None
+
+
+def _display_data_for_llm(card_key: str, tab_key: str, scope: str, snapshot_inputs: list[WidgetSnapshot]) -> dict[str, Any]:
+    if not snapshot_inputs:
+        return {}
+    payload = snapshot_inputs[0].payload if isinstance(snapshot_inputs[0].payload, dict) else {}
+
+    if card_key == "trade_flow":
+        if tab_key == "corridors":
+            by_geo = payload.get("by_geo")
+            row = {}
+            if isinstance(by_geo, dict):
+                g = by_geo.get("Global")
+                if isinstance(g, dict):
+                    row = g
+            return {
+                "geo": "Global",
+                "period": row.get("period"),
+                "value_usd_top": row.get("value_usd_top") or [],
+                "volume_top": row.get("volume_top") or [],
+                "export_usd": row.get("export_usd"),
+                "import_usd": row.get("import_usd"),
+                "trade_balance_usd": row.get("trade_balance_usd"),
+                "source": payload.get("source"),
+                "updated_at": payload.get("updated_at"),
+            }
+        if tab_key == "wci":
+            wci = payload.get("wci")
+            return {"wci": wci if isinstance(wci, dict) else {}, "source": payload.get("source"), "updated_at": payload.get("updated_at")}
+        if tab_key == "portwatch":
+            portwatch = payload.get("portwatch")
+            return {"portwatch": portwatch if isinstance(portwatch, dict) else {}, "source": payload.get("source"), "updated_at": payload.get("updated_at")}
+        if tab_key in {"exim", "balance"}:
+            return {
+                "geo": scope,
+                "latest": _latest_trade_year_row(payload),
+                "series": payload.get("series") if isinstance(payload.get("series"), list) else [],
+                "source": payload.get("source"),
+                "frequency": payload.get("frequency"),
+                "date": payload.get("date"),
+            }
+
+    if card_key == "wealth":
+        if tab_key in {"gdp_pc", "cons"}:
+            return {
+                "geo": scope,
+                "series": payload.get("series") if isinstance(payload.get("series"), list) else [],
+                "source": payload.get("source"),
+                "frequency": payload.get("frequency"),
+                "date": payload.get("date"),
+            }
+        if tab_key == "age":
+            return {
+                "geo": scope,
+                "rows": payload.get("rows") if isinstance(payload.get("rows"), list) else [],
+                "source": payload.get("source"),
+                "frequency": payload.get("frequency"),
+                "period": payload.get("period"),
+            }
+        if tab_key in {"disp_pc", "disp_hh"}:
+            rows = payload.get("rows")
+            row = {}
+            if isinstance(rows, dict):
+                one = rows.get(scope)
+                if isinstance(one, dict):
+                    row = one
+            return {
+                "geo": scope,
+                "row": row,
+                "source": payload.get("source"),
+                "link": payload.get("link"),
+                "note": "latest point only",
+            }
+
+    if card_key == "finance":
+        if tab_key == "industry":
+            rows = payload.get("rows")
+            if not isinstance(rows, list):
+                rows = []
+            return {
+                "rows_top10": rows[:10],
+                "source": payload.get("source"),
+                "link": payload.get("link"),
+                "unit": payload.get("unit"),
+                "currency": payload.get("currency"),
+            }
+        if tab_key == "country":
+            rows = payload.get("rows")
+            if not isinstance(rows, list):
+                rows = []
+            return {
+                "rows_top10": rows[:10],
+                "source": payload.get("source"),
+                "link": payload.get("link"),
+            }
+
+    return {"payload": payload}
 
 
 def _gen_insight(
@@ -571,7 +683,8 @@ def _gen_insight(
     extra_context: dict[str, Any],
     fallback_text: str,
     job_run_id: int | None,
-) -> None:
+) -> tuple[bool, str | None]:
+    del fallback_text
     # Build a stable input object
     input_keys = []
     for s in snapshot_inputs:
@@ -590,15 +703,11 @@ def _gen_insight(
         "tab_key": tab_key,
         "scope": scope,
         "lang": lang,
+        "display_data": _display_data_for_llm(card_key, tab_key, scope, snapshot_inputs),
         "snapshots": [{"key": s.widget_key, "scope": s.scope, "payload": s.payload} for s in snapshot_inputs],
         "extra": extra_context,
     }
     data_digest = digest_for_inputs(input_obj)
-
-    prev = _latest_insight_digest(db, card_key=card_key, tab_key=tab_key, scope=scope, lang=lang)
-    force_regen = bool((extra_context or {}).get("force_regen"))
-    if (not force_regen) and prev == data_digest:
-        return
 
     # Ask LLM to do research-style synthesis (optional). It should be grounded in provided data and cite sources.
     system = (
@@ -648,8 +757,11 @@ def _gen_insight(
     )
 
     llm = generate_insight_with_llm(system=system, user=user)
-    content = llm.content if llm.ok else fallback_text
-    references = llm.references if llm.ok else []
+    if not llm.ok:
+        return False, llm.error or "llm generation failed"
+
+    content = llm.content
+    references = llm.references if isinstance(llm.references, list) else []
 
     # Prefer the freshest source_updated_at among inputs (NOT fetched_at)
     src_at = None
@@ -666,15 +778,15 @@ def _gen_insight(
         content=content,
         reference_list=references,
         source_updated_at=src_at,
-        generated_by="llm" if llm.ok else "template",
         job_run_id=job_run_id,
         data_digest=data_digest,
         input_snapshot_keys=input_keys,
-        llm_provider=llm.provider if llm.ok else llm.provider,
-        llm_model=llm.model if llm.ok else llm.model,
+        llm_provider=llm.provider,
+        llm_model=llm.model,
         llm_prompt=user,
-        llm_error=(llm.error or "") if not llm.ok else "",
+        llm_error="",
     )
+    return True, None
 
 
 def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
@@ -687,7 +799,18 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
     Time budget:
     - Must finish within ~5 minutes. We do batching: always generate global tabs + rotate 1 geo per run.
     """
-    before_count = db.query(func.count(WidgetInsight.id)).scalar() or 0
+    # Keep widget_insights strictly LLM-only.
+    purged_non_llm = (
+        db.query(WidgetInsight)
+        .filter(WidgetInsight.generated_by != "llm")
+        .delete(synchronize_session=False)
+    )
+    before_count = (
+        db.query(func.count(WidgetInsight.id))
+        .filter(WidgetInsight.generated_by == "llm")
+        .scalar()
+        or 0
+    )
 
     lang = str((params or {}).get("lang") or "en").strip() or "en"
     requested_geos = (params or {}).get("geo_list")
@@ -784,12 +907,40 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             blocks.append(to_prompt_block(row))
         return blocks
 
+    llm_attempted = 0
+    llm_failed: list[str] = []
+
+    def gen(
+        *,
+        card_key: str,
+        tab_key: str,
+        scope: str,
+        lang: str,
+        snapshot_inputs: list[WidgetSnapshot],
+        extra_context: dict[str, Any],
+        fallback_text: str,
+    ) -> None:
+        nonlocal llm_attempted
+        llm_attempted += 1
+        ok, err = _gen_insight(
+            db,
+            card_key=card_key,
+            tab_key=tab_key,
+            scope=scope,
+            lang=lang,
+            snapshot_inputs=snapshot_inputs,
+            extra_context=extra_context,
+            fallback_text=fallback_text,
+            job_run_id=job_run_id,
+        )
+        if not ok:
+            llm_failed.append(f"{card_key}/{tab_key}/{scope}: {err or 'llm generation failed'}")
+
     # Trade (global tabs)
     trade = get_latest_snapshot(db, "trade_corridors", "global")
     if trade:
         if want("trade_flow", "corridors", "global"):
-            _gen_insight(
-                db,
+            gen(
                 card_key="trade_flow",
                 tab_key="corridors",
                 scope="global",
@@ -797,11 +948,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 snapshot_inputs=[trade],
                 extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at, "public_contexts": ctx("trade_flow", "corridors"), "force_regen": force_regen},
                 fallback_text="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
-                job_run_id=job_run_id,
             )
         if want("trade_flow", "wci", "global"):
-            _gen_insight(
-                db,
+            gen(
                 card_key="trade_flow",
                 tab_key="wci",
                 scope="global",
@@ -809,11 +958,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 snapshot_inputs=[trade],
                 extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy", "public_contexts": ctx("trade_flow", "wci"), "force_regen": force_regen},
                 fallback_text="Freight (WCI) reflects shipping-cost pressure; treat it as a proxy signal rather than customs trade value.",
-                job_run_id=job_run_id,
             )
         if want("trade_flow", "portwatch", "global"):
-            _gen_insight(
-                db,
+            gen(
                 card_key="trade_flow",
                 tab_key="portwatch",
                 scope="global",
@@ -821,7 +968,6 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 snapshot_inputs=[trade],
                 extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy", "public_contexts": ctx("trade_flow", "portwatch"), "force_regen": force_regen},
                 fallback_text="PortWatch signals are nowcast/proxy indicators; always present them with explicit caveats.",
-                job_run_id=job_run_id,
             )
 
     # Trade per-geo tabs
@@ -830,8 +976,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
         if not exim:
             continue
         if want("trade_flow", "exim", geo):
-            _gen_insight(
-                db,
+            gen(
                 card_key="trade_flow",
                 tab_key="exim",
                 scope=geo,
@@ -839,11 +984,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 snapshot_inputs=[exim],
                 extra_context={"geo": geo, "source": exim.source, "source_updated_at": exim.source_updated_at, "public_contexts": ctx("trade_flow", "exim"), "force_regen": force_regen},
                 fallback_text="Export/import snapshot is available; compare latest vs prior year to spot inflection points.",
-                job_run_id=job_run_id,
             )
         if want("trade_flow", "balance", geo):
-            _gen_insight(
-                db,
+            gen(
                 card_key="trade_flow",
                 tab_key="balance",
                 scope=geo,
@@ -851,7 +994,6 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 snapshot_inputs=[exim],
                 extra_context={"geo": geo, "definition": "balance = export - import", "public_contexts": ctx("trade_flow", "exim"), "force_regen": force_regen},
                 fallback_text="Trade balance is computed as export minus import; watch for large year-over-year moves.",
-                job_run_id=job_run_id,
             )
 
     # Wealth per-geo
@@ -860,8 +1002,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
         w = get_latest_snapshot(db, "wealth_indicators_5y", geo)
         if w:
             if want("wealth", "gdp_pc", geo):
-                _gen_insight(
-                    db,
+                gen(
                     card_key="wealth",
                     tab_key="gdp_pc",
                     scope=geo,
@@ -869,11 +1010,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                     snapshot_inputs=[w],
                     extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at, "public_contexts": ctx("wealth", "gdp_pc"), "force_regen": force_regen},
                     fallback_text="GDP per capita (nominal USD) can be noisy due to FX; interpret trends with caveats.",
-                    job_run_id=job_run_id,
                 )
             if want("wealth", "cons", geo):
-                _gen_insight(
-                    db,
+                gen(
                     card_key="wealth",
                     tab_key="cons",
                     scope=geo,
@@ -881,13 +1020,11 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                     snapshot_inputs=[w],
                     extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at, "public_contexts": ctx("wealth", "cons"), "force_regen": force_regen},
                     fallback_text="Consumption can proxy domestic-demand momentum; compare with trade signals for context.",
-                    job_run_id=job_run_id,
                 )
 
         age = get_latest_snapshot(db, "wealth_age_structure_latest", geo)
         if age and want("wealth", "age", geo):
-            _gen_insight(
-                db,
+            gen(
                 card_key="wealth",
                 tab_key="age",
                 scope=geo,
@@ -895,7 +1032,6 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 snapshot_inputs=[age],
                 extra_context={"geo": geo, "source": age.source, "source_updated_at": age.source_updated_at, "public_contexts": ctx("wealth", "age"), "force_regen": force_regen},
                 fallback_text="Age structure provides demographic context; treat it as population composition (not income-by-age).",
-                job_run_id=job_run_id,
             )
 
         # Disposable insights should follow geo (scope)
@@ -908,8 +1044,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 if isinstance(rows, dict):
                     row = rows.get(geo)
             if want("wealth", "disp_pc", geo):
-                _gen_insight(
-                    db,
+                gen(
                     card_key="wealth",
                     tab_key="disp_pc",
                     scope=geo,
@@ -917,11 +1052,9 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                     snapshot_inputs=[disp],
                     extra_context={"geo": geo, "disposable_row": row, "source": disp.source, "source_updated_at": disp.source_updated_at, "public_contexts": ctx("wealth", "disp_pc"), "force_regen": force_regen},
                     fallback_text="Disposable income is best-effort: WPR scrape + World Bank proxy fallback; treat as indicative latest point.",
-                    job_run_id=job_run_id,
                 )
             if want("wealth", "disp_hh", geo):
-                _gen_insight(
-                    db,
+                gen(
                     card_key="wealth",
                     tab_key="disp_hh",
                     scope=geo,
@@ -929,14 +1062,12 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                     snapshot_inputs=[disp],
                     extra_context={"geo": geo, "disposable_row": row, "source": disp.source, "source_updated_at": disp.source_updated_at, "public_contexts": ctx("wealth", "disp_hh"), "force_regen": force_regen},
                     fallback_text="Household disposable values may be missing; consider OECD SDMX where coverage exists.",
-                    job_run_id=job_run_id,
                 )
 
     # Finance (global)
     fin_i = get_latest_snapshot(db, "finance_ma_industry", "global")
     if fin_i and want("finance", "industry", "global"):
-        _gen_insight(
-            db,
+        gen(
             card_key="finance",
             tab_key="industry",
             scope="global",
@@ -944,13 +1075,11 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             snapshot_inputs=[fin_i],
             extra_context={"source": fin_i.source, "source_updated_at": fin_i.source_updated_at, "public_contexts": ctx("finance", "industry"), "force_regen": force_regen},
             fallback_text="Industry ranking reflects disclosed-deal reporting; treat as directional concentration of activity.",
-            job_run_id=job_run_id,
         )
 
     fin_c = get_latest_snapshot(db, "finance_ma_country", "global")
     if fin_c and want("finance", "country", "global"):
-        _gen_insight(
-            db,
+        gen(
             card_key="finance",
             tab_key="country",
             scope="global",
@@ -958,12 +1087,25 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             snapshot_inputs=[fin_c],
             extra_context={"source": fin_c.source, "source_updated_at": fin_c.source_updated_at, "public_contexts": ctx("finance", "country"), "force_regen": force_regen},
             fallback_text="Country narratives may mix currencies; use normalized FX conversion for strict comparisons.",
-            job_run_id=job_run_id,
         )
 
-    after_count = db.query(func.count(WidgetInsight.id)).scalar() or 0
+    after_count = (
+        db.query(func.count(WidgetInsight.id))
+        .filter(WidgetInsight.generated_by == "llm")
+        .scalar()
+        or 0
+    )
     added = int(after_count) - int(before_count)
-    return f"homepage insights saved: +{added}"
+    failed = len(llm_failed)
+    if llm_attempted > 0 and failed == llm_attempted:
+        raise RuntimeError("all LLM insight generations failed: " + " | ".join(llm_failed[:5]))
+    msg = (
+        f"homepage insights saved: +{added}, attempted={llm_attempted}, "
+        f"failed={failed}, purged_non_llm={int(purged_non_llm)}"
+    )
+    if llm_failed:
+        msg += " (partial llm failures logged)"
+    return msg
 
 
 JOB_SPECS: dict[str, JobSpec] = {
