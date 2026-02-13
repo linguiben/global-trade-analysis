@@ -283,6 +283,109 @@ def api_finance_ma_country(db: Session = Depends(get_db)):
     return {"ok": False, "error": "snapshot not ready", "rows": []}
 
 
+@router.get("/map/trade-flow", response_class=HTMLResponse)
+def trade_flow_map(request: Request):
+    return templates.TemplateResponse(
+        "trade_flow_map.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            "mode": "all",
+            "mode_label": "ALL SCOPES",
+        },
+    )
+
+
+@router.get("/map/trade-flow-top5", response_class=HTMLResponse)
+def trade_flow_map_top5(request: Request):
+    return templates.TemplateResponse(
+        "trade_flow_map.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            "mode": "top5",
+            "mode_label": "TOP 5",
+        },
+    )
+
+
+@router.get("/api/trade/exim-latest-all")
+def api_trade_exim_latest_all(top_n: int | None = None, db: Session = Depends(get_db)):
+    """Aggregate latest export/import per geo from DB snapshots.
+
+    This is a DB-reader API (no external fetch). Intended for map overlays.
+    """
+
+    def latest_point(payload: dict[str, Any]) -> tuple[int | None, float | None, float | None]:
+        # payload from fetch_trade_exim_5y: {series:[{period,export_usd,import_usd},...]}
+        series = payload.get("series") or []
+        if not isinstance(series, list):
+            return None, None, None
+        for row in reversed(series):
+            if not isinstance(row, dict):
+                continue
+            ex = row.get("export_usd")
+            im = row.get("import_usd")
+            if ex is None and im is None:
+                continue
+            y = row.get("period")
+            try:
+                y = int(y) if y is not None else None
+            except Exception:
+                y = None
+            try:
+                exv = float(ex) if ex is not None else None
+            except Exception:
+                exv = None
+            try:
+                imv = float(im) if im is not None else None
+            except Exception:
+                imv = None
+            return y, exv, imv
+        return None, None, None
+
+    rows: list[dict[str, Any]] = []
+    years = []
+    for geo in list(ALLOWED_GEOS):
+        snap = get_latest_snapshot(db, "trade_exim_5y", geo)
+        if not snap or not isinstance(snap.payload, dict):
+            continue
+        y, ex, im = latest_point(snap.payload)
+        if y:
+            years.append(y)
+        bal = None
+        if ex is not None or im is not None:
+            bal = (ex or 0.0) - (im or 0.0)
+        rows.append(
+            {
+                "geo": geo,
+                "year": y,
+                "export_usd": ex,
+                "import_usd": im,
+                "balance_usd": bal,
+                "source": snap.source,
+                "source_updated_at": snap.source_updated_at.isoformat() if snap.source_updated_at else None,
+            }
+        )
+
+    # Optional top_n selection by absolute exports (fallback to import, then balance)
+    if top_n and top_n > 0:
+        def keyfn(r: dict[str, Any]) -> float:
+            v = r.get("export_usd")
+            if v is None:
+                v = r.get("import_usd")
+            if v is None:
+                v = abs(r.get("balance_usd") or 0.0)
+            return float(v or 0.0)
+
+        rows = sorted(rows, key=keyfn, reverse=True)[: int(top_n)]
+
+    year_mode = max(years) if years else None
+    return {"ok": True, "year": year_mode, "rows": rows}
+
+
 @router.get("/jobs", response_class=HTMLResponse)
 def jobs_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
     jobs = []
@@ -370,7 +473,10 @@ def _register_base_path_aliases() -> None:
         {"path": f"{base}/", "endpoint": homepage, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_slash"},
         {"path": f"{base}/health", "endpoint": health, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_health"},
         {"path": f"{base}/v2", "endpoint": homepage_v2, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v2"},
+        {"path": f"{base}/map/trade-flow", "endpoint": trade_flow_map, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_trade_flow_map"},
+        {"path": f"{base}/map/trade-flow-top5", "endpoint": trade_flow_map_top5, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_trade_flow_map_top5"},
         {"path": f"{base}/api/trade/corridors", "endpoint": api_trade_corridors, "methods": ["GET"], "name": "prefixed_api_trade_corridors"},
+        {"path": f"{base}/api/trade/exim-latest-all", "endpoint": api_trade_exim_latest_all, "methods": ["GET"], "name": "prefixed_api_trade_exim_latest_all"},
         {"path": f"{base}/api/trade/refresh", "endpoint": api_trade_refresh, "methods": ["POST"], "name": "prefixed_api_trade_refresh"},
         {"path": f"{base}/api/trade/exim-5y", "endpoint": api_trade_exim_5y, "methods": ["GET"], "name": "prefixed_api_trade_exim_5y"},
         {"path": f"{base}/api/wealth/proxy", "endpoint": api_wealth_proxy, "methods": ["GET"], "name": "prefixed_api_wealth_proxy"},

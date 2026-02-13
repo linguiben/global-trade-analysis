@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GTA · Trade Flow Map</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{
+      --bg0:#071023;
+      --bg1:#0b1631;
+      --card: rgba(30,41,59,.62);
+      --stroke: rgba(51,65,85,1);
+      --text:#e5e7eb;
+      --muted:#93a4b8;
+      --accent:#22c55e;
+      --accent2:#60a5fa;
+      --warn:#f59e0b;
+    }
+    body{background: radial-gradient(1200px 600px at 18% 12%, rgba(96,165,250,.10), transparent 55%),
+                   radial-gradient(900px 500px at 84% 14%, rgba(34,197,94,.10), transparent 50%),
+                   radial-gradient(900px 650px at 50% 96%, rgba(245,158,11,.08), transparent 55%),
+                   linear-gradient(180deg, var(--bg0), var(--bg1));
+         color: var(--text);
+         min-height: 100vh;
+    }
+    .card{background: var(--card); border:1px solid var(--stroke); backdrop-filter: blur(10px);}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .mapWrap{position:relative;}
+    .grain:before{content:""; position:absolute; inset:0; pointer-events:none; opacity:.14; mix-blend-mode: overlay;
+      background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.35"/></svg>');
+      background-size: 180px 180px;
+    }
+    .btn{border:1px solid rgba(148,163,184,.25); background: rgba(2,6,23,.35);} 
+    .btn:hover{background: rgba(2,6,23,.52);} 
+    .pill{border:1px solid rgba(148,163,184,.22); background: rgba(2,6,23,.28);} 
+    .legendDot{width:10px;height:10px;border-radius:999px;display:inline-block;}
+
+    /* SVG cosmetics */
+    #mapSvg { width: 100%; height: 100%; }
+    .land { fill: rgba(148,163,184,.13); stroke: rgba(148,163,184,.18); stroke-width: 0.6; }
+    .graticule { fill:none; stroke: rgba(148,163,184,.08); stroke-width: .7; }
+    .bubble { fill: rgba(34,197,94,.35); stroke: rgba(34,197,94,.65); stroke-width: 1; }
+    .bubble.import { fill: rgba(96,165,250,.30); stroke: rgba(96,165,250,.70);} 
+    .bubble.zero { fill: rgba(148,163,184,.12); stroke: rgba(148,163,184,.35);} 
+    .label { fill: rgba(226,232,240,.92); font-size: 11px; paint-order: stroke; stroke: rgba(2,6,23,.85); stroke-width: 3px; }
+    .hud { position:absolute; left: 14px; top: 14px; }
+  </style>
+</head>
+<body class="p-4 md:p-7">
+  {% set base = base_path or '' %}
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div class="space-y-1">
+        <div class="inline-flex items-center gap-2">
+          <span class="mono text-xs text-slate-400">GTA / Map</span>
+          <span class="mono text-[11px] text-slate-500">DB-only · no on-demand external fetch</span>
+        </div>
+        <h1 class="text-2xl font-semibold tracking-tight">Trade Flow · World View</h1>
+        <p class="text-sm text-slate-400 max-w-2xl">A lightweight POC map overlay: circles sized by latest export/import for the tracked scopes. Designed to work with current DB snapshots.</p>
+      </div>
+      <div class="text-xs text-slate-400 mono text-right">
+        <div>{{ now }}</div>
+        <div class="mt-1 flex justify-end gap-2">
+          <a class="btn px-3 py-1 rounded-lg" href="{{ base }}/">Dashboard</a>
+          <a class="btn px-3 py-1 rounded-lg" href="{{ base }}/map/trade-flow-top5">Top 5 view</a>
+          <a class="btn px-3 py-1 rounded-lg" href="{{ base }}/jobs">Jobs</a>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <aside class="lg:col-span-4 card rounded-2xl p-4 md:p-5 relative overflow-hidden">
+        <div class="grain"></div>
+        <div class="relative">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-sm font-semibold">Overlay controls</div>
+              <div class="text-xs text-slate-400 mt-1">Metric · scale · selection</div>
+            </div>
+            <div class="pill mono text-[11px] px-2 py-1 rounded-lg">{{ mode_label }}</div>
+          </div>
+
+          <div class="mt-4 space-y-4">
+            <div>
+              <div class="text-xs text-slate-400 mb-2">Metric</div>
+              <div class="flex flex-wrap gap-2">
+                <button class="btn px-3 py-2 rounded-xl text-xs font-semibold" data-metric="export">Exports</button>
+                <button class="btn px-3 py-2 rounded-xl text-xs font-semibold" data-metric="import">Imports</button>
+                <button class="btn px-3 py-2 rounded-xl text-xs font-semibold" data-metric="balance">Balance</button>
+              </div>
+              <div class="text-[11px] text-slate-500 mt-2">Balance = export − import (latest year available in each snapshot)</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div class="pill rounded-2xl p-3">
+                <div class="text-[11px] text-slate-400">Points loaded</div>
+                <div class="text-lg font-semibold" id="statCount">—</div>
+              </div>
+              <div class="pill rounded-2xl p-3">
+                <div class="text-[11px] text-slate-400">Latest year (mode)</div>
+                <div class="text-lg font-semibold" id="statYear">—</div>
+              </div>
+            </div>
+
+            <div class="pill rounded-2xl p-3">
+              <div class="text-[11px] text-slate-400">Legend</div>
+              <div class="mt-2 text-xs text-slate-300 space-y-2">
+                <div class="flex items-center gap-2"><span class="legendDot" style="background: rgba(34,197,94,.75)"></span> Exports bubble</div>
+                <div class="flex items-center gap-2"><span class="legendDot" style="background: rgba(96,165,250,.75)"></span> Imports bubble</div>
+                <div class="flex items-center gap-2"><span class="legendDot" style="background: rgba(148,163,184,.55)"></span> Missing / zero</div>
+              </div>
+            </div>
+
+            <div class="text-xs text-slate-500">
+              Data source: <span class="mono">trade_exim_5y</span> snapshots (per geo). This is a POC: not bilateral corridors yet.
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="lg:col-span-8 card rounded-2xl p-3 md:p-4 mapWrap relative overflow-hidden">
+        <div class="grain"></div>
+        <div class="relative" style="height: 72vh; min-height: 520px;">
+          <svg id="mapSvg" aria-label="World map"></svg>
+          <div class="hud card rounded-xl px-3 py-2 mono text-[11px] text-slate-300/90">
+            <div id="hudLine1">Loading snapshots…</div>
+            <div id="hudLine2" class="text-slate-400">{{ base }}/api/trade/exim-latest-all</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- D3 + TopoJSON (CDN is fine for POC; data is still DB-only) -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+
+  <script>
+    const BASE = {{ (base_path or '').rstrip('/')|tojson }};
+    const MODE = {{ mode|tojson }}; // 'all' | 'top5'
+
+    const state = {
+      metric: 'export',
+      points: [],
+      year: null,
+      centroids: {},
+      world: null
+    };
+
+    function fmtUSD(v){
+      if (v === null || v === undefined || isNaN(v)) return '—';
+      const abs = Math.abs(v);
+      const sign = v < 0 ? '-' : '';
+      if (abs >= 1e12) return sign + '$' + (abs/1e12).toFixed(2) + 'T';
+      if (abs >= 1e9)  return sign + '$' + (abs/1e9).toFixed(2) + 'B';
+      if (abs >= 1e6)  return sign + '$' + (abs/1e6).toFixed(2) + 'M';
+      return sign + '$' + abs.toFixed(0);
+    }
+
+    async function loadAll(){
+      const [world, centroids, data] = await Promise.all([
+        fetch('/static/world-110m.json').then(r=>r.json()),
+        fetch('/static/country_centroids.json').then(r=>r.json()),
+        fetch(`${BASE}/api/trade/exim-latest-all${MODE==='top5'?'?top_n=5':''}`).then(r=>r.json())
+      ]);
+      state.world = world;
+      state.centroids = centroids;
+      state.points = (data.rows || []).map(x => ({
+        geo: x.geo,
+        export_usd: x.export_usd,
+        import_usd: x.import_usd,
+        balance_usd: x.balance_usd,
+        year: x.year
+      }));
+      state.year = data.year || null;
+      document.getElementById('statCount').textContent = String(state.points.length);
+      document.getElementById('statYear').textContent = state.year ? String(state.year) : '—';
+      document.getElementById('hudLine1').textContent = `Loaded ${state.points.length} scope(s) · metric=${state.metric}`;
+
+      render();
+    }
+
+    function valueOf(p){
+      if (state.metric === 'export') return p.export_usd;
+      if (state.metric === 'import') return p.import_usd;
+      return p.balance_usd;
+    }
+
+    function colorClass(p){
+      const v = valueOf(p);
+      if (!v) return 'zero';
+      if (state.metric === 'import') return 'import';
+      if (state.metric === 'balance') return v >= 0 ? '' : 'import';
+      return '';
+    }
+
+    function render(){
+      const svg = d3.select('#mapSvg');
+      svg.selectAll('*').remove();
+
+      const { width, height } = svg.node().getBoundingClientRect();
+      svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+      const projection = d3.geoNaturalEarth1()
+        .translate([width/2, height/2])
+        .scale(Math.min(width, height) * 0.33);
+
+      const path = d3.geoPath(projection);
+
+      const land = topojson.feature(state.world, state.world.objects.countries);
+
+      // subtle graticule
+      const graticule = d3.geoGraticule10();
+      svg.append('path').attr('class','graticule').attr('d', path(graticule));
+
+      svg.append('g')
+        .selectAll('path')
+        .data(land.features)
+        .join('path')
+        .attr('class','land')
+        .attr('d', path);
+
+      // Compute sizes
+      const vals = state.points.map(valueOf).filter(v => v !== null && v !== undefined && !isNaN(v));
+      const maxV = d3.max(vals.map(v=>Math.abs(v))) || 1;
+      const r = d3.scaleSqrt().domain([0, maxV]).range([0, Math.min(width, height) * 0.085]);
+
+      const pts = state.points
+        .map(p => {
+          const c = state.centroids[p.geo];
+          if (!c) return null;
+          const xy = projection([c.lon, c.lat]);
+          if (!xy) return null;
+          return { ...p, x: xy[0], y: xy[1] };
+        })
+        .filter(Boolean);
+
+      const g = svg.append('g');
+
+      // bubbles
+      g.selectAll('circle')
+        .data(pts)
+        .join('circle')
+        .attr('class', d => `bubble ${colorClass(d)}`)
+        .attr('cx', d=>d.x)
+        .attr('cy', d=>d.y)
+        .attr('r', d=>{
+          const v = valueOf(d);
+          return v ? r(Math.abs(v)) : 3;
+        })
+        .attr('opacity', d => valueOf(d) ? 0.92 : 0.55)
+        .on('mouseenter', (ev, d) => {
+          const v = valueOf(d);
+          document.getElementById('hudLine1').textContent = `${d.geo} · ${state.metric}=${fmtUSD(v)} · year=${d.year ?? '—'}`;
+        })
+        .on('mouseleave', () => {
+          document.getElementById('hudLine1').textContent = `Loaded ${state.points.length} scope(s) · metric=${state.metric}`;
+        });
+
+      // labels
+      g.selectAll('text')
+        .data(pts)
+        .join('text')
+        .attr('class','label')
+        .attr('x', d=>d.x)
+        .attr('y', d=>d.y)
+        .attr('text-anchor','middle')
+        .attr('dy', d => {
+          const v = valueOf(d);
+          const rr = v ? r(Math.abs(v)) : 3;
+          return -(rr + 6);
+        })
+        .text(d => d.geo);
+    }
+
+    function hookControls(){
+      document.querySelectorAll('[data-metric]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.metric = btn.getAttribute('data-metric');
+          document.getElementById('hudLine1').textContent = `Loaded ${state.points.length} scope(s) · metric=${state.metric}`;
+          render();
+        });
+      });
+
+      window.addEventListener('resize', () => render());
+    }
+
+    hookControls();
+    loadAll().catch(err => {
+      console.error(err);
+      document.getElementById('hudLine1').textContent = 'Failed to load map/data. Check snapshots + API.';
+    });
+  </script>
+</body>
+</html>
