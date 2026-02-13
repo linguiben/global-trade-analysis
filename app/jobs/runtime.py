@@ -631,32 +631,59 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
     geo_list = _as_geo_list(requested_geos)
     force_regen = bool((params or {}).get("force_regen"))
 
-    # Batching cursor (rotate geos across runs)
+    # Optional manual filtering: scope/card/tab
+    # - scope: 'global' or geo name (e.g. 'India') or list
+    # - card_key: 'trade_flow'|'wealth'|'finance'
+    # - tab_key: the tab key shown on homepage
+    card_filter = ((params or {}).get("card_key") or "").strip()
+    tab_filter = ((params or {}).get("tab_key") or (params or {}).get("type") or "").strip()
+    scope_param = (params or {}).get("scope")
+
+    def _norm_scope_list(v: Any) -> list[str]:
+        if not v:
+            return []
+        if isinstance(v, str):
+            return [v]
+        if isinstance(v, list):
+            return [str(x) for x in v if x]
+        return [str(v)]
+
+    scope_filters = _norm_scope_list(scope_param)
+
+    # Batching cursor (rotate geos across runs) when scopes not manually specified
     from app.db.models import WidgetInsightJobState
 
     cursor_key = f"generate_homepage_insights:{lang}"  # one cursor per language
-    state = (
-        db.query(WidgetInsightJobState)
-        .filter(WidgetInsightJobState.key == cursor_key)
-        .first()
-    )
+    state = db.query(WidgetInsightJobState).filter(WidgetInsightJobState.key == cursor_key).first()
     if state is None:
         state = WidgetInsightJobState(key=cursor_key, value={"geo_idx": 0})
         db.add(state)
         db.flush()
 
-    geo_idx = int((state.value or {}).get("geo_idx") or 0)
-
-    # If caller explicitly passed geo_list, we still only process 1 geo per run unless forced.
-    force_all = bool((params or {}).get("force_all"))
-    if force_all:
-        geos_to_process = geo_list
+    # If caller specifies scope(s), override geo batching
+    if scope_filters:
+        geos_to_process = [s for s in scope_filters if s not in ("global", "Global")]
     else:
-        if not geo_list:
-            geo_list = list(ALLOWED_GEOS)
-        geos_to_process = [geo_list[geo_idx % len(geo_list)]]
-        state.value = {"geo_idx": (geo_idx + 1) % len(geo_list)}
-        state.updated_at = _now_utc()
+        geo_idx = int((state.value or {}).get("geo_idx") or 0)
+        # If caller explicitly passed geo_list, we still only process 1 geo per run unless forced.
+        force_all = bool((params or {}).get("force_all"))
+        if force_all:
+            geos_to_process = geo_list
+        else:
+            if not geo_list:
+                geo_list = list(ALLOWED_GEOS)
+            geos_to_process = [geo_list[geo_idx % len(geo_list)]]
+            state.value = {"geo_idx": (geo_idx + 1) % len(geo_list)}
+            state.updated_at = _now_utc()
+
+    def want(card_key: str, tab_key: str, scope: str) -> bool:
+        if card_filter and card_key != card_filter:
+            return False
+        if tab_filter and tab_key != tab_filter:
+            return False
+        if scope_filters and scope not in scope_filters:
+            return False
+        return True
 
     # Always include Global for geo selector-driven cards where it makes sense.
     if "Global" not in geos_to_process and "Global" in geo_list:
@@ -712,98 +739,105 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
     # Trade (global tabs)
     trade = get_latest_snapshot(db, "trade_corridors", "global")
     if trade:
-        _gen_insight(
-            db,
-            card_key="trade_flow",
-            tab_key="corridors",
-            scope="global",
-            lang=lang,
-            snapshot_inputs=[trade],
-            extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at, "public_contexts": ctx("trade_flow", "corridors"), "force_regen": force_regen},
-            fallback_text="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
-            job_run_id=job_run_id,
-        )
-        _gen_insight(
-            db,
-            card_key="trade_flow",
-            tab_key="wci",
-            scope="global",
-            lang=lang,
-            snapshot_inputs=[trade],
-            extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy", "public_contexts": ctx("trade_flow", "wci"), "force_regen": force_regen},
-            fallback_text="Freight (WCI) reflects shipping-cost pressure; treat it as a proxy signal rather than customs trade value.",
-            job_run_id=job_run_id,
-        )
-        _gen_insight(
-            db,
-            card_key="trade_flow",
-            tab_key="portwatch",
-            scope="global",
-            lang=lang,
-            snapshot_inputs=[trade],
-            extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy", "public_contexts": ctx("trade_flow", "portwatch"), "force_regen": force_regen},
-            fallback_text="PortWatch signals are nowcast/proxy indicators; always present them with explicit caveats.",
-            job_run_id=job_run_id,
-        )
+        if want("trade_flow", "corridors", "global"):
+            _gen_insight(
+                db,
+                card_key="trade_flow",
+                tab_key="corridors",
+                scope="global",
+                lang=lang,
+                snapshot_inputs=[trade],
+                extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at, "public_contexts": ctx("trade_flow", "corridors"), "force_regen": force_regen},
+                fallback_text="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
+                job_run_id=job_run_id,
+            )
+        if want("trade_flow", "wci", "global"):
+            _gen_insight(
+                db,
+                card_key="trade_flow",
+                tab_key="wci",
+                scope="global",
+                lang=lang,
+                snapshot_inputs=[trade],
+                extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy", "public_contexts": ctx("trade_flow", "wci"), "force_regen": force_regen},
+                fallback_text="Freight (WCI) reflects shipping-cost pressure; treat it as a proxy signal rather than customs trade value.",
+                job_run_id=job_run_id,
+            )
+        if want("trade_flow", "portwatch", "global"):
+            _gen_insight(
+                db,
+                card_key="trade_flow",
+                tab_key="portwatch",
+                scope="global",
+                lang=lang,
+                snapshot_inputs=[trade],
+                extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy", "public_contexts": ctx("trade_flow", "portwatch"), "force_regen": force_regen},
+                fallback_text="PortWatch signals are nowcast/proxy indicators; always present them with explicit caveats.",
+                job_run_id=job_run_id,
+            )
 
     # Trade per-geo tabs
     for geo in geos_to_process:
         exim = get_latest_snapshot(db, "trade_exim_5y", geo)
         if not exim:
             continue
-        _gen_insight(
-            db,
-            card_key="trade_flow",
-            tab_key="exim",
-            scope=geo,
-            lang=lang,
-            snapshot_inputs=[exim],
-            extra_context={"geo": geo, "source": exim.source, "source_updated_at": exim.source_updated_at, "public_contexts": ctx("trade_flow", "exim")},
-            fallback_text="Export/import snapshot is available; compare latest vs prior year to spot inflection points.",
-            job_run_id=job_run_id,
-        )
-        _gen_insight(
-            db,
-            card_key="trade_flow",
-            tab_key="balance",
-            scope=geo,
-            lang=lang,
-            snapshot_inputs=[exim],
-            extra_context={"geo": geo, "definition": "balance = export - import", "public_contexts": ctx("trade_flow", "exim")},
-            fallback_text="Trade balance is computed as export minus import; watch for large year-over-year moves.",
-            job_run_id=job_run_id,
-        )
+        if want("trade_flow", "exim", geo):
+            _gen_insight(
+                db,
+                card_key="trade_flow",
+                tab_key="exim",
+                scope=geo,
+                lang=lang,
+                snapshot_inputs=[exim],
+                extra_context={"geo": geo, "source": exim.source, "source_updated_at": exim.source_updated_at, "public_contexts": ctx("trade_flow", "exim"), "force_regen": force_regen},
+                fallback_text="Export/import snapshot is available; compare latest vs prior year to spot inflection points.",
+                job_run_id=job_run_id,
+            )
+        if want("trade_flow", "balance", geo):
+            _gen_insight(
+                db,
+                card_key="trade_flow",
+                tab_key="balance",
+                scope=geo,
+                lang=lang,
+                snapshot_inputs=[exim],
+                extra_context={"geo": geo, "definition": "balance = export - import", "public_contexts": ctx("trade_flow", "exim"), "force_regen": force_regen},
+                fallback_text="Trade balance is computed as export minus import; watch for large year-over-year moves.",
+                job_run_id=job_run_id,
+            )
 
     # Wealth per-geo
     disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
     for geo in geos_to_process:
         w = get_latest_snapshot(db, "wealth_indicators_5y", geo)
         if w:
-            _gen_insight(
-                db,
-                card_key="wealth",
-                tab_key="gdp_pc",
-                scope=geo,
-                lang=lang,
-                snapshot_inputs=[w],
-                extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at, "public_contexts": ctx("wealth", "gdp_pc")},
-                fallback_text="GDP per capita (nominal USD) can be noisy due to FX; interpret trends with caveats.",
-                job_run_id=job_run_id,
-            )
-            _gen_insight(
-                db,
-                card_key="wealth",
-                tab_key="cons",
-                scope=geo,
-                lang=lang,
-                snapshot_inputs=[w],
-                extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at, "public_contexts": ctx("wealth", "cons")},
-                fallback_text="Consumption can proxy domestic-demand momentum; compare with trade signals for context.",
-                job_run_id=job_run_id,
-            )
+            if want("wealth", "gdp_pc", geo):
+                _gen_insight(
+                    db,
+                    card_key="wealth",
+                    tab_key="gdp_pc",
+                    scope=geo,
+                    lang=lang,
+                    snapshot_inputs=[w],
+                    extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at, "public_contexts": ctx("wealth", "gdp_pc"), "force_regen": force_regen},
+                    fallback_text="GDP per capita (nominal USD) can be noisy due to FX; interpret trends with caveats.",
+                    job_run_id=job_run_id,
+                )
+            if want("wealth", "cons", geo):
+                _gen_insight(
+                    db,
+                    card_key="wealth",
+                    tab_key="cons",
+                    scope=geo,
+                    lang=lang,
+                    snapshot_inputs=[w],
+                    extra_context={"geo": geo, "source": w.source, "source_updated_at": w.source_updated_at, "public_contexts": ctx("wealth", "cons"), "force_regen": force_regen},
+                    fallback_text="Consumption can proxy domestic-demand momentum; compare with trade signals for context.",
+                    job_run_id=job_run_id,
+                )
 
         age = get_latest_snapshot(db, "wealth_age_structure_latest", geo)
-        if age:
+        if age and want("wealth", "age", geo):
             _gen_insight(
                 db,
                 card_key="wealth",
@@ -811,7 +845,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 scope=geo,
                 lang=lang,
                 snapshot_inputs=[age],
-                extra_context={"geo": geo, "source": age.source, "source_updated_at": age.source_updated_at, "public_contexts": ctx("wealth", "age")},
+                extra_context={"geo": geo, "source": age.source, "source_updated_at": age.source_updated_at, "public_contexts": ctx("wealth", "age"), "force_regen": force_regen},
                 fallback_text="Age structure provides demographic context; treat it as population composition (not income-by-age).",
                 job_run_id=job_run_id,
             )
@@ -825,32 +859,34 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 rows = disp.payload.get("rows")
                 if isinstance(rows, dict):
                     row = rows.get(geo)
-            _gen_insight(
-                db,
-                card_key="wealth",
-                tab_key="disp_pc",
-                scope=geo,
-                lang=lang,
-                snapshot_inputs=[disp],
-                extra_context={"geo": geo, "disposable_row": row, "source": disp.source, "source_updated_at": disp.source_updated_at, "public_contexts": ctx("wealth", "disp_pc")},
-                fallback_text="Disposable income is best-effort: WPR scrape + World Bank proxy fallback; treat as indicative latest point.",
-                job_run_id=job_run_id,
-            )
-            _gen_insight(
-                db,
-                card_key="wealth",
-                tab_key="disp_hh",
-                scope=geo,
-                lang=lang,
-                snapshot_inputs=[disp],
-                extra_context={"geo": geo, "disposable_row": row, "source": disp.source, "source_updated_at": disp.source_updated_at, "public_contexts": ctx("wealth", "disp_hh")},
-                fallback_text="Household disposable values may be missing; consider OECD SDMX where coverage exists.",
-                job_run_id=job_run_id,
-            )
+            if want("wealth", "disp_pc", geo):
+                _gen_insight(
+                    db,
+                    card_key="wealth",
+                    tab_key="disp_pc",
+                    scope=geo,
+                    lang=lang,
+                    snapshot_inputs=[disp],
+                    extra_context={"geo": geo, "disposable_row": row, "source": disp.source, "source_updated_at": disp.source_updated_at, "public_contexts": ctx("wealth", "disp_pc"), "force_regen": force_regen},
+                    fallback_text="Disposable income is best-effort: WPR scrape + World Bank proxy fallback; treat as indicative latest point.",
+                    job_run_id=job_run_id,
+                )
+            if want("wealth", "disp_hh", geo):
+                _gen_insight(
+                    db,
+                    card_key="wealth",
+                    tab_key="disp_hh",
+                    scope=geo,
+                    lang=lang,
+                    snapshot_inputs=[disp],
+                    extra_context={"geo": geo, "disposable_row": row, "source": disp.source, "source_updated_at": disp.source_updated_at, "public_contexts": ctx("wealth", "disp_hh"), "force_regen": force_regen},
+                    fallback_text="Household disposable values may be missing; consider OECD SDMX where coverage exists.",
+                    job_run_id=job_run_id,
+                )
 
     # Finance (global)
     fin_i = get_latest_snapshot(db, "finance_ma_industry", "global")
-    if fin_i:
+    if fin_i and want("finance", "industry", "global"):
         _gen_insight(
             db,
             card_key="finance",
@@ -858,13 +894,13 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             scope="global",
             lang=lang,
             snapshot_inputs=[fin_i],
-            extra_context={"source": fin_i.source, "source_updated_at": fin_i.source_updated_at, "public_contexts": ctx("finance", "industry")},
+            extra_context={"source": fin_i.source, "source_updated_at": fin_i.source_updated_at, "public_contexts": ctx("finance", "industry"), "force_regen": force_regen},
             fallback_text="Industry ranking reflects disclosed-deal reporting; treat as directional concentration of activity.",
             job_run_id=job_run_id,
         )
 
     fin_c = get_latest_snapshot(db, "finance_ma_country", "global")
-    if fin_c:
+    if fin_c and want("finance", "country", "global"):
         _gen_insight(
             db,
             card_key="finance",
@@ -872,7 +908,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             scope="global",
             lang=lang,
             snapshot_inputs=[fin_c],
-            extra_context={"source": fin_c.source, "source_updated_at": fin_c.source_updated_at, "public_contexts": ctx("finance", "country")},
+            extra_context={"source": fin_c.source, "source_updated_at": fin_c.source_updated_at, "public_contexts": ctx("finance", "country"), "force_regen": force_regen},
             fallback_text="Country narratives may mix currencies; use normalized FX conversion for strict comparisons.",
             job_run_id=job_run_id,
         )

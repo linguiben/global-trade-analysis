@@ -72,13 +72,79 @@
                 <button class="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold" type="submit">Update</button>
               </form>
             </td>
-            <td class="py-3 pr-3 min-w-[260px]">
-              <div class="text-slate-400 text-xs">Manual run params (JSON override)</div>
-              <form method="post" action="{{ base }}/jobs/run" class="space-y-2 mt-2">
-                <input type="hidden" name="job_id" value="{{ job.job_id }}">
-                <textarea class="w-full rounded p-2 text-xs font-mono h-24" name="params_json">{}</textarea>
-                <button class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-xs font-semibold" type="submit">Run Now</button>
-              </form>
+            <td class="py-3 pr-3 min-w-[320px]">
+              {% if job.job_id == 'generate_homepage_insights' %}
+                <div class="text-slate-400 text-xs">Manual run (select scope + card + tab)</div>
+                <form method="post" action="{{ base }}/jobs/run" class="space-y-2 mt-2" onsubmit="syncInsightParams()">
+                  <input type="hidden" name="job_id" value="{{ job.job_id }}">
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-xs text-slate-400">Scope</label>
+                      <select id="ins_scope" class="w-full rounded px-2 py-1 text-xs" style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0;">
+                        <option value="global">global</option>
+                        <option value="Global">Global</option>
+                        <option value="India">India</option>
+                        <option value="Mexico">Mexico</option>
+                        <option value="Singapore">Singapore</option>
+                        <option value="Hong Kong">Hong Kong</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs text-slate-400">Lang</label>
+                      <select id="ins_lang" class="w-full rounded px-2 py-1 text-xs" style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0;">
+                        <option value="en" selected>en</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-xs text-slate-400">Card</label>
+                      <select id="ins_card" class="w-full rounded px-2 py-1 text-xs" style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0;">
+                        <option value="">(all)</option>
+                        <option value="trade_flow">trade_flow</option>
+                        <option value="wealth">wealth</option>
+                        <option value="finance">finance</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs text-slate-400">Tab (label key)</label>
+                      <select id="ins_tab" class="w-full rounded px-2 py-1 text-xs" style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0;">
+                        <option value="">(all)</option>
+                        <option value="corridors">corridors</option>
+                        <option value="wci">wci</option>
+                        <option value="portwatch">portwatch</option>
+                        <option value="exim">exim</option>
+                        <option value="balance">balance</option>
+                        <option value="gdp_pc">gdp_pc</option>
+                        <option value="cons">cons</option>
+                        <option value="age">age</option>
+                        <option value="disp_pc">disp_pc</option>
+                        <option value="disp_hh">disp_hh</option>
+                        <option value="industry">industry</option>
+                        <option value="country">country</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <label class="inline-flex items-center gap-2 text-xs text-slate-300">
+                    <input id="ins_force_regen" type="checkbox">
+                    force_regen (ignore digest, regenerate)
+                  </label>
+
+                  <div class="text-slate-400 text-xs">Params JSON (auto-generated)</div>
+                  <textarea id="ins_params_json" class="w-full rounded p-2 text-xs font-mono h-24" name="params_json">{}</textarea>
+                  <button class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-xs font-semibold" type="submit">Run Now</button>
+                </form>
+              {% else %}
+                <div class="text-slate-400 text-xs">Manual run params (JSON override)</div>
+                <form method="post" action="{{ base }}/jobs/run" class="space-y-2 mt-2">
+                  <input type="hidden" name="job_id" value="{{ job.job_id }}">
+                  <textarea class="w-full rounded p-2 text-xs font-mono h-24" name="params_json">{}</textarea>
+                  <button class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-xs font-semibold" type="submit">Run Now</button>
+                </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -114,5 +180,35 @@
       </table>
     </section>
   </div>
+  <script>
+    function syncInsightParams() {
+      try {
+        const scope = document.getElementById('ins_scope')?.value || 'global';
+        const lang = document.getElementById('ins_lang')?.value || 'en';
+        const card = document.getElementById('ins_card')?.value || '';
+        const tab = document.getElementById('ins_tab')?.value || '';
+        const forceRegen = !!document.getElementById('ins_force_regen')?.checked;
+
+        const p = { lang: lang, scope: scope };
+        if (card) p.card_key = card;
+        if (tab) p.tab_key = tab;
+        if (forceRegen) p.force_regen = true;
+
+        document.getElementById('ins_params_json').value = JSON.stringify(p);
+      } catch (e) {
+        // best-effort: do nothing
+      }
+      return true;
+    }
+
+    // keep textarea in sync on change
+    window.addEventListener('load', () => {
+      ['ins_scope','ins_lang','ins_card','ins_tab','ins_force_regen'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', syncInsightParams);
+      });
+      syncInsightParams();
+    });
+  </script>
 </body>
 </html>
