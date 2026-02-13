@@ -467,9 +467,9 @@ def _seed_job_definitions(db: Session) -> None:
             )
             continue
 
-        # Migrate legacy default schedules to the new every-10-minute cadence.
-        legacy = LEGACY_CRON_BY_JOB.get(spec.job_id)
-        if legacy and row.cron_expr == legacy:
+        # Enforce every-10-minute cadence (product requirement).
+        # If you later need per-job cadence, relax this to only migrate legacy schedules.
+        if row.cron_expr != spec.cron_expr:
             row.cron_expr = spec.cron_expr
     db.commit()
 

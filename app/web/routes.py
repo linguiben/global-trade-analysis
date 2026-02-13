@@ -143,12 +143,16 @@ def homepage_v2(request: Request, db: Session = Depends(get_db)):
     # Reuse dashboard snapshot freshness to display a consistent "Data updated at".
     _, latest_at, _ = _dashboard_payload(db)
 
+    dashboard_data, latest_at, is_stale = _dashboard_payload(db)
+
     return templates.TemplateResponse(
         "dashboard_v2.html",
         {
             "request": request,
             "base_path": settings.BASE_PATH.rstrip("/"),
+            "dashboard_data": dashboard_data,
             "data_updated_at": _fmt_utc(latest_at),
+            "data_is_stale": is_stale,
         },
     )
 

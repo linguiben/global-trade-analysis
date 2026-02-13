@@ -281,10 +281,16 @@
   </div>
 
   <script>
-    // For v2 page: keep sample static and network-free.
-    // Later, bind to internal APIs only (which read DB snapshots), e.g.
-    // fetch(`${basePath}/api/wealth/age-structure-latest?geo=${geo}`)
-    const ageStructure = {"0-14": 17.9, "15-64": 68.1, "65+": 14.0};
+    // v2 page reads DB snapshot via server-side render (dashboard_data).
+    // No external fetch; later we can add internal API calls for interactivity.
+    const DASHBOARD_DATA = {{ dashboard_data | tojson }};
+    const geo = 'Global';
+    const agePayload = (DASHBOARD_DATA.wealth_age_structure_by_geo || {})[geo] || { rows: [] };
+    const ageStructure = {};
+    for (const r of (agePayload.rows || [])) {
+      if (r && r.label != null && r.pct != null) ageStructure[String(r.label)] = Number(r.pct);
+    }
+
     const ageBars = document.getElementById('ageBars');
     for (const [label, val] of Object.entries(ageStructure)) {
       const row = document.createElement('div');
