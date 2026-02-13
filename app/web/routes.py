@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from app.web import widget_data
@@ -124,6 +124,7 @@ def homepage(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/v2", response_class=HTMLResponse)
+@router.head("/v2")
 def homepage_v2(request: Request, db: Session = Depends(get_db)):
     """New v2 homepage sample.
 
@@ -246,6 +247,12 @@ def api_finance_ma_country(db: Session = Depends(get_db)):
 
 @router.get("/jobs", response_class=HTMLResponse)
 def jobs_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
+
+
+@router.head("/jobs")
+def jobs_head():
+    # Some clients (and link-preview bots) probe with HEAD first.
+    return Response(status_code=200)
     jobs = []
     for row in list_job_definitions(db):
         next_run = get_next_run_time(row.job_id)
@@ -321,10 +328,10 @@ def _register_base_path_aliases() -> None:
         return
 
     alias_specs = [
-        {"path": base, "endpoint": homepage, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_homepage_root"},
-        {"path": f"{base}/", "endpoint": homepage, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_homepage_slash"},
-        {"path": f"{base}/health", "endpoint": health, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_health"},
-        {"path": f"{base}/v2", "endpoint": homepage_v2, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_homepage_v2"},
+        {"path": base, "endpoint": homepage, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_root"},
+        {"path": f"{base}/", "endpoint": homepage, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_slash"},
+        {"path": f"{base}/health", "endpoint": health, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_health"},
+        {"path": f"{base}/v2", "endpoint": homepage_v2, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v2"},
         {"path": f"{base}/api/trade/corridors", "endpoint": api_trade_corridors, "methods": ["GET"], "name": "prefixed_api_trade_corridors"},
         {"path": f"{base}/api/trade/refresh", "endpoint": api_trade_refresh, "methods": ["POST"], "name": "prefixed_api_trade_refresh"},
         {"path": f"{base}/api/trade/exim-5y", "endpoint": api_trade_exim_5y, "methods": ["GET"], "name": "prefixed_api_trade_exim_5y"},
@@ -335,7 +342,8 @@ def _register_base_path_aliases() -> None:
         {"path": f"{base}/api/wealth/age-structure-latest", "endpoint": api_wealth_age_structure_latest, "methods": ["GET"], "name": "prefixed_api_wealth_age_structure_latest"},
         {"path": f"{base}/api/finance/ma/industry", "endpoint": api_finance_ma_industry, "methods": ["GET"], "name": "prefixed_api_finance_ma_industry"},
         {"path": f"{base}/api/finance/ma/country", "endpoint": api_finance_ma_country, "methods": ["GET"], "name": "prefixed_api_finance_ma_country"},
-        {"path": f"{base}/jobs", "endpoint": jobs_page, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_jobs_page"},
+        {"path": f"{base}/jobs", "endpoint": jobs_page, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_jobs_page"},
+        {"path": f"{base}/jobs", "endpoint": jobs_head, "methods": ["HEAD"], "response_class": HTMLResponse, "name": "prefixed_jobs_head"},
         {"path": f"{base}/jobs/run", "endpoint": jobs_run, "methods": ["POST"], "name": "prefixed_jobs_run"},
         {"path": f"{base}/jobs/update", "endpoint": jobs_update, "methods": ["POST"], "name": "prefixed_jobs_update"},
     ]
