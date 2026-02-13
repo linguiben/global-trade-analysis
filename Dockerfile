@@ -18,4 +18,4 @@ COPY init.py ./
 
 EXPOSE 9000
 
-CMD ["bash", "-lc", "python /app/init.py && uvicorn app.main:app --host 0.0.0.0 --port 9000"]
+CMD ["bash", "-lc", "python /app/init.py && uvicorn app.main:app --host 0.0.0.0 --port 9000 --log-level info"]

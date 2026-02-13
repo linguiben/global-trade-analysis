@@ -273,6 +273,39 @@ CREATE INDEX IF NOT EXISTS idx_widget_insights_lookup
 CREATE INDEX IF NOT EXISTS idx_widget_insights_digest
     ON public.widget_insights(card_key, tab_key, scope, lang, data_digest);
 
+-- Detailed per-attempt logs for LLM Insight generation.
+CREATE TABLE IF NOT EXISTS public.insight_generate_logs (
+    id BIGSERIAL PRIMARY KEY,
+    job_run_id BIGINT NULL REFERENCES public.job_runs(id) ON DELETE SET NULL,
+    card_key VARCHAR(80) NOT NULL,
+    tab_key VARCHAR(80) NOT NULL,
+    scope VARCHAR(80) NOT NULL DEFAULT 'global',
+    lang VARCHAR(16) NOT NULL DEFAULT 'en',
+
+    llm_provider VARCHAR(40) NOT NULL DEFAULT '',
+    llm_model VARCHAR(80) NOT NULL DEFAULT '',
+    endpoint TEXT NOT NULL DEFAULT '',
+
+    request_system TEXT NOT NULL DEFAULT '',
+    request_user TEXT NOT NULL DEFAULT '',
+    request_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+
+    response_status INTEGER NULL,
+    response_raw TEXT NOT NULL DEFAULT '',
+    parsed_content TEXT NOT NULL DEFAULT '',
+    parsed_references JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    ok BOOLEAN NOT NULL DEFAULT FALSE,
+    error TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.insight_generate_logs IS 'Per-attempt logs for LLM Insight generation, including full prompt payload and full raw response.';
+CREATE INDEX IF NOT EXISTS idx_insight_generate_logs_job_created
+    ON public.insight_generate_logs(job_run_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_insight_generate_logs_lookup
+    ON public.insight_generate_logs(card_key, tab_key, scope, lang, created_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_widget_commentaries_lookup
     ON public.widget_commentaries(widget_key, scope, lang, created_at DESC);
 

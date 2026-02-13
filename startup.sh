@@ -27,6 +27,37 @@ container_name() {
   docker inspect -f '{{.Name}}' "$container_id" 2>/dev/null | sed 's#^/##'
 }
 
+detect_uvicorn_log_level() {
+  local container_id="$1"
+  local cmd_json
+  cmd_json="$(docker inspect -f '{{json .Config.Cmd}}' "$container_id" 2>/dev/null || true)"
+  if echo "$cmd_json" | grep -Eiq -- '--log-level[= ]info'; then
+    echo "INFO"
+    return 0
+  fi
+  if echo "$cmd_json" | grep -Eiq -- '--log-level[= ]debug'; then
+    echo "DEBUG"
+    return 0
+  fi
+  if echo "$cmd_json" | grep -Eiq -- '--log-level[= ]warning'; then
+    echo "WARNING"
+    return 0
+  fi
+  if echo "$cmd_json" | grep -Eiq -- '--log-level[= ]error'; then
+    echo "ERROR"
+    return 0
+  fi
+  if echo "$cmd_json" | grep -Eiq -- '--log-level[= ]critical'; then
+    echo "CRITICAL"
+    return 0
+  fi
+  if echo "$cmd_json" | grep -Eiq -- '--log-level[= ]trace'; then
+    echo "TRACE"
+    return 0
+  fi
+  echo "INFO (default)"
+}
+
 db_id="$(get_container_id db)"
 web_id="$(get_container_id web)"
 
@@ -34,8 +65,13 @@ if is_container_running "$db_id" && is_container_running "$web_id"; then
   db_name="$(container_name "$db_id")"
   web_name="$(container_name "$web_id")"
   echo "Project is already started. Running containers: ${db_name}, ${web_name}."
+  echo "Web log level: $(detect_uvicorn_log_level "$web_id")"
   exit 0
 fi
 
 docker compose up -d --build
+web_id="$(get_container_id web)"
+if [ -n "$web_id" ]; then
+  echo "Web log level: $(detect_uvicorn_log_level "$web_id")"
+fi
 echo "Project started."

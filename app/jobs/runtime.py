@@ -12,7 +12,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.models import JobDefinition, JobRun, WidgetInsight, WidgetSnapshot
+from app.db.models import InsightGenerateLog, JobDefinition, JobRun, WidgetInsight, WidgetSnapshot
 from app.db.session import SessionLocal
 from app.web import widget_data
 from app.web.imaa import fetch_ma_by_country, fetch_ma_by_industry
@@ -544,6 +544,50 @@ def _save_insight(
     )
 
 
+def _save_insight_generate_log(
+    db: Session,
+    *,
+    card_key: str,
+    tab_key: str,
+    scope: str,
+    lang: str,
+    job_run_id: int | None,
+    llm_provider: str,
+    llm_model: str,
+    endpoint: str,
+    request_system: str,
+    request_user: str,
+    request_payload: dict[str, Any] | None,
+    response_status: int | None,
+    response_raw: str,
+    parsed_content: str,
+    parsed_references: list[dict[str, Any]] | None,
+    ok: bool,
+    error: str,
+) -> None:
+    db.add(
+        InsightGenerateLog(
+            job_run_id=job_run_id,
+            card_key=card_key,
+            tab_key=tab_key,
+            scope=scope,
+            lang=lang,
+            llm_provider=llm_provider or "",
+            llm_model=llm_model or "",
+            endpoint=endpoint or "",
+            request_system=request_system or "",
+            request_user=request_user or "",
+            request_payload=request_payload or {},
+            response_status=response_status,
+            response_raw=response_raw or "",
+            parsed_content=parsed_content or "",
+            parsed_references=parsed_references or [],
+            ok=bool(ok),
+            error=error or "",
+        )
+    )
+
+
 def _latest_trade_year_row(exim_payload: dict[str, Any]) -> dict[str, Any] | None:
     series = exim_payload.get("series")
     if not isinstance(series, list):
@@ -757,6 +801,26 @@ def _gen_insight(
     )
 
     llm = generate_insight_with_llm(system=system, user=user)
+    _save_insight_generate_log(
+        db,
+        card_key=card_key,
+        tab_key=tab_key,
+        scope=scope,
+        lang=lang,
+        job_run_id=job_run_id,
+        llm_provider=llm.provider,
+        llm_model=llm.model,
+        endpoint=llm.endpoint,
+        request_system=system,
+        request_user=user,
+        request_payload=llm.request_payload,
+        response_status=llm.response_status,
+        response_raw=llm.response_raw,
+        parsed_content=llm.content,
+        parsed_references=llm.references,
+        ok=llm.ok,
+        error=llm.error or "",
+    )
     if not llm.ok:
         return False, llm.error or "llm generation failed"
 

@@ -143,6 +143,41 @@ class WidgetInsightJobState(Base):
     )
 
 
+class InsightGenerateLog(Base):
+    __tablename__ = "insight_generate_logs"
+
+    id: Mapped[int] = mapped_column(BIGINT, primary_key=True, autoincrement=True)
+    job_run_id: Mapped[int | None] = mapped_column(
+        BIGINT, ForeignKey("job_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    card_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    tab_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    scope: Mapped[str] = mapped_column(String(80), nullable=False, default="global")
+    lang: Mapped[str] = mapped_column(String(16), nullable=False, default="en")
+
+    llm_provider: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    llm_model: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    request_system: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    request_user: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    request_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+    response_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_raw: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    parsed_content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    parsed_references: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+
+    ok: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class WidgetInsight(Base):
     __tablename__ = "widget_insights"
 
