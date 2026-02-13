@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GTA · v2</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0b0c10;
+      --panel: rgba(127,127,127,0.10);
+      --border: rgba(127,127,127,0.25);
+      --text: rgba(255,255,255,0.90);
+      --muted: rgba(255,255,255,0.62);
+      --good: #28c76f;
+      --accent: #5b8cff;
+      --radius: 14px;
+      --shadow: 0 12px 30px rgba(0,0,0,0.35);
+    }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.45;
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(91,140,255,0.30), transparent 60%),
+                  radial-gradient(900px 700px at 85% 35%, rgba(40,199,111,0.22), transparent 55%),
+                  radial-gradient(800px 600px at 40% 90%, rgba(255,159,67,0.16), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+    }
+
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 22px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .brand { display: flex; align-items: baseline; gap: 10px; }
+    .brand h1 { margin: 0; font-size: 18px; letter-spacing: 0.3px; }
+    .brand .sub { font-size: 12px; color: var(--muted); }
+
+    .freshness {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 8px 10px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--good);
+      box-shadow: 0 0 0 6px rgba(40,199,111,0.12);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 12px 0 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px 14px 12px;
+    }
+
+    .kpi-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .kpi-value { font-size: 22px; font-weight: 700; letter-spacing: -0.2px; margin-bottom: 8px; }
+    .kpi-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+
+    .pill { padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border); background: rgba(0,0,0,0.18); }
+
+    .grid { display: grid; grid-template-columns: 260px minmax(0, 1fr) 360px; gap: 12px; }
+
+    .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .panel-title h2 { margin: 0; font-size: 14px; letter-spacing: 0.2px; }
+    .panel-title .hint { font-size: 12px; color: var(--muted); }
+
+    .filters .group { margin-bottom: 12px; }
+    .filters label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+    .filters select {
+      width: 100%;
+      padding: 10px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+      color: var(--text);
+      outline: none;
+    }
+    .filters .note { font-size: 12px; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 12px; }
+
+    .stage { display: grid; grid-template-rows: 1fr auto; gap: 12px; }
+
+    .stage .big {
+      min-height: 420px;
+      background: linear-gradient(180deg, rgba(91,140,255,0.16), rgba(0,0,0,0.06));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,0.18);
+      font-weight: 800;
+      font-size: 46px;
+      letter-spacing: 0.8px;
+      transform: rotate(-8deg);
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .big .desc { position: relative; z-index: 1; font-size: 12px; color: var(--muted); max-width: 720px; }
+    .stage .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .insights ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .insights li { padding: 10px 10px; border-radius: 12px; background: rgba(0,0,0,0.18); border: 1px solid var(--border); }
+    .insights .tag { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); margin-bottom: 6px; }
+    .insights .t { font-size: 13px; margin: 0 0 4px; font-weight: 650; }
+    .insights .m { font-size: 12px; color: var(--muted); margin: 0; }
+
+    .meta-block {
+      margin-top: 12px;
+      border-top: 1px dashed var(--border);
+      padding-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      display: grid;
+      gap: 6px;
+    }
+    .meta-block b { color: rgba(255,255,255,0.82); font-weight: 650; }
+    .meta-block a { color: rgba(91,140,255,0.95); text-decoration: none; }
+    .meta-block a:hover { text-decoration: underline; }
+
+    .age { display: grid; gap: 10px; }
+    .age .bar { display: grid; grid-template-columns: 84px 1fr 46px; align-items: center; gap: 10px; }
+    .age .label { font-size: 12px; color: rgba(255,255,255,0.84); }
+    .age .track { height: 12px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid var(--border); overflow: hidden; }
+    .age .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, rgba(91,140,255,0.95), rgba(91,140,255,0.25)); width: 0%; }
+    .age .val { font-size: 12px; color: var(--muted); text-align: right; }
+
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stage .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <h1>GTA · v2</h1>
+        <div class="sub">Jobs → DB snapshots → internal APIs (read-only)</div>
+      </div>
+      <div class="freshness" title="Derived from latest WidgetSnapshot.fetched_at">
+        <span class="dot" aria-hidden="true"></span>
+        <span>Data updated at: <b>{{ data_updated_at }}</b></span>
+      </div>
+    </div>
+
+    <section class="kpis" aria-label="KPI Strip">
+      <div class="card">
+        <div class="kpi-title">Global GDP growth (forecast)</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-meta"><span class="pill">Source: snapshot</span><span class="pill">Period: —</span></div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">Trade volume growth</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-meta"><span class="pill">Source: snapshot</span><span class="pill">Period: —</span></div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">M&A deal value</div>
+        <div class="kpi-value">—</div>
+        <div class="kpi-meta"><span class="pill">Source: IMAA (snapshot)</span><span class="pill">Period: —</span></div>
+      </div>
+      <div class="card">
+        <div class="kpi-title">Governance</div>
+        <div class="kpi-value" style="font-size:18px">OK</div>
+        <div class="kpi-meta"><span class="pill">No external fetch</span><span class="pill">Job-only acquisition</span></div>
+      </div>
+    </section>
+
+    <section class="grid" aria-label="Dashboard Grid">
+      <aside class="card filters">
+        <div class="panel-title"><h2>Filters</h2><span class="hint">(sample)</span></div>
+        <div class="group">
+          <label for="geo">Geo</label>
+          <select id="geo">
+            <option value="Global">Global</option>
+            <option value="India">India</option>
+            <option value="Mexico">Mexico</option>
+            <option value="Singapore">Singapore</option>
+            <option value="Hong Kong">Hong Kong</option>
+          </select>
+        </div>
+        <div class="note">
+          <b>Rule:</b> UI must NOT call any external domains. External data acquisition must be scheduled jobs that write DB snapshots.
+        </div>
+      </aside>
+
+      <main class="stage">
+        <section class="big" aria-label="Main Stage">
+          <div class="panel-title" style="position:relative; z-index:1; margin-bottom:12px;">
+            <h2>Trade corridors / Flow map (placeholder)</h2>
+            <span class="hint">fed by WidgetSnapshot</span>
+          </div>
+          <div class="desc">
+            This v2 page is built to align with the 2026-02-13 plan: no external API calls from web pages; jobs materialize data into DB; APIs are read-only.
+          </div>
+          <div class="placeholder">MAIN STAGE</div>
+
+          <div class="meta-block">
+            <div><b>Source</b>: (example) IMF PortWatch (proxy) · <a href="#" onclick="return false">https://portwatch.imf.org/...</a></div>
+            <div><b>Period</b>: daily · as-of {{ data_updated_at }}</div>
+            <div><b>Definition</b>: proxy/nowcast indicator (not customs statistics)</div>
+            <div><b>Caveats</b>: model-based nowcast; interpret as activity proxy</div>
+          </div>
+        </section>
+
+        <section class="row">
+          <section class="card" aria-label="Wealth Age Structure">
+            <div class="panel-title"><h2>Wealth → Age (Population age structure)</h2><span class="hint">Bar chart</span></div>
+            <div class="age" id="ageBars"></div>
+            <div class="meta-block">
+              <div><b>Source</b>: World Bank WDI · <a href="#" onclick="return false">https://api.worldbank.org/</a></div>
+              <div><b>Period</b>: latest year (annual)</div>
+              <div><b>Definition</b>: % of total population by age bands (0–14 / 15–64 / 65+)</div>
+              <div><b>Note</b>: This is <b>NOT</b> income/expenditure/wealth-by-age; it is population age structure.</div>
+            </div>
+          </section>
+
+          <section class="card" aria-label="Wealth GDP/Consumption">
+            <div class="panel-title"><h2>Wealth → GDP pc / Consumption</h2><span class="hint">placeholder</span></div>
+            <p style="margin:0; color:var(--muted); font-size:12px;">Bind to internal APIs that read DB snapshots (e.g., wealth_indicators_5y).</p>
+            <div class="meta-block">
+              <div><b>Source</b>: World Bank WDI</div>
+              <div><b>Period</b>: last 5 years (annual)</div>
+              <div><b>Unit</b>: current US$</div>
+              <div><b>Definitions</b>: GDP pc = NY.GDP.PCAP.CD; Consumption = NE.CON.PRVT.CD</div>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <aside class="card insights" aria-label="Insights">
+        <div class="panel-title"><h2>Insights (stored commentary)</h2><span class="hint">DB-only</span></div>
+        <ul>
+          <li><span class="tag">Roadmap</span><p class="t">Each bullet must have a citation</p><p class="m">Citations live in references[] in snapshot/commentary tables.</p></li>
+          <li><span class="tag">Commentary</span><p class="t">No publication reference → data-only commentary</p><p class="m">Enforced by generation process.</p></li>
+          <li><span class="tag">Governance</span><p class="t">No external fetch on web request</p><p class="m">Jobs only; APIs are DB readers.</p></li>
+        </ul>
+      </aside>
+    </section>
+
+    <p style="margin: 14px 0 0; color: rgba(255,255,255,0.45); font-size: 12px;">
+      Route: <code>{{ base_path }}/v2</code> · This page is an implementation of <code>app/web/test/20260213_t1.html</code> style.
+    </p>
+  </div>
+
+  <script>
+    // For v2 page: keep sample static and network-free.
+    // Later, bind to internal APIs only (which read DB snapshots), e.g.
+    // fetch(`${basePath}/api/wealth/age-structure-latest?geo=${geo}`)
+    const ageStructure = {"0-14": 17.9, "15-64": 68.1, "65+": 14.0};
+    const ageBars = document.getElementById('ageBars');
+    for (const [label, val] of Object.entries(ageStructure)) {
+      const row = document.createElement('div');
+      row.className = 'bar';
+      const elLabel = document.createElement('div');
+      elLabel.className = 'label';
+      elLabel.textContent = label;
+      const track = document.createElement('div');
+      track.className = 'track';
+      const fill = document.createElement('div');
+      fill.className = 'fill';
+      fill.style.width = Math.max(0, Math.min(100, val)) + '%';
+      track.appendChild(fill);
+      const elVal = document.createElement('div');
+      elVal.className = 'val';
+      elVal.textContent = val.toFixed(1) + '%';
+      row.appendChild(elLabel);
+      row.appendChild(track);
+      row.appendChild(elVal);
+      ageBars.appendChild(row);
+    }
+  </script>
+</body>
+</html>

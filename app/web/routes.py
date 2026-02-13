@@ -123,6 +123,36 @@ def homepage(request: Request, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/v2", response_class=HTMLResponse)
+def homepage_v2(request: Request, db: Session = Depends(get_db)):
+    """New v2 homepage sample.
+
+    Constraints (must-haves):
+    - Web pages MUST NOT call external APIs directly.
+    - External data acquisition MUST be done via scheduled jobs.
+    - This page may call *internal* APIs that read DB snapshots (future enhancement).
+
+    For now we render a static implementation based on app/web/test/20260213_t1.html.
+    """
+    # Still record visit for consistency.
+    ip = _client_ip(request)
+    ua = request.headers.get("user-agent", "")[:512]
+    db.add(UserVisitLog(ip=ip, user_agent=ua))
+    db.commit()
+
+    # Reuse dashboard snapshot freshness to display a consistent "Data updated at".
+    _, latest_at, _ = _dashboard_payload(db)
+
+    return templates.TemplateResponse(
+        "dashboard_v2.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "data_updated_at": _fmt_utc(latest_at),
+        },
+    )
+
+
 @router.get("/health", response_class=HTMLResponse)
 def health():
     return "OK"
@@ -290,6 +320,7 @@ def _register_base_path_aliases() -> None:
         {"path": base, "endpoint": homepage, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_homepage_root"},
         {"path": f"{base}/", "endpoint": homepage, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_homepage_slash"},
         {"path": f"{base}/health", "endpoint": health, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_health"},
+        {"path": f"{base}/v2", "endpoint": homepage_v2, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_homepage_v2"},
         {"path": f"{base}/api/trade/corridors", "endpoint": api_trade_corridors, "methods": ["GET"], "name": "prefixed_api_trade_corridors"},
         {"path": f"{base}/api/trade/refresh", "endpoint": api_trade_refresh, "methods": ["POST"], "name": "prefixed_api_trade_refresh"},
         {"path": f"{base}/api/trade/exim-5y", "endpoint": api_trade_exim_5y, "methods": ["GET"], "name": "prefixed_api_trade_exim_5y"},
