@@ -247,12 +247,6 @@ def api_finance_ma_country(db: Session = Depends(get_db)):
 
 @router.get("/jobs", response_class=HTMLResponse)
 def jobs_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
-
-
-@router.head("/jobs")
-def jobs_head():
-    # Some clients (and link-preview bots) probe with HEAD first.
-    return Response(status_code=200)
     jobs = []
     for row in list_job_definitions(db):
         next_run = get_next_run_time(row.job_id)
@@ -320,6 +314,12 @@ def jobs_update(
     status = "updated" if ok else "failed"
     msg = f"{job_id}: {status} ({detail})"
     return RedirectResponse(url=_jobs_redirect_url(request, msg), status_code=303)
+
+
+@router.head("/jobs")
+def jobs_head():
+    # Some clients (and link-preview bots) probe with HEAD first.
+    return Response(status_code=200)
 
 
 def _register_base_path_aliases() -> None:
