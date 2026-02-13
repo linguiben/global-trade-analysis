@@ -536,22 +536,43 @@ def _gen_insight(
 
     # Ask LLM to do research-style synthesis (optional). It should be grounded in provided data and cite sources.
     system = (
-        "You are a senior analyst. Write one short Insight for a dashboard card/tab. "
-        "Ground the insight in the provided data and sources. If you make assumptions, label them. "
-        "Output JSON with keys: insight (string), references (array of {title,url,publisher,date})."
+        "You are a macroeconomic analyst and corporate strategy advisor. Your readers are (1) economic analysts and "
+        "(2) senior executives. Write a concise, decision-oriented Insight for the selected dashboard card/tab. "
+        "Use ONLY the provided data, its source metadata, and the declared/inferred source-updated time. "
+        "Do NOT mention job execution times. Do NOT invent numbers. "
+        "If data is proxy/nowcast/scraped, explicitly caveat. "
+        "Style: 2-4 short bullet points max, each bullet actionable or interpretive. "
+        "Return STRICT JSON with keys: insight (string), references (array of {title,url,publisher,date})."
     )
+
+    # Provide the model with candidate public URLs it may cite (no guarantee it can browse).
+    public_urls: list[str] = []
+    for s in snapshot_inputs:
+        if isinstance(s.payload, dict):
+            for k in ("link", "url"):
+                v = s.payload.get(k)
+                if isinstance(v, str) and v.startswith("http") and v not in public_urls:
+                    public_urls.append(v)
+    for v in extra_context.values():
+        if isinstance(v, str) and v.startswith("http") and v not in public_urls:
+            public_urls.append(v)
+
     user = json.dumps(
         {
             "task": "Generate dashboard Insight",
+            "audience": ["economic analysts", "executives"],
             "card_key": card_key,
             "tab_key": tab_key,
             "scope": scope,
             "constraints": {
-                "length": "1-2 sentences",
+                "length": "2-4 bullets",
                 "must_reference_data": True,
+                "must_use_source_updated_at": True,
                 "avoid_job_time": True,
+                "no_fabrication": True,
             },
             "inputs": input_obj,
+            "candidate_public_urls": public_urls,
         },
         ensure_ascii=False,
         sort_keys=True,
