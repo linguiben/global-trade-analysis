@@ -102,10 +102,14 @@ def get_or_refresh_context(
 
 
 def to_prompt_block(row: PublicContext) -> dict[str, Any]:
+    # Keep prompts compact to avoid exceeding model context / truncating JSON output.
+    excerpt = (row.excerpt or "")
+    if len(excerpt) > 600:
+        excerpt = excerpt[:600] + "…"
     return {
         "url": row.url,
         "title": row.title,
-        "excerpt": row.excerpt,
+        "excerpt": excerpt,
         "fetched_at": row.fetched_at.isoformat() if row.fetched_at else None,
         "ok": bool(row.ok),
         "error": row.error,
