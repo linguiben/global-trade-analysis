@@ -79,38 +79,11 @@
       </div>
     </section>
 
-    <!-- Main navigation (v3): focus on one story at a time -->
-    <div class="mb-4 flex flex-wrap gap-2 text-xs font-mono">
-      <button data-main="trade" class="main-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Trade</button>
-      <button data-main="wealth" class="main-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Wealth</button>
-      <button data-main="finance" class="main-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Finance</button>
-      <span class="text-slate-600 ml-2">Indexed view (100=base) · max 5 comparisons</span>
-    </div>
-
-    <section id="widgets" class="grid grid-cols-1 gap-6">
-      <div id="widget_trade" class="card rounded-3xl p-6 transition-all hover:border-blue-500/50">
+    <section id="widgets" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="card rounded-3xl p-6 transition-all hover:border-blue-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Trade Flow</div>
         <!-- status removed -->
-
-        <div class="mt-4 rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="text-xs text-slate-400 font-mono">Headline comparison</div>
-            <div class="ml-auto text-xs text-slate-500 font-mono">Indexed to 100 at series start (within selected window)</div>
-          </div>
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <div class="text-xs text-slate-400 font-mono">Compare (max 5)</div>
-            <div id="trade_compare_buttons" class="flex flex-wrap gap-2 text-xs font-mono"></div>
-          </div>
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <div class="text-xs text-slate-400 font-mono">Metric</div>
-            <button data-metric="export" class="trade-metric px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono">Export</button>
-            <button data-metric="import" class="trade-metric px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700 text-xs font-mono">Import</button>
-            <button data-metric="balance" class="trade-metric px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700 text-xs font-mono">Balance</button>
-          </div>
-          <canvas id="trade_headline_chart" height="120" class="mt-3"></canvas>
-          <div id="trade_headline_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
-        </div>
 
         <div id="trade_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
@@ -213,28 +186,10 @@
         </div>
       </div>
 
-      <div id="widget_wealth" class="card rounded-3xl p-6 transition-all hover:border-emerald-500/50 hidden">
+      <div class="card rounded-3xl p-6 transition-all hover:border-emerald-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Wealth Distribution</div>
         <!-- status removed -->
-
-        <div class="mt-4 rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="text-xs text-slate-400 font-mono">Headline comparison</div>
-            <div class="ml-auto text-xs text-slate-500 font-mono">Indexed to 100 at series start (within selected window)</div>
-          </div>
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <div class="text-xs text-slate-400 font-mono">Compare (max 5)</div>
-            <div id="wealth_compare_buttons" class="flex flex-wrap gap-2 text-xs font-mono"></div>
-          </div>
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            <div class="text-xs text-slate-400 font-mono">Metric</div>
-            <button data-metric="cons" class="wealth-metric px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono">Consumption</button>
-            <button data-metric="gdp_pc" class="wealth-metric px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700 text-xs font-mono">GDP pc</button>
-          </div>
-          <canvas id="wealth_headline_chart" height="120" class="mt-3"></canvas>
-          <div id="wealth_headline_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
-        </div>
 
         <div id="wealth_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
@@ -315,19 +270,10 @@
         </div>
       </div>
 
-      <div id="widget_finance" class="card rounded-3xl p-6 transition-all hover:border-fuchsia-500/50 hidden">
+      <div class="card rounded-3xl p-6 transition-all hover:border-fuchsia-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Financial Flow</div>
         <!-- status removed -->
-
-        <div class="mt-4 rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4">
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="text-xs text-slate-400 font-mono">Headline comparison</div>
-            <div class="ml-auto text-xs text-slate-500 font-mono">Indexed to top = 100 (cross-section; not time-series)</div>
-          </div>
-          <canvas id="fin_headline_chart" height="120" class="mt-3"></canvas>
-          <div id="fin_headline_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
-        </div>
 
         <div id="fin_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
@@ -539,11 +485,6 @@
       let CORR_VAL_CHART = null;
       let CORR_VOL_CHART = null;
 
-      // Headline comparison (indexed)
-      let TRADE_HEADLINE_CHART = null;
-      let TRADE_COMPARE = [];
-      let TRADE_HEADLINE_METRIC = 'export';
-
       async function loadEximSeries(geo) {
         const all = DASHBOARD_DATA.trade_exim_by_geo || {};
         return all[geo] || { source: 'N/A', frequency: 'annual', date: '', series: [] };
@@ -552,34 +493,6 @@
       function toBillions(n) {
         if (n == null) return null;
         return n / 1e9;
-      }
-
-      // ---- Indexed helpers (100 = base) ----
-      function _indexSeries(values) {
-        // values: array of numbers or null
-        const base = values.find(v => v != null && isFinite(v) && v !== 0);
-        if (base == null) return values.map(_ => null);
-        return values.map(v => (v == null || !isFinite(v)) ? null : (v / base) * 100.0);
-      }
-
-      function _palette(i) {
-        const palette = ['#60a5fa','#34d399','#fbbf24','#a78bfa','#fb7185','#22d3ee','#fb923c','#94a3b8'];
-        return palette[i % palette.length];
-      }
-
-      function _lineOpts() {
-        return {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: '#cbd5e1' } },
-            tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(1)}` } },
-          },
-          scales: {
-            x: { ticks: { color: '#94a3b8', maxRotation: 0 }, grid: { color: 'rgba(148,163,184,0.10)' } },
-            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.10)' } },
-          }
-        };
       }
 
       function upsertEximChart(payload) {
@@ -679,91 +592,6 @@
         } catch (e) {
           // ignore
         }
-      }
-
-      async function renderTradeHeadline() {
-        const el = document.getElementById('trade_headline_meta');
-        const ctx = document.getElementById('trade_headline_chart');
-        if (!ctx) return;
-
-        // default compare set: first 5 geos
-        const geosAll = (TRADE_DATA && TRADE_DATA.geos) ? TRADE_DATA.geos : ['Global'];
-        if (!TRADE_COMPARE.length) TRADE_COMPARE = geosAll.slice(0, 5);
-        if (TRADE_COMPARE.length > 5) TRADE_COMPARE = TRADE_COMPARE.slice(0, 5);
-
-        // Align periods by intersection across selected geos
-        const seriesByGeo = {};
-        for (const g of TRADE_COMPARE) {
-          const payload = await loadEximSeries(g);
-          seriesByGeo[g] = (payload.series || []).slice();
-        }
-        const periodSets = TRADE_COMPARE.map(g => new Set((seriesByGeo[g] || []).map(r => r.period)));
-        const periods = (seriesByGeo[TRADE_COMPARE[0]] || []).map(r => r.period).filter(p => periodSets.every(s => s.has(p)));
-
-        const metricKey = (TRADE_HEADLINE_METRIC === 'import') ? 'import_usd'
-          : (TRADE_HEADLINE_METRIC === 'balance') ? 'balance_usd'
-          : 'export_usd';
-
-        const datasets = TRADE_COMPARE.map((g, i) => {
-          const rows = (seriesByGeo[g] || []).filter(r => periods.includes(r.period));
-          const vals = periods.map(p => {
-            const r = rows.find(x => x.period === p);
-            return r && r[metricKey] != null ? Number(r[metricKey]) : null;
-          });
-          const indexed = _indexSeries(vals);
-          return {
-            label: g,
-            data: indexed,
-            borderColor: _palette(i),
-            backgroundColor: _palette(i),
-            tension: 0.25,
-            pointRadius: 1,
-            borderWidth: 2,
-          };
-        });
-
-        if (TRADE_HEADLINE_CHART) TRADE_HEADLINE_CHART.destroy();
-        TRADE_HEADLINE_CHART = new Chart(ctx, {
-          type: 'line',
-          data: { labels: periods, datasets },
-          options: _lineOpts(),
-        });
-
-        if (el) el.textContent = `Metric: ${TRADE_HEADLINE_METRIC} · Compared: ${TRADE_COMPARE.join(', ')} · Periods: ${periods.length}`;
-      }
-
-      function setTradeHeadlineMetric(m) {
-        TRADE_HEADLINE_METRIC = m || 'export';
-        document.querySelectorAll('.trade-metric').forEach(b => {
-          if (b.dataset.metric === TRADE_HEADLINE_METRIC) {
-            b.classList.remove('bg-slate-900/40');
-            b.classList.add('bg-slate-800');
-          } else {
-            b.classList.remove('bg-slate-800');
-            b.classList.add('bg-slate-900/40');
-          }
-        });
-        renderTradeHeadline();
-      }
-
-      function toggleTradeCompare(geo) {
-        const g = geo || 'Global';
-        const idx = TRADE_COMPARE.indexOf(g);
-        if (idx >= 0) TRADE_COMPARE.splice(idx, 1);
-        else if (TRADE_COMPARE.length < 5) TRADE_COMPARE.push(g);
-        // keep at least 1
-        if (!TRADE_COMPARE.length) TRADE_COMPARE = [g];
-
-        document.querySelectorAll('.trade-compare-btn').forEach(b => {
-          if (TRADE_COMPARE.includes(b.dataset.geo)) {
-            b.classList.remove('bg-slate-900/40');
-            b.classList.add('bg-slate-800');
-          } else {
-            b.classList.remove('bg-slate-800');
-            b.classList.add('bg-slate-900/40');
-          }
-        });
-        renderTradeHeadline();
       }
 
       function renderTrade() {
@@ -917,12 +745,11 @@
         const data = DASHBOARD_DATA.trade_corridors || {};
         TRADE_DATA = data;
 
-        // One-click detail scope selector (button group)
+        // One-click scope selector (button group)
         const wrap = document.getElementById('trade_geo_buttons');
-        const allGeos = (data.geos || ['Global']);
         if (wrap) {
           wrap.innerHTML = '';
-          allGeos.forEach(g => {
+          (data.geos || ['Global']).forEach(g => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.dataset.geo = g;
@@ -932,25 +759,6 @@
             wrap.appendChild(btn);
           });
         }
-
-        // Headline compare selector (multi-select, max 5)
-        const cwrap = document.getElementById('trade_compare_buttons');
-        if (cwrap) {
-          cwrap.innerHTML = '';
-          allGeos.slice(0, 5).forEach(g => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.dataset.geo = g;
-            btn.className = 'trade-compare-btn px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700';
-            btn.textContent = g;
-            btn.addEventListener('click', () => toggleTradeCompare(g));
-            cwrap.appendChild(btn);
-          });
-          TRADE_COMPARE = allGeos.slice(0, 5);
-        }
-
-        document.querySelectorAll('.trade-metric').forEach(b => b.addEventListener('click', () => setTradeHeadlineMetric(b.dataset.metric)));
-        setTradeHeadlineMetric('export');
 
         document.querySelectorAll('.trade-tab').forEach(b => {
           b.addEventListener('click', () => setTradeTab(b.dataset.tab));
@@ -981,11 +789,6 @@
       let WEALTH_GDP_CHART = null;
       let WEALTH_CONS_CHART = null;
       let WEALTH_AGE_CHART = null;
-
-      // Headline comparison (indexed)
-      let WEALTH_HEADLINE_CHART = null;
-      let WEALTH_COMPARE = ['Global','India','Mexico','Singapore','Hong Kong'];
-      let WEALTH_HEADLINE_METRIC = 'cons';
 
       async function loadWealthIndicators(geo) {
         const all = DASHBOARD_DATA.wealth_indicators_by_geo || {};
@@ -1233,86 +1036,8 @@
         refreshWealthForGeo(WEALTH_GEO);
       }
 
-      async function renderWealthHeadline() {
-        const el = document.getElementById('wealth_headline_meta');
-        const ctx = document.getElementById('wealth_headline_chart');
-        if (!ctx) return;
-
-        const metricKey = (WEALTH_HEADLINE_METRIC === 'gdp_pc') ? 'gdp_per_capita_usd' : 'consumption_expenditure_usd';
-        const seriesByGeo = {};
-        for (const g of WEALTH_COMPARE.slice(0, 5)) {
-          const payload = await loadWealthIndicators(g);
-          seriesByGeo[g] = (payload.series || []).slice();
-        }
-
-        // Align periods by intersection
-        const geosSel = WEALTH_COMPARE.slice(0, 5);
-        const periodSets = geosSel.map(g => new Set((seriesByGeo[g] || []).map(r => r.period)));
-        const periods = (seriesByGeo[geosSel[0]] || []).map(r => r.period).filter(p => periodSets.every(s => s.has(p)));
-
-        const datasets = geosSel.map((g, i) => {
-          const rows = (seriesByGeo[g] || []).filter(r => periods.includes(r.period));
-          const vals = periods.map(p => {
-            const r = rows.find(x => x.period === p);
-            return r && r[metricKey] != null ? Number(r[metricKey]) : null;
-          });
-          const indexed = _indexSeries(vals);
-          return {
-            label: g,
-            data: indexed,
-            borderColor: _palette(i),
-            backgroundColor: _palette(i),
-            tension: 0.25,
-            pointRadius: 1,
-            borderWidth: 2,
-          };
-        });
-
-        if (WEALTH_HEADLINE_CHART) WEALTH_HEADLINE_CHART.destroy();
-        WEALTH_HEADLINE_CHART = new Chart(ctx, {
-          type: 'line',
-          data: { labels: periods, datasets },
-          options: _lineOpts(),
-        });
-
-        if (el) el.textContent = `Metric: ${WEALTH_HEADLINE_METRIC} · Compared: ${geosSel.join(', ')} · Periods: ${periods.length}`;
-      }
-
-      function setWealthHeadlineMetric(m) {
-        WEALTH_HEADLINE_METRIC = m || 'cons';
-        document.querySelectorAll('.wealth-metric').forEach(b => {
-          if (b.dataset.metric === WEALTH_HEADLINE_METRIC) {
-            b.classList.remove('bg-slate-900/40');
-            b.classList.add('bg-slate-800');
-          } else {
-            b.classList.remove('bg-slate-800');
-            b.classList.add('bg-slate-900/40');
-          }
-        });
-        renderWealthHeadline();
-      }
-
-      function toggleWealthCompare(geo) {
-        const g = geo || 'Global';
-        const idx = WEALTH_COMPARE.indexOf(g);
-        if (idx >= 0) WEALTH_COMPARE.splice(idx, 1);
-        else if (WEALTH_COMPARE.length < 5) WEALTH_COMPARE.push(g);
-        if (!WEALTH_COMPARE.length) WEALTH_COMPARE = [g];
-
-        document.querySelectorAll('.wealth-compare-btn').forEach(b => {
-          if (WEALTH_COMPARE.includes(b.dataset.geo)) {
-            b.classList.remove('bg-slate-900/40');
-            b.classList.add('bg-slate-800');
-          } else {
-            b.classList.remove('bg-slate-800');
-            b.classList.add('bg-slate-900/40');
-          }
-        });
-        renderWealthHeadline();
-      }
-
       async function loadWealth() {
-        // One-click detail scope selector (button group)
+        // One-click scope selector (button group)
         const geos = ['Global', 'India', 'Mexico', 'Singapore', 'Hong Kong'];
         const wrap = document.getElementById('wealth_geo_buttons');
         if (wrap) {
@@ -1328,29 +1053,10 @@
           });
         }
 
-        // Headline compare selector (multi-select, max 5)
-        const cwrap = document.getElementById('wealth_compare_buttons');
-        if (cwrap) {
-          cwrap.innerHTML = '';
-          geos.forEach(g => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.dataset.geo = g;
-            btn.className = 'wealth-compare-btn px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700';
-            btn.textContent = g;
-            btn.addEventListener('click', () => toggleWealthCompare(g));
-            cwrap.appendChild(btn);
-          });
-        }
-
-        document.querySelectorAll('.wealth-metric').forEach(b => b.addEventListener('click', () => setWealthHeadlineMetric(b.dataset.metric)));
-        setWealthHeadlineMetric('cons');
-
         document.querySelectorAll('.wealth-tab').forEach(b => b.addEventListener('click', () => setWealthTab(b.dataset.tab)));
         setWealthTab('gdp_pc');
 
         setWealthGeo('Global');
-        renderWealthHeadline();
       }
 
       function setFinTab(active) {
@@ -1394,7 +1100,6 @@
       let FIN_CTY_DEALS = null;
       let FIN_CTY_VALUE = null;
       let FIN_CHART_TYPE = 'bar';
-      let FIN_HEADLINE_CHART = null;
 
       async function loadFinIndustry() {
         return DASHBOARD_DATA.finance_ma_industry || { rows: [], source: 'N/A', link: '' };
@@ -1620,33 +1325,6 @@
 
         const topCtyByVal = ctyRows.slice().sort((a,b) => Number(b.value_bil||0) - Number(a.value_bil||0))[0];
 
-        // Headline (finance): Top-5 country value, indexed to top=100 (cross-section)
-        try {
-          const hctx = document.getElementById('fin_headline_chart');
-          const hmeta = document.getElementById('fin_headline_meta');
-          const top5 = ctyRows.slice().sort((a,b) => Number(b.value_bil||0) - Number(a.value_bil||0)).slice(0, 5);
-          const labels = top5.map(r => r.country);
-          const maxv = Math.max(...top5.map(r => Number(r.value_bil||0)));
-          const vals = top5.map(r => maxv ? (Number(r.value_bil||0) / maxv) * 100.0 : 0);
-          if (FIN_HEADLINE_CHART) FIN_HEADLINE_CHART.destroy();
-          if (hctx) {
-            FIN_HEADLINE_CHART = new Chart(hctx, {
-              type: 'bar',
-              data: { labels, datasets: [{ label: 'Value index (top=100)', data: vals, backgroundColor: 'rgba(251,146,60,0.55)', borderColor: 'rgba(251,146,60,0.85)', borderWidth: 1 }] },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#cbd5e1' } } },
-                scales: {
-                  x: { ticks: { color: '#94a3b8', maxRotation: 0 }, grid: { color: 'rgba(148,163,184,0.10)' } },
-                  y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.10)' }, suggestedMax: 110 },
-                }
-              }
-            });
-          }
-          if (hmeta) hmeta.textContent = `Compared: top 5 countries by value · Unit: ${ccy || 'n/a'} (values normalized)`;
-        } catch (e) { /* ignore */ }
-
         // KPI strip (finance)
         const _normCountry = (s) => String(s || '').trim().toLowerCase();
         const BRICS = new Set(['brazil','russia','india','china','south africa']);
@@ -1680,29 +1358,6 @@
         document.getElementById('fin_country_insight_text').textContent = (iFinCty && iFinCty.content) || '—';
         document.getElementById('fin_country_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinCty && iFinCty.source_updated_at);
       }
-
-      function setMainTab(kind) {
-        const k = kind || 'trade';
-        const map = { trade: 'widget_trade', wealth: 'widget_wealth', finance: 'widget_finance' };
-        Object.entries(map).forEach(([name, id]) => {
-          const el = document.getElementById(id);
-          if (!el) return;
-          if (name === k) el.classList.remove('hidden');
-          else el.classList.add('hidden');
-        });
-        document.querySelectorAll('.main-tab').forEach(b => {
-          if (b.dataset.main === k) {
-            b.classList.remove('bg-slate-900/40');
-            b.classList.add('bg-slate-800');
-          } else {
-            b.classList.remove('bg-slate-800');
-            b.classList.add('bg-slate-900/40');
-          }
-        });
-      }
-
-      document.querySelectorAll('.main-tab').forEach(b => b.addEventListener('click', () => setMainTab(b.dataset.main)));
-      setMainTab('trade');
 
       Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});
     </script>
