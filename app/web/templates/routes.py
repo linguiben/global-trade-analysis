@@ -411,8 +411,8 @@ def api_trade_exim_latest_all(top_n: int | None = None, db: Session = Depends(ge
 
     rows: list[dict[str, Any]] = []
     years = []
-    for geo in list(ALLOWED_GEOS):
-        snap = get_latest_snapshot(db, "trade_exim_5y", geo)
+    all_snaps = get_latest_snapshots_by_key(db, "trade_exim_5y")
+    for geo, snap in all_snaps.items():
         if not snap or not isinstance(snap.payload, dict):
             continue
         y, ex, im = latest_point(snap.payload)
