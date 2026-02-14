@@ -347,8 +347,7 @@ def api_finance_ma_country(db: Session = Depends(get_db)):
 
 
 @router.get("/map/trade-flow", response_class=HTMLResponse)
-def trade_flow_map(request: Request, db: Session = Depends(get_db)):
-    dashboard_data, latest_at, is_stale = _dashboard_payload(db)
+def trade_flow_map(request: Request):
     return templates.TemplateResponse(
         "trade_flow_map.html",
         {
@@ -357,16 +356,12 @@ def trade_flow_map(request: Request, db: Session = Depends(get_db)):
             "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "mode": "all",
             "mode_label": "ALL SCOPES",
-            "dashboard_data": dashboard_data,
-            "data_updated_at": _fmt_utc(latest_at),
-            "data_is_stale": is_stale,
         },
     )
 
 
 @router.get("/map/trade-flow-top5", response_class=HTMLResponse)
-def trade_flow_map_top5(request: Request, db: Session = Depends(get_db)):
-    dashboard_data, latest_at, is_stale = _dashboard_payload(db)
+def trade_flow_map_top5(request: Request):
     return templates.TemplateResponse(
         "trade_flow_map.html",
         {
@@ -375,9 +370,6 @@ def trade_flow_map_top5(request: Request, db: Session = Depends(get_db)):
             "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "mode": "top5",
             "mode_label": "TOP 5",
-            "dashboard_data": dashboard_data,
-            "data_updated_at": _fmt_utc(latest_at),
-            "data_is_stale": is_stale,
         },
     )
 

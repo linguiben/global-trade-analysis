@@ -31,33 +31,41 @@
       background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.35"/></svg>');
       background-size: 180px 180px;
     }
-    .btn{border:1px solid rgba(148,163,184,.25); background: rgba(2,6,23,.35);} 
-    .btn:hover{background: rgba(2,6,23,.52);} 
-    .pill{border:1px solid rgba(148,163,184,.22); background: rgba(2,6,23,.28);} 
+    .btn{border:1px solid rgba(148,163,184,.25); background: rgba(2,6,23,.35);}
+    .btn:hover{background: rgba(2,6,23,.52);}
+    .btn.active{background: rgba(51,65,85,.8); box-shadow: inset 0 0 0 1px rgba(148,163,184,.35);}
+    .pill{border:1px solid rgba(148,163,184,.22); background: rgba(2,6,23,.28);}
     .legendDot{width:10px;height:10px;border-radius:999px;display:inline-block;}
 
     /* SVG cosmetics */
     #mapSvg { width: 100%; height: 100%; }
-    .land { fill: rgba(148,163,184,.13); stroke: rgba(148,163,184,.18); stroke-width: 0.6; }
+    .land { fill: rgba(148,163,184,.13); stroke: rgba(148,163,184,.18); stroke-width: 0.6; cursor: pointer; transition: fill 0.2s; }
+    .land.dimmed { fill: rgba(148,163,184,.05); stroke: rgba(148,163,184,.08); }
+    .land.highlighted { fill: rgba(96,165,250,.18); stroke: rgba(96,165,250,.35); stroke-width: 1; }
     .graticule { fill:none; stroke: rgba(148,163,184,.08); stroke-width: .7; }
     .bubble { fill: rgba(34,197,94,.35); stroke: rgba(34,197,94,.65); stroke-width: 1; }
-    .bubble.import { fill: rgba(96,165,250,.30); stroke: rgba(96,165,250,.70);} 
-    .bubble.zero { fill: rgba(148,163,184,.12); stroke: rgba(148,163,184,.35);} 
+    .bubble.import { fill: rgba(96,165,250,.30); stroke: rgba(96,165,250,.70);}
+    .bubble.zero { fill: rgba(148,163,184,.12); stroke: rgba(148,163,184,.35);}
     .label { fill: rgba(226,232,240,.92); font-size: 11px; paint-order: stroke; stroke: rgba(2,6,23,.85); stroke-width: 3px; }
     .hud { position:absolute; left: 14px; top: 14px; }
+
+    /* Flow arc cosmetics (P1) */
+    .flow-arc { fill: none; cursor: pointer; transition: opacity 0.2s; }
+    .flow-arc:hover { opacity: 1 !important; }
+    .flow-label { fill: rgba(226,232,240,.85); font-size: 10px; paint-order: stroke; stroke: rgba(2,6,23,.85); stroke-width: 3px; pointer-events: none; }
   </style>
 </head>
 <body class="p-4 md:p-7">
   {% set base = base_path or '' %}
   <div class="max-w-7xl mx-auto">
-    <header class="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <header class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div class="space-y-1">
         <div class="inline-flex items-center gap-2">
           <span class="mono text-xs text-slate-400">GTA / Map</span>
           <span class="mono text-[11px] text-slate-500">DB-only · no on-demand external fetch</span>
         </div>
         <h1 class="text-2xl font-semibold tracking-tight">Trade Flow · World View</h1>
-        <p class="text-sm text-slate-400 max-w-2xl">A lightweight POC map overlay: circles sized by latest export/import for the tracked scopes. Designed to work with current DB snapshots.</p>
+        <p class="text-sm text-slate-400 max-w-2xl">Global trade flows — exports, imports, and bilateral corridors across tracked economies.</p>
       </div>
       <div class="text-xs text-slate-400 mono text-right">
         <div>{{ now }}</div>
@@ -68,6 +76,9 @@
         </div>
       </div>
     </header>
+
+    <!-- KPI indicator bar (P2) -->
+    <div id="kpiBar" class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
       <aside class="lg:col-span-4 card rounded-2xl p-4 md:p-5 relative overflow-hidden">
@@ -84,12 +95,13 @@
           <div class="mt-4 space-y-4">
             <div>
               <div class="text-xs text-slate-400 mb-2">Metric</div>
-              <div class="flex flex-wrap gap-2">
+              <div class="flex flex-wrap gap-2" id="metricBtns">
                 <button class="btn px-3 py-2 rounded-xl text-xs font-semibold" data-metric="export">Exports</button>
                 <button class="btn px-3 py-2 rounded-xl text-xs font-semibold" data-metric="import">Imports</button>
                 <button class="btn px-3 py-2 rounded-xl text-xs font-semibold" data-metric="balance">Balance</button>
+                <button class="btn px-3 py-2 rounded-xl text-xs font-semibold" data-metric="flows">Flows</button>
               </div>
-              <div class="text-[11px] text-slate-500 mt-2">Balance = export − import (latest year available in each snapshot)</div>
+              <div class="text-[11px] text-slate-500 mt-2" id="metricHint">Balance = export − import (latest year available in each snapshot)</div>
             </div>
 
             <div class="grid grid-cols-2 gap-2">
@@ -103,17 +115,27 @@
               </div>
             </div>
 
+            <!-- Executive summary (P0) -->
+            <div class="rounded-xl bg-slate-900/40 border border-slate-700/60 p-3">
+              <div class="text-[11px] text-slate-400 mb-1 font-semibold">Executive summary</div>
+              <div class="text-[11px] text-slate-500 mb-2">Management briefing</div>
+              <div id="execSummary" class="text-xs text-slate-300 leading-relaxed max-h-[140px] overflow-y-auto">—</div>
+            </div>
+
             <div class="pill rounded-2xl p-3">
               <div class="text-[11px] text-slate-400">Legend</div>
               <div class="mt-2 text-xs text-slate-300 space-y-2">
                 <div class="flex items-center gap-2"><span class="legendDot" style="background: rgba(34,197,94,.75)"></span> Exports bubble</div>
                 <div class="flex items-center gap-2"><span class="legendDot" style="background: rgba(96,165,250,.75)"></span> Imports bubble</div>
                 <div class="flex items-center gap-2"><span class="legendDot" style="background: rgba(148,163,184,.55)"></span> Missing / zero</div>
+                <div class="flex items-center gap-2">
+                  <span style="width:24px;height:3px;display:inline-block;background:linear-gradient(90deg,rgba(34,197,94,.75),rgba(96,165,250,.75));border-radius:2px;"></span> Trade corridor (flow)
+                </div>
               </div>
             </div>
 
             <div class="text-xs text-slate-500">
-              Data source: <span class="mono">trade_exim_5y</span> snapshots (per geo). This is a POC: not bilateral corridors yet.
+              Data source: <span class="mono">trade_exim_5y</span> snapshots · corridors powered by DB snapshots · freight: Drewry WCI.
             </div>
           </div>
         </div>
@@ -139,14 +161,18 @@
   <script>
     const BASE = {{ (base_path or '').rstrip('/')|tojson }};
     const MODE = {{ mode|tojson }}; // 'all' | 'top5'
+    const DASHBOARD_DATA = {{ dashboard_data | tojson }};
 
     const state = {
       metric: 'export',
       points: [],
       year: null,
       centroids: {},
-      world: null
+      world: null,
+      selectedGeo: null
     };
+
+    /* ---- helpers ---- */
 
     function fmtUSD(v){
       if (v === null || v === undefined || isNaN(v)) return '—';
@@ -157,6 +183,109 @@
       if (abs >= 1e6)  return sign + '$' + (abs/1e6).toFixed(2) + 'M';
       return sign + '$' + abs.toFixed(0);
     }
+
+    function _safeNum(x) {
+      const n = Number(x);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function _fmtPct(p) {
+      if (p == null) return '\u2014';
+      const sign = p >= 0 ? '+' : '\u2212';
+      return sign + Math.abs(p).toFixed(1) + '%';
+    }
+
+    function _pill(label, value, tone) {
+      const tones = {
+        blue:    'border-blue-500/40 bg-blue-500/10 text-blue-200',
+        emerald: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
+        fuchsia: 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200',
+        amber:   'border-amber-500/40 bg-amber-500/10 text-amber-200',
+        slate:   'border-slate-600/60 bg-slate-900/30 text-slate-200',
+      };
+      const cls = tones[tone] || tones.slate;
+      return `<div class="rounded-xl border ${cls} px-3 py-2">
+        <div class="text-[10px] opacity-80">${label}</div>
+        <div class="text-sm font-semibold mt-0.5">${value}</div>
+      </div>`;
+    }
+
+    /* ---- KPI bar + executive summary (P0 + P2) ---- */
+
+    function renderKPI() {
+      const tc = (DASHBOARD_DATA.trade_corridors || {});
+      const gl = ((tc.by_geo || {}).Global) || {};
+      const wci = tc.wci || {};
+
+      const expUsd = _safeNum(gl.export_usd);
+      const impUsd = _safeNum(gl.import_usd);
+      const bal    = _safeNum(gl.trade_balance_usd);
+      const wciVal = _safeNum(wci.value_usd_per_40ft);
+      const wciLine = wciVal != null ? ('$' + wciVal.toLocaleString() + '/40ft') : '\u2014';
+      const balTone = (bal != null && bal >= 0) ? 'amber' : 'fuchsia';
+
+      const kpi = document.getElementById('kpiBar');
+      if (kpi) {
+        kpi.innerHTML = [
+          _pill('Global Exports', fmtUSD(expUsd), 'emerald'),
+          _pill('Global Imports', fmtUSD(impUsd), 'blue'),
+          _pill('Trade Balance',  fmtUSD(bal),    balTone),
+          _pill('Freight (WCI)',  wciLine,         'fuchsia'),
+          _pill('Points Loaded',  state.points.length || '\u2014', 'slate'),
+        ].join('');
+      }
+
+      // Executive summary: auto-computed narrative
+      const corridors = (gl.value_usd_top || []);
+      const topCorrStr = corridors.slice(0, 2).map(c =>
+        `${c.origin}\u2192${c.dest} (${fmtUSD(c.value_usd)})`
+      ).join(', ');
+
+      const balDir = bal != null ? (bal >= 0 ? 'surplus' : 'deficit') : null;
+      const balSentence = bal != null
+        ? `The global trade balance stands at a ${fmtUSD(Math.abs(bal))} ${balDir}.`
+        : '';
+
+      const freightSentence = wciVal != null
+        ? `Freight costs (Drewry WCI) are at ${wciLine}, a signal worth monitoring for margin and supply-chain impacts.`
+        : '';
+
+      const parts = [
+        expUsd != null && impUsd != null
+          ? `Global trade is running at ${fmtUSD(expUsd)} in exports and ${fmtUSD(impUsd)} in imports.`
+          : 'Global trade figures are still loading.',
+        topCorrStr ? `Leading bilateral corridors: ${topCorrStr}.` : '',
+        balSentence,
+        freightSentence,
+      ].filter(Boolean);
+
+      const el = document.getElementById('execSummary');
+      if (el) el.innerHTML = parts.length ? parts.join(' ') : '\u2014';
+    }
+
+    /* ---- metric button active state ---- */
+
+    function syncMetricButtons() {
+      document.querySelectorAll('#metricBtns [data-metric]').forEach(btn => {
+        if (btn.getAttribute('data-metric') === state.metric) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      const hint = document.getElementById('metricHint');
+      if (hint) {
+        const hints = {
+          export:  'Bubble size = latest export USD per scope',
+          import:  'Bubble size = latest import USD per scope',
+          balance: 'Balance = export \u2212 import (latest year available in each snapshot)',
+          flows:   'Curved arcs show bilateral trade corridors by value. Click a country to filter.',
+        };
+        hint.textContent = hints[state.metric] || '';
+      }
+    }
+
+    /* ---- data loading ---- */
 
     async function loadAll(){
       const [world, centroids, data] = await Promise.all([
@@ -175,13 +304,18 @@
       }));
       state.year = data.year || null;
       document.getElementById('statCount').textContent = String(state.points.length);
-      document.getElementById('statYear').textContent = state.year ? String(state.year) : '—';
-      document.getElementById('hudLine1').textContent = `Loaded ${state.points.length} scope(s) · metric=${state.metric}`;
+      document.getElementById('statYear').textContent = state.year ? String(state.year) : '\u2014';
+      document.getElementById('hudLine1').textContent = `Loaded ${state.points.length} scope(s) \u00b7 metric=${state.metric}`;
 
+      renderKPI();
+      syncMetricButtons();
       render();
     }
 
+    /* ---- value / color helpers ---- */
+
     function valueOf(p){
+      if (state.metric === 'flows') return null;
       if (state.metric === 'export') return p.export_usd;
       if (state.metric === 'import') return p.import_usd;
       return p.balance_usd;
@@ -195,6 +329,134 @@
       return '';
     }
 
+    /* ---- ISO numeric-to-alpha lookup (for click-to-filter on land paths) ---- */
+
+    const ISO_NUM = {
+      '4':'AF','8':'AL','12':'DZ','24':'AO','32':'AR','36':'AU','40':'AT','50':'BD',
+      '56':'BE','64':'BT','68':'BO','70':'BA','72':'BW','76':'BR','100':'BG','104':'MM',
+      '108':'BI','116':'KH','120':'CM','124':'CA','140':'CF','144':'LK','148':'TD','152':'CL',
+      '156':'CN','170':'CO','178':'CG','180':'CD','188':'CR','191':'HR','192':'CU','196':'CY',
+      '203':'CZ','204':'BJ','208':'DK','214':'DO','218':'EC','818':'EG','222':'SV','226':'GQ',
+      '232':'ER','233':'EE','231':'ET','242':'FJ','246':'FI','250':'FR','266':'GA','270':'GM',
+      '268':'GE','276':'DE','288':'GH','300':'GR','320':'GT','324':'GN','328':'GY','332':'HT',
+      '340':'HN','344':'HK','348':'HU','352':'IS','356':'IN','360':'ID','364':'IR','368':'IQ',
+      '372':'IE','376':'IL','380':'IT','384':'CI','388':'JM','392':'JP','400':'JO','398':'KZ',
+      '404':'KE','410':'KR','414':'KW','418':'LA','422':'LB','426':'LS','430':'LR','434':'LY',
+      '440':'LT','442':'LU','450':'MG','454':'MW','458':'MY','466':'ML','478':'MR','484':'MX',
+      '496':'MN','504':'MA','508':'MZ','516':'NA','524':'NP','528':'NL','540':'NC','554':'NZ',
+      '558':'NI','562':'NE','566':'NG','578':'NO','512':'OM','586':'PK','591':'PA','598':'PG',
+      '600':'PY','604':'PE','608':'PH','616':'PL','620':'PT','630':'PR','634':'QA','642':'RO',
+      '643':'RU','646':'RW','682':'SA','686':'SN','688':'RS','694':'SL','702':'SG','703':'SK',
+      '704':'VN','705':'SI','706':'SO','710':'ZA','716':'ZW','724':'ES','736':'SD','740':'SR',
+      '752':'SE','756':'CH','760':'SY','762':'TJ','764':'TH','768':'TG','780':'TT','788':'TN',
+      '792':'TR','795':'TM','800':'UG','804':'UA','784':'AE','826':'GB','834':'TZ','840':'US',
+      '858':'UY','860':'UZ','862':'VE','887':'YE','894':'ZM','158':'TW'
+    };
+
+    /* ---- flow rendering (P1) ---- */
+
+    function renderFlows(svg, projection) {
+      const tc  = (DASHBOARD_DATA.trade_corridors || {});
+      const gl  = ((tc.by_geo || {}).Global) || {};
+      const corridors = (gl.value_usd_top || []);
+      if (!corridors.length) return;
+
+      const sel = state.selectedGeo;
+      const visible = sel
+        ? corridors.filter(c => c.origin === sel || c.dest === sel)
+        : corridors;
+
+      const maxFlow = d3.max(corridors, c => c.value_usd) || 1;
+      const strokeScale = d3.scaleLinear().domain([0, maxFlow]).range([1.5, 10]);
+
+      // SVG defs: arrow marker + per-arc gradients
+      const defs = svg.append('defs');
+      defs.append('marker')
+        .attr('id', 'arrowHead')
+        .attr('viewBox', '0 0 10 10')
+        .attr('refX', 10).attr('refY', 5)
+        .attr('markerWidth', 6).attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+          .attr('d', 'M0,0 L10,5 L0,10 Z')
+          .attr('fill', 'rgba(96,165,250,.8)');
+
+      const arcG  = svg.append('g').attr('class', 'flow-arcs');
+      const lblG  = svg.append('g').attr('class', 'flow-labels');
+
+      visible.forEach((c, i) => {
+        const oC = state.centroids[c.origin];
+        const dC = state.centroids[c.dest];
+        if (!oC || !dC) return;
+
+        const p1 = projection([oC.lon, oC.lat]);
+        const p2 = projection([dC.lon, dC.lat]);
+        if (!p1 || !p2) return;
+
+        const [x1, y1] = p1;
+        const [x2, y2] = p2;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dr = Math.sqrt(dx * dx + dy * dy);
+
+        // per-arc gradient (green origin -> blue dest)
+        const gid = `fg${i}`;
+        const grad = defs.append('linearGradient')
+          .attr('id', gid)
+          .attr('gradientUnits', 'userSpaceOnUse')
+          .attr('x1', x1).attr('y1', y1)
+          .attr('x2', x2).attr('y2', y2);
+        grad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(34,197,94,.85)');
+        grad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(96,165,250,.85)');
+
+        arcG.append('path')
+          .attr('class', 'flow-arc')
+          .attr('d', `M${x1},${y1} A${dr},${dr} 0 0,1 ${x2},${y2}`)
+          .attr('stroke', `url(#${gid})`)
+          .attr('stroke-width', strokeScale(c.value_usd))
+          .attr('marker-end', 'url(#arrowHead)')
+          .attr('opacity', 0.7)
+          .datum(c)
+          .on('mouseenter', function(ev, datum) {
+            arcG.selectAll('.flow-arc').attr('opacity', 0.12);
+            d3.select(this).attr('opacity', 1);
+            document.getElementById('hudLine1').textContent =
+              `${datum.origin} \u2192 ${datum.dest} \u00b7 ${fmtUSD(datum.value_usd)} \u00b7 rank #${datum.rank || '?'}`;
+          })
+          .on('mouseleave', function() {
+            arcG.selectAll('.flow-arc').attr('opacity', 0.7);
+            const msg = sel
+              ? `Filtered: ${sel} \u00b7 ${visible.length} corridor(s)`
+              : `${corridors.length} corridor(s) \u00b7 metric=flows`;
+            document.getElementById('hudLine1').textContent = msg;
+          });
+
+        // label at arc midpoint (offset perpendicular to chord)
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        const chordLen = Math.sqrt(dx * dx + dy * dy) || 1;
+        const off = chordLen * 0.12;
+        const nx = -dy / chordLen;
+        const ny =  dx / chordLen;
+
+        lblG.append('text')
+          .attr('class', 'flow-label')
+          .attr('x', mx + nx * off)
+          .attr('y', my + ny * off)
+          .attr('text-anchor', 'middle')
+          .attr('dy', -4)
+          .text(`${c.origin}\u2192${c.dest} ${fmtUSD(c.value_usd)}`);
+      });
+
+      // HUD
+      const msg = sel
+        ? `Filtered: ${sel} \u00b7 ${visible.length} corridor(s)`
+        : `${corridors.length} corridor(s) \u00b7 metric=flows`;
+      document.getElementById('hudLine1').textContent = msg;
+    }
+
+    /* ---- main render ---- */
+
     function render(){
       const svg = d3.select('#mapSvg');
       svg.selectAll('*').remove();
@@ -207,21 +469,54 @@
         .scale(Math.min(width, height) * 0.33);
 
       const path = d3.geoPath(projection);
-
       const land = topojson.feature(state.world, state.world.objects.countries);
 
-      // subtle graticule
+      // graticule
       const graticule = d3.geoGraticule10();
       svg.append('path').attr('class','graticule').attr('d', path(graticule));
+
+      // land paths — clickable for P3 filtering
+      const sel = state.selectedGeo;
+      const tc  = (DASHBOARD_DATA.trade_corridors || {});
+      const allCorridors = (((tc.by_geo || {}).Global || {}).value_usd_top || []);
 
       svg.append('g')
         .selectAll('path')
         .data(land.features)
         .join('path')
-        .attr('class','land')
-        .attr('d', path);
+        .attr('class', d => {
+          const iso = ISO_NUM[String(d.id)];
+          if (!sel) return 'land';
+          if (iso === sel) return 'land highlighted';
+          if (state.metric === 'flows') {
+            const related = allCorridors.some(c => c.origin === iso || c.dest === iso);
+            if (!related) return 'land dimmed';
+          }
+          return 'land';
+        })
+        .attr('d', path)
+        .on('click', (ev, d) => {
+          ev.stopPropagation();
+          const iso = ISO_NUM[String(d.id)];
+          if (!iso) return;
+          state.selectedGeo = state.selectedGeo === iso ? null : iso;
+          render();
+        });
 
-      // Compute sizes
+      // Click SVG background to deselect
+      svg.on('click', function(ev) {
+        if (ev.target === svg.node()) {
+          if (state.selectedGeo) { state.selectedGeo = null; render(); }
+        }
+      });
+
+      // Branch: flows vs bubbles
+      if (state.metric === 'flows') {
+        renderFlows(svg, projection);
+        return;
+      }
+
+      // ---- Bubble mode (existing) ----
       const vals = state.points.map(valueOf).filter(v => v !== null && v !== undefined && !isNaN(v));
       const maxV = d3.max(vals.map(v=>Math.abs(v))) || 1;
       const r = d3.scaleSqrt().domain([0, maxV]).range([0, Math.min(width, height) * 0.085]);
@@ -238,7 +533,6 @@
 
       const g = svg.append('g');
 
-      // bubbles
       g.selectAll('circle')
         .data(pts)
         .join('circle')
@@ -249,16 +543,21 @@
           const v = valueOf(d);
           return v ? r(Math.abs(v)) : 3;
         })
-        .attr('opacity', d => valueOf(d) ? 0.92 : 0.55)
+        .attr('opacity', d => {
+          if (sel) return d.geo === sel ? 0.95 : 0.2;
+          return valueOf(d) ? 0.92 : 0.55;
+        })
         .on('mouseenter', (ev, d) => {
           const v = valueOf(d);
-          document.getElementById('hudLine1').textContent = `${d.geo} · ${state.metric}=${fmtUSD(v)} · year=${d.year ?? '—'}`;
+          document.getElementById('hudLine1').textContent = `${d.geo} \u00b7 ${state.metric}=${fmtUSD(v)} \u00b7 year=${d.year ?? '\u2014'}`;
         })
         .on('mouseleave', () => {
-          document.getElementById('hudLine1').textContent = `Loaded ${state.points.length} scope(s) · metric=${state.metric}`;
+          const msg = sel
+            ? `Filtered: ${sel} \u00b7 ${state.points.length} scope(s)`
+            : `Loaded ${state.points.length} scope(s) \u00b7 metric=${state.metric}`;
+          document.getElementById('hudLine1').textContent = msg;
         });
 
-      // labels
       g.selectAll('text')
         .data(pts)
         .join('text')
@@ -274,11 +573,15 @@
         .text(d => d.geo);
     }
 
+    /* ---- controls ---- */
+
     function hookControls(){
-      document.querySelectorAll('[data-metric]').forEach(btn => {
+      document.querySelectorAll('#metricBtns [data-metric]').forEach(btn => {
         btn.addEventListener('click', () => {
           state.metric = btn.getAttribute('data-metric');
-          document.getElementById('hudLine1').textContent = `Loaded ${state.points.length} scope(s) · metric=${state.metric}`;
+          state.selectedGeo = null;
+          syncMetricButtons();
+          document.getElementById('hudLine1').textContent = `Loaded ${state.points.length} scope(s) \u00b7 metric=${state.metric}`;
           render();
         });
       });
