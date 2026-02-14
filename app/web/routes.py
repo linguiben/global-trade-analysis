@@ -11,6 +11,8 @@ from fastapi.templating import Jinja2Templates
 from app.web import widget_data
 from app.jobs.runtime import (
     ALLOWED_GEOS,
+    ALLOWED_INSIGHT_CARD_KEYS,
+    ALLOWED_INSIGHT_TAB_KEYS,
     get_latest_snapshot,
     get_latest_snapshots_by_key,
     get_next_run_time,
@@ -96,13 +98,13 @@ def _latest_insights_map(db: Session) -> dict:
 
 
 def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
-    trade = get_latest_snapshot(db, "trade_corridors", "global")
+    trade = get_latest_snapshot(db, "trade_corridors", "Global")
     trade_exim = get_latest_snapshots_by_key(db, "trade_exim_5y")
     wealth_ind = get_latest_snapshots_by_key(db, "wealth_indicators_5y")
-    wealth_disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
+    wealth_disp = get_latest_snapshot(db, "wealth_disposable_latest", "Global")
     wealth_age = get_latest_snapshots_by_key(db, "wealth_age_structure_latest")
-    fin_ind = get_latest_snapshot(db, "finance_ma_industry", "global")
-    fin_cty = get_latest_snapshot(db, "finance_ma_country", "global")
+    fin_ind = get_latest_snapshot(db, "finance_ma_industry", "Global")
+    fin_cty = get_latest_snapshot(db, "finance_ma_country", "Global")
 
     trade_payload = _snapshot_payload(trade)
     geos = trade_payload.get("geos") if isinstance(trade_payload.get("geos"), list) else []
@@ -237,7 +239,7 @@ def health():
 
 @router.get("/api/trade/corridors")
 def api_trade_corridors(db: Session = Depends(get_db)):
-    snapshot = get_latest_snapshot(db, "trade_corridors", "global")
+    snapshot = get_latest_snapshot(db, "trade_corridors", "Global")
     if snapshot:
         return snapshot.payload
     return {"ok": False, "error": "snapshot not ready"}
@@ -284,7 +286,7 @@ def api_wealth_indicators_5y(geo: str = "Global", db: Session = Depends(get_db))
 
 @router.get("/api/wealth/disposable-latest")
 def api_wealth_disposable_latest(db: Session = Depends(get_db)):
-    snapshot = get_latest_snapshot(db, "wealth_disposable_latest", "global")
+    snapshot = get_latest_snapshot(db, "wealth_disposable_latest", "Global")
     if snapshot:
         return snapshot.payload
     return {"ok": False, "error": "snapshot not ready", "rows": {}}
@@ -300,7 +302,7 @@ def api_wealth_age_structure_latest(geo: str = "Global", db: Session = Depends(g
 
 @router.get("/api/finance/ma/industry")
 def api_finance_ma_industry(db: Session = Depends(get_db)):
-    snapshot = get_latest_snapshot(db, "finance_ma_industry", "global")
+    snapshot = get_latest_snapshot(db, "finance_ma_industry", "Global")
     if snapshot:
         return snapshot.payload
     return {"ok": False, "error": "snapshot not ready", "rows": []}
@@ -308,7 +310,7 @@ def api_finance_ma_industry(db: Session = Depends(get_db)):
 
 @router.get("/api/finance/ma/country")
 def api_finance_ma_country(db: Session = Depends(get_db)):
-    snapshot = get_latest_snapshot(db, "finance_ma_country", "global")
+    snapshot = get_latest_snapshot(db, "finance_ma_country", "Global")
     if snapshot:
         return snapshot.payload
     return {"ok": False, "error": "snapshot not ready", "rows": []}
@@ -451,6 +453,9 @@ def jobs_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
             "jobs": jobs,
             "runs": runs,
             "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            "allowed_geos": ALLOWED_GEOS,
+            "allowed_card_keys": sorted(ALLOWED_INSIGHT_CARD_KEYS),
+            "allowed_tab_keys": sorted(ALLOWED_INSIGHT_TAB_KEYS),
         },
     )
 

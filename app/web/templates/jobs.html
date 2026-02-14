@@ -81,12 +81,9 @@
                     <div>
                       <label class="block text-xs text-slate-400">Scope</label>
                       <select id="ins_scope" class="w-full rounded px-2 py-1 text-xs" style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0;">
-                        <option value="global">global</option>
-                        <option value="Global">Global</option>
-                        <option value="India">India</option>
-                        <option value="Mexico">Mexico</option>
-                        <option value="Singapore">Singapore</option>
-                        <option value="Hong Kong">Hong Kong</option>
+                        {% for geo in allowed_geos %}
+                        <option value="{{ geo }}">{{ geo }}</option>
+                        {% endfor %}
                       </select>
                     </div>
                     <div>
@@ -102,27 +99,18 @@
                       <label class="block text-xs text-slate-400">Card</label>
                       <select id="ins_card" class="w-full rounded px-2 py-1 text-xs" style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0;">
                         <option value="">(all)</option>
-                        <option value="trade_flow">trade_flow</option>
-                        <option value="wealth">wealth</option>
-                        <option value="finance">finance</option>
+                        {% for card in allowed_card_keys %}
+                        <option value="{{ card }}">{{ card }}</option>
+                        {% endfor %}
                       </select>
                     </div>
                     <div>
                       <label class="block text-xs text-slate-400">Tab (label key)</label>
                       <select id="ins_tab" class="w-full rounded px-2 py-1 text-xs" style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0;">
                         <option value="">(all)</option>
-                        <option value="corridors">corridors</option>
-                        <option value="wci">wci</option>
-                        <option value="portwatch">portwatch</option>
-                        <option value="exim">exim</option>
-                        <option value="balance">balance</option>
-                        <option value="gdp_pc">gdp_pc</option>
-                        <option value="cons">cons</option>
-                        <option value="age">age</option>
-                        <option value="disp_pc">disp_pc</option>
-                        <option value="disp_hh">disp_hh</option>
-                        <option value="industry">industry</option>
-                        <option value="country">country</option>
+                        {% for tab in allowed_tab_keys %}
+                        <option value="{{ tab }}">{{ tab }}</option>
+                        {% endfor %}
                       </select>
                     </div>
                   </div>

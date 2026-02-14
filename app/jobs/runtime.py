@@ -120,8 +120,6 @@ def _canonical_scope(value: Any) -> str | None:
     s = str(value or "").strip()
     if not s:
         return None
-    if s.lower() == "global":
-        return "global"
     canonical_map = {g.lower(): g for g in ALLOWED_GEOS}
     return canonical_map.get(s.lower())
 
@@ -283,7 +281,7 @@ def _run_trade_corridors(db: Session, params: dict[str, Any], job_run_id: int | 
     _record_snapshot(
         db,
         widget_key="trade_corridors",
-        scope="global",
+        scope="Global",
         payload=payload,
         source=payload.get("source", ""),
         is_stale=wci_error,
@@ -402,7 +400,7 @@ def _run_wealth_disposable(db: Session, params: dict[str, Any], job_run_id: int 
     _record_snapshot(
         db,
         widget_key="wealth_disposable_latest",
-        scope="global",
+        scope="Global",
         payload=payload,
         source=payload.get("source", ""),
         is_stale=stale,
@@ -459,7 +457,7 @@ def _run_finance_industry(db: Session, params: dict[str, Any], job_run_id: int |
     _record_snapshot(
         db,
         widget_key="finance_ma_industry",
-        scope="global",
+        scope="Global",
         payload=payload,
         source=payload.get("source", ""),
         is_stale=stale,
@@ -480,7 +478,7 @@ def _run_finance_country(db: Session, params: dict[str, Any], job_run_id: int | 
     _record_snapshot(
         db,
         widget_key="finance_ma_country",
-        scope="global",
+        scope="Global",
         payload=payload,
         source=payload.get("source", ""),
         is_stale=stale,
@@ -900,9 +898,11 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
         db.add(state)
         db.flush()
 
-    # If caller specifies scope(s), override geo batching
+    # If caller specifies scope(s), override geo batching.
+    # _canonical_scope() now normalises "global"/"Global" → "Global" (matching ALLOWED_GEOS),
+    # so scope_filters already contains the correct geo names for per-geo loops.
     if scope_filters:
-        geos_to_process = [s for s in scope_filters if s != "global"]
+        geos_to_process = list(scope_filters)
     else:
         geo_idx = int((state.value or {}).get("geo_idx") or 0)
         # If caller explicitly passed geo_list, we still only process 1 geo per run unless forced.
@@ -1001,33 +1001,33 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             llm_failed.append(f"{card_key}/{tab_key}/{scope}: {err or 'llm generation failed'}")
 
     # Trade (global tabs)
-    trade = get_latest_snapshot(db, "trade_corridors", "global")
+    trade = get_latest_snapshot(db, "trade_corridors", "Global")
     if trade:
-        if want("trade_flow", "corridors", "global"):
+        if want("trade_flow", "corridors", "Global"):
             gen(
                 card_key="trade_flow",
                 tab_key="corridors",
-                scope="global",
+                scope="Global",
                 lang=lang,
                 snapshot_inputs=[trade],
                 extra_context={"source": trade.source, "source_updated_at": trade.source_updated_at, "public_contexts": ctx("trade_flow", "corridors"), "force_regen": force_regen},
                 fallback_text="Top corridors are a directional signal; compare value vs volume leaders to spot reroutes or mix changes.",
             )
-        if want("trade_flow", "wci", "global"):
+        if want("trade_flow", "wci", "Global"):
             gen(
                 card_key="trade_flow",
                 tab_key="wci",
-                scope="global",
+                scope="Global",
                 lang=lang,
                 snapshot_inputs=[trade],
                 extra_context={"source": "Drewry WCI (scrape)", "note": "shipping cost proxy", "public_contexts": ctx("trade_flow", "wci"), "force_regen": force_regen},
                 fallback_text="Freight (WCI) reflects shipping-cost pressure; treat it as a proxy signal rather than customs trade value.",
             )
-        if want("trade_flow", "portwatch", "global"):
+        if want("trade_flow", "portwatch", "Global"):
             gen(
                 card_key="trade_flow",
                 tab_key="portwatch",
-                scope="global",
+                scope="Global",
                 lang=lang,
                 snapshot_inputs=[trade],
                 extra_context={"source": "IMF PortWatch", "note": "nowcast/proxy", "public_contexts": ctx("trade_flow", "portwatch"), "force_regen": force_regen},
@@ -1061,7 +1061,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             )
 
     # Wealth per-geo
-    disp = get_latest_snapshot(db, "wealth_disposable_latest", "global")
+    disp = get_latest_snapshot(db, "wealth_disposable_latest", "Global")
     for geo in geos_to_process:
         w = get_latest_snapshot(db, "wealth_indicators_5y", geo)
         if w:
@@ -1129,24 +1129,24 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
                 )
 
     # Finance (global)
-    fin_i = get_latest_snapshot(db, "finance_ma_industry", "global")
-    if fin_i and want("finance", "industry", "global"):
+    fin_i = get_latest_snapshot(db, "finance_ma_industry", "Global")
+    if fin_i and want("finance", "industry", "Global"):
         gen(
             card_key="finance",
             tab_key="industry",
-            scope="global",
+            scope="Global",
             lang=lang,
             snapshot_inputs=[fin_i],
             extra_context={"source": fin_i.source, "source_updated_at": fin_i.source_updated_at, "public_contexts": ctx("finance", "industry"), "force_regen": force_regen},
             fallback_text="Industry ranking reflects disclosed-deal reporting; treat as directional concentration of activity.",
         )
 
-    fin_c = get_latest_snapshot(db, "finance_ma_country", "global")
-    if fin_c and want("finance", "country", "global"):
+    fin_c = get_latest_snapshot(db, "finance_ma_country", "Global")
+    if fin_c and want("finance", "country", "Global"):
         gen(
             card_key="finance",
             tab_key="country",
-            scope="global",
+            scope="Global",
             lang=lang,
             snapshot_inputs=[fin_c],
             extra_context={"source": fin_c.source, "source_updated_at": fin_c.source_updated_at, "public_contexts": ctx("finance", "country"), "force_regen": force_regen},
@@ -1517,7 +1517,7 @@ def update_job_definition(
     return True, "updated"
 
 
-def get_latest_snapshot(db: Session, widget_key: str, scope: str = "global") -> WidgetSnapshot | None:
+def get_latest_snapshot(db: Session, widget_key: str, scope: str = "Global") -> WidgetSnapshot | None:
     return (
         db.query(WidgetSnapshot)
         .filter(WidgetSnapshot.widget_key == widget_key, WidgetSnapshot.scope == scope)

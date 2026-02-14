@@ -78,7 +78,7 @@ COMMENT ON COLUMN public.job_runs.created_at IS 'Row creation time.';
 CREATE TABLE IF NOT EXISTS public.widget_snapshots (
     id BIGSERIAL PRIMARY KEY,
     widget_key VARCHAR(100) NOT NULL,
-    scope VARCHAR(80) NOT NULL DEFAULT 'global',
+    scope VARCHAR(80) NOT NULL DEFAULT 'Global',
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
 
     -- legacy plain-text attribution (prefer payload.source for UI going forward)
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS public.widget_definitions (
     module VARCHAR(80) NOT NULL DEFAULT '',
     name VARCHAR(160) NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
-    default_scope VARCHAR(80) NOT NULL DEFAULT 'global',
+    default_scope VARCHAR(80) NOT NULL DEFAULT 'Global',
     frequency VARCHAR(24) NOT NULL DEFAULT '',
     unit VARCHAR(32) NOT NULL DEFAULT '',
     source_key VARCHAR(80) NULL REFERENCES public.data_sources(source_key) ON DELETE SET NULL,
@@ -202,7 +202,7 @@ COMMENT ON COLUMN public.widget_definitions.updated_at IS 'Row update time (main
 CREATE TABLE IF NOT EXISTS public.widget_commentaries (
     id BIGSERIAL PRIMARY KEY,
     widget_key VARCHAR(100) NOT NULL,
-    scope VARCHAR(80) NOT NULL DEFAULT 'global',
+    scope VARCHAR(80) NOT NULL DEFAULT 'Global',
     lang VARCHAR(16) NOT NULL DEFAULT 'en',
     content TEXT NOT NULL,
     reference_list JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -238,7 +238,7 @@ CREATE TABLE IF NOT EXISTS public.widget_insights (
     id BIGSERIAL PRIMARY KEY,
     card_key VARCHAR(80) NOT NULL,
     tab_key VARCHAR(80) NOT NULL,
-    scope VARCHAR(80) NOT NULL DEFAULT 'global',
+    scope VARCHAR(80) NOT NULL DEFAULT 'Global',
     lang VARCHAR(16) NOT NULL DEFAULT 'en',
     content TEXT NOT NULL,
     reference_list JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS public.insight_generate_logs (
     job_run_id BIGINT NULL REFERENCES public.job_runs(id) ON DELETE SET NULL,
     card_key VARCHAR(80) NOT NULL,
     tab_key VARCHAR(80) NOT NULL,
-    scope VARCHAR(80) NOT NULL DEFAULT 'global',
+    scope VARCHAR(80) NOT NULL DEFAULT 'Global',
     lang VARCHAR(16) NOT NULL DEFAULT 'en',
 
     llm_provider VARCHAR(40) NOT NULL DEFAULT '',

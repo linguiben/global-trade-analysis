@@ -600,15 +600,15 @@
         const d = (TRADE_DATA.by_geo || {})[geo] || {};
 
         // Insights (from DB)
-        const iCorr = _getInsight('trade_flow','corridors','global');
+        const iCorr = _getInsight('trade_flow','corridors','Global');
         document.getElementById('trade_corridors_insight_text').textContent = (iCorr && iCorr.content) || '—';
         document.getElementById('trade_corridors_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCorr && iCorr.source_updated_at);
 
-        const iWci = _getInsight('trade_flow','wci','global');
+        const iWci = _getInsight('trade_flow','wci','Global');
         document.getElementById('trade_wci_insight_text').textContent = (iWci && iWci.content) || '—';
         document.getElementById('trade_wci_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iWci && iWci.source_updated_at);
 
-        const iPw = _getInsight('trade_flow','portwatch','global');
+        const iPw = _getInsight('trade_flow','portwatch','Global');
         document.getElementById('trade_portwatch_insight_text').textContent = (iPw && iPw.content) || '—';
         document.getElementById('trade_portwatch_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iPw && iPw.source_updated_at);
 
@@ -1306,7 +1306,7 @@
           `If concentration rises, cycle risk increases; watch whether deal value shifts to defensive sectors as rates tighten.`
         );
 
-        const iFinInd = _getInsight('finance','industry','global');
+        const iFinInd = _getInsight('finance','industry','Global');
         document.getElementById('fin_industry_insight_text').textContent = (iFinInd && iFinInd.content) || '—';
         document.getElementById('fin_industry_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinInd && iFinInd.source_updated_at);
 
@@ -1354,7 +1354,7 @@
           `Finance shows ${finTop10Deals.toLocaleString()} top-10 deals totaling ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'}bn USD; <strong class="font-semibold text-slate-50">stay selective and watch for rotation in where value concentrates (industry/country)</strong>.`
         );
 
-        const iFinCty = _getInsight('finance','country','global');
+        const iFinCty = _getInsight('finance','country','Global');
         document.getElementById('fin_country_insight_text').textContent = (iFinCty && iFinCty.content) || '—';
         document.getElementById('fin_country_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinCty && iFinCty.source_updated_at);
       }
