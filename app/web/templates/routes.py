@@ -259,6 +259,31 @@ def homepage_v4(request: Request, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/v5", response_class=HTMLResponse)
+@router.head("/v5")
+def homepage_v5(request: Request, db: Session = Depends(get_db)):
+    ip = _client_ip(request)
+    ua = request.headers.get("user-agent", "")[:512]
+    db.add(UserVisitLog(ip=ip, user_agent=ua))
+    db.commit()
+
+    visited_count = db.query(func.count(UserVisitLog.id)).scalar() or 0
+    dashboard_data, latest_at, is_stale = _dashboard_payload(db)
+
+    return templates.TemplateResponse(
+        "dashboard_v5.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "visited_count": visited_count,
+            "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            "dashboard_data": dashboard_data,
+            "data_updated_at": _fmt_utc(latest_at),
+            "data_is_stale": is_stale,
+        },
+    )
+
+
 @router.get("/health", response_class=HTMLResponse)
 def health():
     return "OK"
@@ -544,6 +569,7 @@ def _register_base_path_aliases() -> None:
         {"path": f"{base}/v2", "endpoint": homepage_v2, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v2"},
         {"path": f"{base}/v3", "endpoint": homepage_v3, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v3"},
         {"path": f"{base}/v4", "endpoint": homepage_v4, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v4"},
+        {"path": f"{base}/v5", "endpoint": homepage_v5, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v5"},
         {"path": f"{base}/map/trade-flow", "endpoint": trade_flow_map, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_trade_flow_map"},
         {"path": f"{base}/map/trade-flow-top5", "endpoint": trade_flow_map_top5, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_trade_flow_map_top5"},
         {"path": f"{base}/api/trade/corridors", "endpoint": api_trade_corridors, "methods": ["GET"], "name": "prefixed_api_trade_corridors"},

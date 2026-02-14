@@ -18,7 +18,7 @@ services:
 
   web:
     build: .
-    image: global-trade-analysis-web:${BUILD_TAG:-latest}
+    # image: global-trade-analysis-web:v4
     env_file:
       - .env
     depends_on:

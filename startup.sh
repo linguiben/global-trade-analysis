@@ -70,6 +70,15 @@ if is_container_running "$db_id" && is_container_running "$web_id"; then
 fi
 
 docker compose up -d --build
+
+# Tag the newly built web image with a timestamp for rollback/audit
+WEB_IMAGE="$(docker compose images web --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | head -n1)"
+if [ -n "$WEB_IMAGE" ]; then
+  TIMESTAMP_TAG="$(date +%Y%m%d-%H%M%S)"
+  docker tag "$WEB_IMAGE" "${WEB_IMAGE%%:*}:${TIMESTAMP_TAG}"
+  echo "Tagged image: ${WEB_IMAGE%%:*}:${TIMESTAMP_TAG}"
+fi
+
 web_id="$(get_container_id web)"
 if [ -n "$web_id" ]; then
   echo "Web log level: $(detect_uvicorn_log_level "$web_id")"
