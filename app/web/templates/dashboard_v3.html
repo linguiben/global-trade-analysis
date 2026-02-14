@@ -71,10 +71,11 @@
         <div class="text-xs text-slate-500 font-mono">YoY = latest vs prior point</div>
       </div>
 
-      <div class="mt-5 space-y-2">
-        <div id="exec_trade_line" class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4 text-sm">Trade: —</div>
-        <div id="exec_wealth_line" class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4 text-sm">Wealth: —</div>
-        <div id="exec_fin_line" class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4 text-sm">Finance: —</div>
+      <div class="mt-5">
+        <div id="exec_overall_commentary" class="rounded-2xl bg-slate-900/40 border border-slate-700/60 p-4 text-sm leading-relaxed text-slate-100">
+          —
+        </div>
+        <div class="text-xs text-slate-500 font-mono mt-2">Details are available in the widgets below.</div>
       </div>
     </section>
 
@@ -439,10 +440,19 @@
           <div class="mt-1"><span class="text-slate-500 font-mono text-[11px]">Recommendations:</span> <span class="text-slate-300">${rec || '—'}</span></div>`;
       }
 
-      function _setExecLine(id, text) {
-        const el = document.getElementById(id);
+      // Executive summary: management-friendly narrative (single block)
+      const EXEC_SUMMARY = { trade: null, wealth: null, finance: null };
+
+      function _renderExecSummary() {
+        const el = document.getElementById('exec_overall_commentary');
         if (!el) return;
-        el.textContent = text || '—';
+        const parts = [EXEC_SUMMARY.trade, EXEC_SUMMARY.wealth, EXEC_SUMMARY.finance].filter(Boolean);
+        el.textContent = parts.length ? ('At a glance: ' + parts.join(' ')) : '—';
+      }
+
+      function _setExecSlice(key, text) {
+        EXEC_SUMMARY[key] = text || null;
+        _renderExecSummary();
       }
 
       function setTradeTab(active) {
@@ -703,10 +713,10 @@
         const pwRec = `Use ports to confirm whether changes are demand-led vs capacity-led; reconcile with corridor shifts.`;
         _setObsRec('trade_portwatch_commentary', pwObs, pwRec);
 
-        // Update executive summary (trade slice) — single line
-        _setExecLine(
-          'exec_trade_line',
-          `Trade (${geo}): Ex ${_fmtPct(yoyEx)} YoY · Im ${_fmtPct(yoyIm)} YoY · WCI ${wciLine} · Watch freight-driven cost pressure.`
+        // Update executive summary (trade slice) — single narrative sentence
+        _setExecSlice(
+          'trade',
+          `Trade (${geo}) is ${yoyEx == null && yoyIm == null ? 'still building history' : `running at exports ${_fmtPct(yoyEx)} YoY and imports ${_fmtPct(yoyIm)} YoY`}; freight (WCI) is ${wciLine}, so prioritize monitoring freight-driven cost pressure.`
         );
 
         document.getElementById('trade_period').textContent = `Period: ${d.period || '—'} · WCI: ${wci.period || '—'} · PortWatch: ${pw.period || '—'}`;
@@ -981,10 +991,10 @@
         document.getElementById('wealth_age_insight_text').textContent = (iAge && iAge.content) || '—';
         document.getElementById('wealth_age_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iAge && iAge.source_updated_at);
 
-        // Update executive summary (wealth slice) — single line
-        _setExecLine(
-          'exec_wealth_line',
-          `Wealth (${geo}): GDPpc ${_fmtPct(yoyGdp)} YoY · Cons ${_fmtPct(yoyCons)} YoY · DispPC ${pc} · Watch demand momentum vs FX/inflation.`
+        // Update executive summary (wealth slice) — single narrative sentence
+        _setExecSlice(
+          'wealth',
+          `${geo} demand backdrop: GDP per capita ${_fmtPct(yoyGdp)} YoY and consumption ${_fmtPct(yoyCons)} YoY, with disposable income per capita at ${pc}; key risk is whether FX/inflation erodes real spending momentum.`
         );
       }
 
@@ -1277,10 +1287,10 @@
           `Cross-country shifts can signal regulatory/risk repricing; normalize currencies when comparing levels.`
         );
 
-        // Update executive summary (finance slice) — single line
-        _setExecLine(
-          'exec_fin_line',
-          `Finance: ${finTop10Deals.toLocaleString()} deals (top10) · ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'} bn USD value · Stay selective; watch rotation in value concentration.`
+        // Update executive summary (finance slice) — single narrative sentence
+        _setExecSlice(
+          'finance',
+          `Finance shows ${finTop10Deals.toLocaleString()} top-10 deals totaling ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'}bn USD; stay selective and watch for rotation in where value concentrates (industry/country).`
         );
 
         const iFinCty = _getInsight('finance','country','global');
