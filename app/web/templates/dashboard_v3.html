@@ -448,7 +448,7 @@
         const el = document.getElementById('exec_overall_commentary');
         if (!el) return;
         const parts = [EXEC_SUMMARY.trade, EXEC_SUMMARY.wealth, EXEC_SUMMARY.finance].filter(Boolean);
-        el.textContent = parts.length ? ('At a glance: ' + parts.join(' ')) : '—';
+        el.innerHTML = parts.length ? ('At a glance: ' + parts.join(' ')) : '—';
       }
 
       function _setExecSlice(key, text) {
@@ -718,7 +718,7 @@
         // Update executive summary (trade slice) — single narrative sentence
         _setExecSlice(
           'trade',
-          `Trade (${geo}) is ${yoyEx == null && yoyIm == null ? 'still building history' : `running at exports ${_fmtPct(yoyEx)} YoY and imports ${_fmtPct(yoyIm)} YoY`}; freight (WCI) is ${wciLine}, so prioritize monitoring freight-driven cost pressure.`
+          `Trade (${geo}) is ${yoyEx == null && yoyIm == null ? 'still building history' : `running at exports ${_fmtPct(yoyEx)} YoY and imports ${_fmtPct(yoyIm)} YoY`}; freight (WCI) is ${wciLine}, so <strong class="font-semibold text-slate-50">prioritize monitoring freight-driven cost pressure</strong>.`
         );
 
         document.getElementById('trade_period').textContent = `Period: ${d.period || '—'} · WCI: ${wci.period || '—'} · PortWatch: ${pw.period || '—'}`;
@@ -1018,7 +1018,7 @@
         // Update executive summary (wealth slice) — single narrative sentence
         _setExecSlice(
           'wealth',
-          `${geo} demand backdrop: GDP per capita ${_fmtPct(yoyGdp)} YoY and consumption ${_fmtPct(yoyCons)} YoY, with disposable income per capita at ${pc}; key risk is whether FX/inflation erodes real spending momentum.`
+          `${geo} demand backdrop: GDP per capita ${_fmtPct(yoyGdp)} YoY and consumption ${_fmtPct(yoyCons)} YoY, with disposable income per capita at ${pc}; <strong class="font-semibold text-slate-50">key risk is whether FX/inflation erodes real spending momentum</strong>.`
         );
       }
 
@@ -1351,7 +1351,7 @@
         // Update executive summary (finance slice) — single narrative sentence
         _setExecSlice(
           'finance',
-          `Finance shows ${finTop10Deals.toLocaleString()} top-10 deals totaling ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'}bn USD; stay selective and watch for rotation in where value concentrates (industry/country).`
+          `Finance shows ${finTop10Deals.toLocaleString()} top-10 deals totaling ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'}bn USD; <strong class="font-semibold text-slate-50">stay selective and watch for rotation in where value concentrates (industry/country)</strong>.`
         );
 
         const iFinCty = _getInsight('finance','country','global');
