@@ -83,23 +83,24 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-blue-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Trade Flow</div>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP scaffold</div>
+        <!-- status removed -->
 
         <div id="trade_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-          <label class="text-xs text-slate-400 font-mono">Scope</label>
-          <select id="trade_geo" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
-            <option>Loading…</option>
-          </select>
+        <div class="mt-4">
+          <div class="text-xs text-slate-400 font-mono mb-2">Scope</div>
+          <div id="trade_geo_buttons" class="flex flex-wrap gap-2 text-xs font-mono"></div>
         </div>
 
-        <div class="mt-4 flex flex-wrap gap-2 text-xs font-mono">
+        <div class="mt-4">
+          <div class="text-xs text-slate-400 font-mono mb-2">Category</div>
+          <div class="flex flex-wrap gap-2 text-xs font-mono">
           <button data-tab="corridors" class="trade-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Corridors</button>
           <button data-tab="exim" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Export/Import</button>
           <button data-tab="balance" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Surplus/Deficit</button>
           <button data-tab="wci" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Freight (WCI)</button>
           <button data-tab="portwatch" class="trade-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">PortWatch</button>
+          </div>
         </div>
 
         <div class="mt-4 text-sm">
@@ -188,27 +189,24 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-emerald-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Wealth Distribution</div>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → indicators</div>
+        <!-- status removed -->
 
         <div id="wealth_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-          <label class="text-xs text-slate-400 font-mono">Scope</label>
-          <select id="wealth_geo" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
-            <option>Global</option>
-            <option>India</option>
-            <option>Mexico</option>
-            <option>Singapore</option>
-            <option>Hong Kong</option>
-          </select>
+        <div class="mt-4">
+          <div class="text-xs text-slate-400 font-mono mb-2">Scope</div>
+          <div id="wealth_geo_buttons" class="flex flex-wrap gap-2 text-xs font-mono"></div>
         </div>
 
-        <div class="mt-4 flex flex-wrap gap-2 text-xs font-mono">
-          <button data-tab="gdp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">GDP pc</button>
-          <button data-tab="disp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable pc</button>
-          <button data-tab="disp_hh" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable hh</button>
-          <button data-tab="cons" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Consumption</button>
-          <button data-tab="age" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Age</button>
+        <div class="mt-4">
+          <div class="text-xs text-slate-400 font-mono mb-2">Category</div>
+          <div class="flex flex-wrap gap-2 text-xs font-mono">
+            <button data-tab="gdp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">GDP pc</button>
+            <button data-tab="disp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable pc</button>
+            <button data-tab="disp_hh" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Disposable hh</button>
+            <button data-tab="cons" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Consumption</button>
+            <button data-tab="age" class="wealth-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Age</button>
+          </div>
         </div>
 
         <div class="mt-4 text-sm">
@@ -275,7 +273,7 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-fuchsia-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Financial Flow</div>
-        <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → M&A breakdown</div>
+        <!-- status removed -->
 
         <div id="fin_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
@@ -481,6 +479,7 @@
       }
 
       let TRADE_DATA = null;
+      let TRADE_GEO = 'Global';
       let EXIM_CHART = null;
       let BAL_CHART = null;
       let CORR_VAL_CHART = null;
@@ -597,7 +596,7 @@
 
       function renderTrade() {
         if (!TRADE_DATA) return;
-        const geo = document.getElementById('trade_geo').value || 'Global';
+        const geo = (TRADE_GEO || 'Global');
         const d = (TRADE_DATA.by_geo || {})[geo] || {};
 
         // Insights (from DB)
@@ -726,28 +725,48 @@
         document.getElementById('trade_source').textContent = `Source: ${TRADE_DATA.source} · Updated: ${TRADE_DATA.updated_at}`;
       }
 
+      function setTradeGeo(nextGeo) {
+        TRADE_GEO = nextGeo || 'Global';
+        // toggle active styles
+        document.querySelectorAll('.trade-geo-btn').forEach(b => {
+          if (b.dataset.geo === TRADE_GEO) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+        renderTrade();
+        refreshChartsForGeo(TRADE_GEO);
+      }
+
       async function loadTrade() {
         const data = DASHBOARD_DATA.trade_corridors || {};
         TRADE_DATA = data;
 
-        const sel = document.getElementById('trade_geo');
-        sel.innerHTML = '';
-        (data.geos || ['Global']).forEach(g => {
-          const opt = document.createElement('option');
-          opt.value = g;
-          opt.textContent = g;
-          sel.appendChild(opt);
-        });
-        sel.value = 'Global';
-        sel.addEventListener('change', () => { renderTrade(); refreshChartsForGeo(sel.value); });
+        // One-click scope selector (button group)
+        const wrap = document.getElementById('trade_geo_buttons');
+        if (wrap) {
+          wrap.innerHTML = '';
+          (data.geos || ['Global']).forEach(g => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.geo = g;
+            btn.className = 'trade-geo-btn px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700';
+            btn.textContent = g;
+            btn.addEventListener('click', () => setTradeGeo(g));
+            wrap.appendChild(btn);
+          });
+        }
 
         document.querySelectorAll('.trade-tab').forEach(b => {
           b.addEventListener('click', () => setTradeTab(b.dataset.tab));
         });
         setTradeTab('corridors');
 
-        renderTrade();
-        refreshChartsForGeo('Global');
+        // default
+        setTradeGeo((data.geos && data.geos.includes('Global')) ? 'Global' : ((data.geos && data.geos[0]) || 'Global'));
       }
 
       function setWealthTab(active) {
@@ -766,6 +785,7 @@
         });
       }
 
+      let WEALTH_GEO = 'Global';
       let WEALTH_GDP_CHART = null;
       let WEALTH_CONS_CHART = null;
       let WEALTH_AGE_CHART = null;
@@ -890,9 +910,10 @@
       }
 
       async function refreshWealthForGeo(geo) {
-        const ind = await loadWealthIndicators(geo);
-        // GDP chart: single geo at a time (switch in dropdown)
-        upsertWealthGdpChart(ind, geo);
+        WEALTH_GEO = geo || 'Global';
+        const ind = await loadWealthIndicators(WEALTH_GEO);
+        // GDP chart: single geo at a time (switch in scope buttons)
+        upsertWealthGdpChart(ind, WEALTH_GEO);
         upsertWealthConsChart(ind);
 
         // v3 KPI strip (at-a-glance)
@@ -901,8 +922,8 @@
         const kpi = document.getElementById('wealth_kpi');
         if (kpi) {
           kpi.innerHTML = [
-            _pill(`GDP pc (${geo}) YoY`, _fmtPct(yoyGdp), 'amber'),
-            _pill(`Consumption (${geo}) YoY`, _fmtPct(yoyCons), 'emerald'),
+            _pill(`GDP pc (${WEALTH_GEO}) YoY`, _fmtPct(yoyGdp), 'amber'),
+            _pill(`Consumption (${WEALTH_GEO}) YoY`, _fmtPct(yoyCons), 'emerald'),
           ].join('');
         }
 
@@ -1001,13 +1022,41 @@
         );
       }
 
+      function setWealthGeo(nextGeo) {
+        WEALTH_GEO = nextGeo || 'Global';
+        document.querySelectorAll('.wealth-geo-btn').forEach(b => {
+          if (b.dataset.geo === WEALTH_GEO) {
+            b.classList.remove('bg-slate-900/40');
+            b.classList.add('bg-slate-800');
+          } else {
+            b.classList.remove('bg-slate-800');
+            b.classList.add('bg-slate-900/40');
+          }
+        });
+        refreshWealthForGeo(WEALTH_GEO);
+      }
+
       async function loadWealth() {
-        const sel = document.getElementById('wealth_geo');
+        // One-click scope selector (button group)
+        const geos = ['Global', 'India', 'Mexico', 'Singapore', 'Hong Kong'];
+        const wrap = document.getElementById('wealth_geo_buttons');
+        if (wrap) {
+          wrap.innerHTML = '';
+          geos.forEach(g => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.geo = g;
+            btn.className = 'wealth-geo-btn px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700';
+            btn.textContent = g;
+            btn.addEventListener('click', () => setWealthGeo(g));
+            wrap.appendChild(btn);
+          });
+        }
+
         document.querySelectorAll('.wealth-tab').forEach(b => b.addEventListener('click', () => setWealthTab(b.dataset.tab)));
         setWealthTab('gdp_pc');
 
-        sel.addEventListener('change', () => refreshWealthForGeo(sel.value));
-        await refreshWealthForGeo(sel.value || 'Global');
+        setWealthGeo('Global');
       }
 
       function setFinTab(active) {
