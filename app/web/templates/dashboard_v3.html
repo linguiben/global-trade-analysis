@@ -282,7 +282,10 @@
         <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-mono">
           <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">By industry</button>
           <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">By country</button>
-          <span class="ml-auto text-slate-500">Chart</span>
+        </div>
+
+        <div class="mt-2 flex flex-wrap items-center gap-2 text-xs font-mono">
+          <span class="text-slate-500">Chart</span>
           <button data-chart="ring" class="fin-chart px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Ring</button>
           <button data-chart="bar" class="fin-chart px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Bar</button>
         </div>
@@ -741,7 +744,7 @@
         document.querySelectorAll('.trade-tab').forEach(b => {
           b.addEventListener('click', () => setTradeTab(b.dataset.tab));
         });
-        setTradeTab('exim');
+        setTradeTab('corridors');
 
         renderTrade();
         refreshChartsForGeo('Global');
@@ -1246,16 +1249,7 @@
         finTop10ValueBnUsd = indRows.reduce((a, r) => a + Number(r.value_usd_bil || 0), 0);
         const topIndByVal = indRows.slice().sort((a,b) => Number(b.value_usd_bil||0) - Number(a.value_usd_bil||0))[0];
 
-        // KPI strip (finance)
-        const fk = document.getElementById('fin_kpi');
-        if (fk) {
-          fk.innerHTML = [
-            _pill('Deal count (top 10)', finTop10Deals.toLocaleString(), 'blue'),
-            _pill('Deal value (top 10, bn USD)', finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—', 'fuchsia'),
-            _pill('Top industry by value', topIndByVal ? topIndByVal.industry : '—', 'amber'),
-            _pill('Chart default', 'Bar', 'slate'),
-          ].join('');
-        }
+        // KPI strip (finance) — rendered after both industry & country are loaded
 
         _setObsRec(
           'fin_industry_commentary',
@@ -1281,6 +1275,24 @@
         document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
 
         const topCtyByVal = ctyRows.slice().sort((a,b) => Number(b.value_bil||0) - Number(a.value_bil||0))[0];
+
+        // KPI strip (finance)
+        const _normCountry = (s) => String(s || '').trim().toLowerCase();
+        const BRICS = new Set(['brazil','russia','india','china','south africa']);
+        const topCtyLabel = topCtyByVal
+          ? (BRICS.has(_normCountry(topCtyByVal.country)) ? 'BRICS' : topCtyByVal.country)
+          : '—';
+
+        const fk = document.getElementById('fin_kpi');
+        if (fk) {
+          fk.innerHTML = [
+            _pill('Deal count (top 10)', finTop10Deals.toLocaleString(), 'blue'),
+            _pill('Deal value (top 10, bn USD)', finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—', 'fuchsia'),
+            _pill('Top industry by value', topIndByVal ? topIndByVal.industry : '—', 'amber'),
+            _pill('Top country by value', topCtyLabel, 'emerald'),
+          ].join('');
+        }
+
         _setObsRec(
           'fin_country_commentary',
           `Top country by value: ${topCtyByVal ? (topCtyByVal.country + ' (' + (topCtyByVal.currency || '') + ')') : '—'}.`,
