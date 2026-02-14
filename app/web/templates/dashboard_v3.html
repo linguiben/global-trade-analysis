@@ -1681,7 +1681,20 @@
         document.getElementById('fin_country_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinCty && iFinCty.source_updated_at);
       }
 
-      function setMainTab(kind) {
+      // (removed) setMainTab sync version — replaced with async lazy-loader below
+
+      let _LOADED = { trade: false, wealth: false, finance: false };
+
+      async function ensureLoaded(kind) {
+        if (_LOADED[kind]) return;
+        if (kind === 'trade') { await loadTrade(); }
+        if (kind === 'wealth') { await loadWealth(); }
+        if (kind === 'finance') { await loadFinance(); }
+        _LOADED[kind] = true;
+      }
+
+      // Lazy-load heavy widgets to keep first paint fast
+      async function setMainTab(kind) {
         const k = kind || 'trade';
         const map = { trade: 'widget_trade', wealth: 'widget_wealth', finance: 'widget_finance' };
         Object.entries(map).forEach(([name, id]) => {
@@ -1699,12 +1712,13 @@
             b.classList.add('bg-slate-900/40');
           }
         });
+        await ensureLoaded(k);
       }
 
-      document.querySelectorAll('.main-tab').forEach(b => b.addEventListener('click', () => setMainTab(b.dataset.main)));
-      setMainTab('trade');
+      document.querySelectorAll('.main-tab').forEach(b => b.addEventListener('click', () => { setMainTab(b.dataset.main); }));
 
-      Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});
+      // Default to Trade tab only; load others on demand
+      setMainTab('trade');
     </script>
 
     <section id="about" class="mt-6 card rounded-3xl p-6">
