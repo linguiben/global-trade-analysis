@@ -66,6 +66,25 @@
     .map-metric-btn:hover { background: #f1f5f9; }
     .map-metric-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
 
+    /* Drawer (light theme) */
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.18); z-index: 45; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+    .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+    .drawer { position: fixed; top: 0; right: 0; width: 420px; max-width: 92vw; height: 100vh; z-index: 50;
+              background: rgba(255,255,255,0.98); backdrop-filter: blur(12px);
+              border-left: 1px solid #e2e8f0;
+              box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+              transform: translateX(100%); transition: transform 0.3s ease;
+              display: flex; flex-direction: column; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-scroll { flex: 1; overflow-y: auto; padding: 20px; scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.4) rgba(241,245,249,0.8); }
+    .drawer-scroll::-webkit-scrollbar { width: 6px; }
+    .drawer-scroll::-webkit-scrollbar-track { background: rgba(241,245,249,0.8); }
+    .drawer-scroll::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.4); border-radius: 8px; }
+
+    /* Drawer section card (light theme) */
+    .dsec { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .dsec-title { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
     body.monochrome .text-blue-800,
     body.monochrome .text-emerald-800,
     body.monochrome .text-fuchsia-800,
@@ -136,6 +155,7 @@
         <a class="hover:text-blue-600" href="{{ base }}/v4">v4</a>
         <a class="hover:text-blue-600" href="{{ base }}/v5">v5</a>
         <a class="text-blue-600 font-semibold" href="{{ base }}/v5_1">v5.1</a>
+        <a class="hover:text-blue-600" href="{{ base }}/v6">v6</a>
         <a class="hover:text-blue-600" href="{{ base }}/v7">v7</a>
         <span class="text-slate-300">|</span>
         <a class="hover:text-blue-600" href="{{ base }}/health">Health</a>
@@ -183,7 +203,7 @@
       <div class="flex flex-wrap items-center justify-between px-2 pt-1 pb-2 gap-2">
         <div>
           <div class="text-xs text-slate-500 font-mono">Interactive Map</div>
-          <div class="text-sm text-slate-700 mt-0.5">Click any country to filter trade &amp; wealth data</div>
+          <div class="text-sm text-slate-700 mt-0.5">Click any country to explore its trade &amp; wealth data</div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <div id="mapMetricBtns" class="flex gap-1 text-xs font-mono">
@@ -463,6 +483,23 @@
         </div>
       </section>
     </section>
+
+    <!-- Country detail drawer (slide-in panel) -->
+    <div id="drawerOverlay" class="drawer-overlay"></div>
+    <div id="drawer" class="drawer">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+        <div>
+          <div id="drawer_geo_name" class="text-lg font-bold text-slate-800">—</div>
+          <div id="drawer_geo_sub" class="text-xs text-slate-400 font-mono mt-0.5"></div>
+        </div>
+        <button id="drawerClose" class="text-slate-400 hover:text-slate-600 transition-colors p-1" aria-label="Close panel">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
+        </button>
+      </div>
+      <div id="drawerBody" class="drawer-scroll">
+        <!-- dynamic content injected here -->
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -803,10 +840,10 @@
             if (!iso) return;
             const geo = resolveGeo(iso);
             if (mapState.selectedIso === iso) {
-              // Deselect
               mapState.selectedIso = null;
               mapState.selectedGeo = null;
               renderMap();
+              closeDrawer();
               if (typeof setTradeGeo === 'function') setTradeGeo('Global');
               if (typeof setWealthGeo === 'function') setWealthGeo('Global');
               return;
@@ -814,6 +851,7 @@
             mapState.selectedIso = iso;
             mapState.selectedGeo = geo;
             renderMap();
+            openDrawer(geo, iso);
             if (typeof setTradeGeo === 'function') setTradeGeo(geo);
             if (typeof setWealthGeo === 'function') setWealthGeo(geo);
           })
@@ -848,6 +886,7 @@
               mapState.selectedIso = null;
               mapState.selectedGeo = null;
               renderMap();
+              closeDrawer();
               if (typeof setTradeGeo === 'function') setTradeGeo('Global');
               if (typeof setWealthGeo === 'function') setWealthGeo('Global');
             }
@@ -2079,6 +2118,286 @@
         document.getElementById('fin_country_insight_text').textContent = (iFinCty && iFinCty.content) || '—';
         document.getElementById('fin_country_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinCty && iFinCty.source_updated_at);
       }
+
+      const drawerCharts = {};
+
+      function destroyDrawerCharts() {
+        Object.keys(drawerCharts).forEach(k => {
+          if (drawerCharts[k]) { drawerCharts[k].destroy(); drawerCharts[k] = null; }
+        });
+      }
+
+      function openDrawer(geoName, isoCode) {
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('drawerOverlay');
+        drawer.classList.add('open');
+        overlay.classList.add('open');
+        document.getElementById('drawer_geo_name').textContent = geoName || isoCode || '—';
+        document.getElementById('drawer_geo_sub').textContent = isoCode ? `ISO: ${isoCode}` : '';
+        renderDrawerContent(geoName);
+      }
+
+      function closeDrawer() {
+        document.getElementById('drawer').classList.remove('open');
+        document.getElementById('drawerOverlay').classList.remove('open');
+        destroyDrawerCharts();
+      }
+
+      function renderDrawerContent(geoName) {
+        const body = document.getElementById('drawerBody');
+        destroyDrawerCharts();
+
+        const data = geoDataIndex[geoName];
+        if (!data || (!data.trade && !data.exim && !data.wealth && !data.age && !data.disp)) {
+          body.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-16 text-center">
+              <div class="text-4xl mb-4 opacity-30">🌐</div>
+              <div class="text-slate-500 text-sm">No data available for <span class="text-slate-800 font-semibold">${geoName}</span></div>
+              <div class="text-slate-400 text-xs mt-2">This economy is not yet tracked in our scheduled data snapshots.</div>
+            </div>`;
+          return;
+        }
+
+        let html = '';
+
+        const trade = data.trade;
+        const exim = data.exim;
+        if (trade || exim) {
+          html += `<div class="dsec"><div class="dsec-title">Trade Overview</div>`;
+          if (trade) {
+            const exp = _safeNum(trade.export_usd);
+            const imp = _safeNum(trade.import_usd);
+            const bal = _safeNum(trade.trade_balance_usd);
+            html += `
+              <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                  <div class="text-[10px] text-slate-400">Export</div>
+                  <div class="text-sm font-semibold text-blue-700">${exp != null ? '$' + fmtUSD(exp) : '—'}</div>
+                </div>
+                <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                  <div class="text-[10px] text-slate-400">Import</div>
+                  <div class="text-sm font-semibold text-emerald-700">${imp != null ? '$' + fmtUSD(imp) : '—'}</div>
+                </div>
+                <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                  <div class="text-[10px] text-slate-400">Balance</div>
+                  <div class="text-sm font-semibold ${bal != null && bal >= 0 ? 'text-amber-600' : 'text-pink-600'}">${bal != null ? fmtSignedUSD(bal) : '—'}</div>
+                </div>
+              </div>`;
+          }
+          if (exim && exim.series && exim.series.length > 0) {
+            html += `<canvas id="drawer_exim_chart" height="160" class="mt-2"></canvas>
+                     <div class="text-[10px] text-slate-400 font-mono mt-1">Source: ${exim.source || 'N/A'} · ${exim.frequency || ''}</div>`;
+          }
+          html += `</div>`;
+        }
+
+        if (trade && trade.value_usd_top && trade.value_usd_top.length > 0) {
+          const corridors = trade.value_usd_top.slice(0, 5);
+          html += `<div class="dsec"><div class="dsec-title">Top Corridors (Value)</div><div class="space-y-1.5">`;
+          corridors.forEach(c => {
+            html += `<div class="flex items-center justify-between text-xs">
+              <span class="text-slate-700">${c.origin} → ${c.dest}</span>
+              <span class="text-slate-500 font-mono">$${fmtUSD(c.value_usd)}</span>
+            </div>`;
+          });
+          html += `</div></div>`;
+        }
+
+        const wealth = data.wealth;
+        if (wealth && wealth.series && wealth.series.length > 0) {
+          const s = wealth.series;
+          const lastGdp = s.filter(r => r.gdp_per_capita_usd != null);
+          const lastCons = s.filter(r => r.consumption_expenditure_usd != null);
+          const gdpVal = lastGdp.length ? lastGdp[lastGdp.length - 1].gdp_per_capita_usd : null;
+          const consVal = lastCons.length ? lastCons[lastCons.length - 1].consumption_expenditure_usd : null;
+          const yoyGdp = _yoyPct(s, 'gdp_per_capita_usd');
+          const yoyCons = _yoyPct(s, 'consumption_expenditure_usd');
+
+          html += `<div class="dsec"><div class="dsec-title">Wealth Indicators</div>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                <div class="text-[10px] text-slate-400">GDP per capita</div>
+                <div class="text-sm font-semibold text-amber-600">${gdpVal != null ? '$' + Math.round(gdpVal).toLocaleString() : '—'}</div>
+                <div class="text-[10px] text-slate-400">${_fmtPct(yoyGdp)} YoY</div>
+              </div>
+              <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                <div class="text-[10px] text-slate-400">Consumption</div>
+                <div class="text-sm font-semibold text-emerald-600">${consVal != null ? '$' + fmtUSD(consVal) : '—'}</div>
+                <div class="text-[10px] text-slate-400">${_fmtPct(yoyCons)} YoY</div>
+              </div>
+            </div>
+            <canvas id="drawer_wealth_chart" height="140"></canvas>
+            <div class="text-[10px] text-slate-400 font-mono mt-1">Source: ${wealth.source || 'N/A'} · ${wealth.frequency || ''}</div>
+          </div>`;
+        }
+
+        const disp = data.disp;
+        if (disp) {
+          const pc = disp.per_capita_usd != null ? '$' + Math.round(disp.per_capita_usd).toLocaleString() : '—';
+          const hh = disp.per_household_usd != null ? '$' + Math.round(disp.per_household_usd).toLocaleString() : '—';
+          html += `<div class="dsec"><div class="dsec-title">Disposable Income (Latest)</div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                <div class="text-[10px] text-slate-400">Per capita</div>
+                <div class="text-sm font-semibold text-blue-700">${pc}</div>
+              </div>
+              <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                <div class="text-[10px] text-slate-400">Per household</div>
+                <div class="text-sm font-semibold text-blue-700">${hh}</div>
+              </div>
+            </div>
+          </div>`;
+        }
+
+        const age = data.age;
+        if (age && age.rows && age.rows.length > 0) {
+          html += `<div class="dsec"><div class="dsec-title">Age Structure</div>
+            <canvas id="drawer_age_chart" height="160"></canvas>
+            <div class="text-[10px] text-slate-400 font-mono mt-1">Source: ${age.source || 'N/A'} · ${age.period || ''}</div>
+          </div>`;
+        }
+
+        const maInd = DASHBOARD_DATA.finance_ma_industry || { rows: [] };
+        const maCty = DASHBOARD_DATA.finance_ma_country || { rows: [] };
+        if ((maInd.rows && maInd.rows.length > 0) || (maCty.rows && maCty.rows.length > 0)) {
+          html += `<div class="dsec"><div class="dsec-title">M&A Activity (Global)</div>`;
+          if (maInd.rows && maInd.rows.length > 0) {
+            html += `<div class="text-[10px] text-slate-400 mb-1">Top 3 Industries by Value</div><div class="space-y-1 mb-3">`;
+            maInd.rows.slice(0, 3).forEach(r => {
+              html += `<div class="flex items-center justify-between text-xs">
+                <span class="text-slate-700">${r.industry}</span>
+                <span class="text-slate-500 font-mono">${r.value_usd_bil != null ? '$' + Number(r.value_usd_bil).toFixed(1) + 'B' : '—'} · ${r.deals || 0} deals</span>
+              </div>`;
+            });
+            html += `</div>`;
+          }
+          if (maCty.rows && maCty.rows.length > 0) {
+            html += `<div class="text-[10px] text-slate-400 mb-1">Top 3 Countries by Deals</div><div class="space-y-1">`;
+            maCty.rows.slice(0, 3).forEach(r => {
+              html += `<div class="flex items-center justify-between text-xs">
+                <span class="text-slate-700">${r.country}</span>
+                <span class="text-slate-500 font-mono">${r.deals || 0} deals · ${r.value_bil != null ? (r.currency || '$') + Number(r.value_bil).toFixed(1) + 'B' : '—'}</span>
+              </div>`;
+            });
+            html += `</div>`;
+          }
+          html += `</div>`;
+        }
+
+        const insightTrade = _getInsight('trade_flow', 'corridors', geoName) || _getInsight('trade_flow', 'corridors', 'Global');
+        const insightWealth = _getInsight('wealth', 'gdp_pc', geoName) || _getInsight('wealth', 'gdp_pc', 'Global');
+        if (insightTrade || insightWealth) {
+          html += `<div class="dsec"><div class="dsec-title">Insights</div>`;
+          if (insightTrade && insightTrade.content) {
+            html += `<div class="text-xs text-slate-600 mb-2 leading-relaxed">${insightTrade.content}</div>
+              <div class="text-[10px] text-slate-400 font-mono mb-3">Source updated: ${_fmtSourceUpdated(insightTrade.source_updated_at)}</div>`;
+          }
+          if (insightWealth && insightWealth.content) {
+            html += `<div class="text-xs text-slate-600 leading-relaxed">${insightWealth.content}</div>
+              <div class="text-[10px] text-slate-400 font-mono">Source updated: ${_fmtSourceUpdated(insightWealth.source_updated_at)}</div>`;
+          }
+          html += `</div>`;
+        }
+
+        body.innerHTML = html;
+        requestAnimationFrame(() => renderDrawerCharts(geoName));
+      }
+
+      const drawerChartDefaults = {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#475569', boxWidth: 8, font: { size: 10 } }, position: 'bottom' },
+        },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(226,232,240,0.8)' } },
+          y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(226,232,240,0.8)' } },
+        },
+      };
+
+      function renderDrawerCharts(geoName) {
+        const data = geoDataIndex[geoName];
+        if (!data) return;
+
+        const eximCtx = document.getElementById('drawer_exim_chart');
+        if (eximCtx && data.exim && data.exim.series) {
+          const series = data.exim.series;
+          const labels = series.map(r => r.period);
+          const exp = series.map(r => r.export_usd != null ? r.export_usd / 1e9 : null);
+          const imp = series.map(r => r.import_usd != null ? r.import_usd / 1e9 : null);
+
+          drawerCharts.exim = new Chart(eximCtx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                { label: 'Export (bn)', data: exp, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+                { label: 'Import (bn)', data: imp, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+              ],
+            },
+            options: { ...drawerChartDefaults, plugins: { ...drawerChartDefaults.plugins, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw != null ? c.raw.toFixed(1) : '—'}` } } } },
+          });
+        }
+
+        const wealthCtx = document.getElementById('drawer_wealth_chart');
+        if (wealthCtx && data.wealth && data.wealth.series) {
+          const series = data.wealth.series;
+          const labels = series.map(r => r.period);
+          const gdp = series.map(r => r.gdp_per_capita_usd != null ? r.gdp_per_capita_usd : null);
+
+          drawerCharts.wealth = new Chart(wealthCtx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                { label: 'GDP pc (US$)', data: gdp, borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,0.08)', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+              ],
+            },
+            options: {
+              ...drawerChartDefaults,
+              plugins: {
+                ...drawerChartDefaults.plugins,
+                tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw != null ? '$' + Math.round(c.raw).toLocaleString() : '—'}` } },
+              },
+              scales: {
+                ...drawerChartDefaults.scales,
+                y: { ...drawerChartDefaults.scales.y, ticks: { ...drawerChartDefaults.scales.y.ticks, callback: v => '$' + Number(v).toLocaleString() } },
+              },
+            },
+          });
+        }
+
+        const ageCtx = document.getElementById('drawer_age_chart');
+        if (ageCtx && data.age && data.age.rows && data.age.rows.length > 0) {
+          const labels = data.age.rows.map(r => r.label);
+          const vals = data.age.rows.map(r => r.pct);
+
+          drawerCharts.age = new Chart(ageCtx, {
+            type: 'doughnut',
+            data: {
+              labels,
+              datasets: [{
+                data: vals,
+                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'],
+                borderColor: '#ffffff',
+                borderWidth: 2,
+              }],
+            },
+            options: {
+              responsive: true,
+              cutout: '58%',
+              plugins: {
+                legend: { position: 'right', labels: { color: '#475569', boxWidth: 10, font: { size: 10 } } },
+                tooltip: { callbacks: { label: c => `${c.label}: ${Number(c.parsed).toFixed(1)}%` } },
+              },
+            },
+          });
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+        document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+      });
 
       initMap();
       Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});

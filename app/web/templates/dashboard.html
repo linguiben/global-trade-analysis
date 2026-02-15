@@ -53,6 +53,15 @@
         Stale: {% if data_is_stale %}YES{% else %}NO{% endif %}
       </div>
       <nav class="w-full text-right text-xs text-slate-400 space-x-3">
+        <a class="text-blue-300 font-semibold" href="{{ base }}/">v1</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v2">v2</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v3">v3</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v4">v4</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v5">v5</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v5_1">v5.1</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v6">v6</a>
+        <a class="hover:text-blue-300" href="{{ base }}/v7">v7</a>
+        <span class="text-slate-600">|</span>
         <a class="hover:text-blue-300" href="{{ base }}/health">Health</a>
         <a class="hover:text-blue-300" href="{{ base }}/jobs">Jobs</a>
       </nav>
