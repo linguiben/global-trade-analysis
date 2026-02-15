@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025 Global Trade Report | Infographic</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <!-- Source Material Integration Plan & Confirmation -->
+    <!-- 
+    PLAN SUMMARY:
+    1. Introduction: Hook user with 2025 Global Trade Total Volume using Big Numbers.
+    2. Leaderboard: Compare Top 10 Nations (Exports vs Imports) using Chart.js Bar Chart.
+    3. Trade Blocs: Analyze Regional Power (RCEP, USMCA, EU) using Chart.js Polar Area.
+    4. Bilateral Matrix: Visualizing top trade pairs using a Chart.js Bubble Chart (Canvas).
+    5. Commodity Composition: Sector breakdown using Chart.js Doughnut.
+    6. Growth Analysis: 3D Visualization of GDP vs Trade Growth using Plotly (WebGL).
+    7. Conclusion: Summary of the interconnected 2025 economy.
+
+    CHART SELECTION JUSTIFICATION (NO SVG):
+    - Comparison: Bar Charts (Chart.js) -> Canvas based, good for ranking.
+    - Composition: Doughnut/Polar (Chart.js) -> Canvas based, clear proportional view.
+    - Relationships: Bubble Chart (Chart.js) -> Canvas based, shows 3 dimensions (X, Y, Volume).
+    - Advanced: 3D Scatter (Plotly) -> WebGL based, interactive exploration.
+    
+    CONFIRMATION:
+    - NEITHER Mermaid JS NOR SVG graphics are used in this file.
+    - All charts render to Canvas/WebGL.
+    - Icons are text/CSS based.
+    - Palette: Vibrant "Electric Ocean" (Blues, Teals, Violets).
+    -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light Blue-Grey Background */
+            color: #1e293b;
+        }
+        
+        /* Chart Container Utilities */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            /* Default heights */
+            height: 300px;
+            max-height: 400px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2563eb; 
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Navigation / Header -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">T</div>
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Global Trade <span class="text-blue-600">2025</span></h1>
+            </div>
+            <nav class="hidden md:flex space-x-8 text-sm font-medium text-slate-500">
+                <a href="#overview" class="hover:text-blue-600 transition-colors">Overview</a>
+                <a href="#leaders" class="hover:text-blue-600 transition-colors">Leaders</a>
+                <a href="#sectors" class="hover:text-blue-600 transition-colors">Sectors</a>
+                <a href="#relationships" class="hover:text-blue-600 transition-colors">Relationships</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+        <!-- SECTION 1: INTRODUCTION & KPI (Inform) -->
+        <!-- Goal: Inform. Justification: Big Numbers for immediate impact. -->
+        <section id="overview" class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div class="space-y-6">
+                <span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold tracking-wide uppercase">Report Summary</span>
+                <h2 class="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
+                    The Hyper-Connected<br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600">Global Economy</span>
+                </h2>
+                <p class="text-lg text-slate-600 leading-relaxed">
+                    By 2025, global trade has rebounded with a focus on resilience and regionalization. Total merchandise trade volume has hit historic highs, driven by the explosion of AI hardware, green energy components, and the solidification of the USMCA and RCEP trading blocs.
+                </p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                        <p class="text-sm font-medium text-slate-500 uppercase">Total Trade Volume</p>
+                        <p class="text-3xl font-bold text-slate-900 mt-1">$32.4 T</p>
+                        <p class="text-sm text-green-600 mt-1 flex items-center">
+                            <span>&#9650;</span> <span class="ml-1">+4.2% YoY</span>
+                        </p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-violet-500">
+                        <p class="text-sm font-medium text-slate-500 uppercase">Digital Services</p>
+                        <p class="text-3xl font-bold text-slate-900 mt-1">$8.1 T</p>
+                        <p class="text-sm text-green-600 mt-1 flex items-center">
+                            <span>&#9650;</span> <span class="ml-1">+11.5% YoY</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Intro Chart: Trend Line -->
+            <!-- Goal: Change. Chart: Line. Lib: Chart.js (Canvas) -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-slate-800">Global Trade Growth (2020-2025)</h3>
+                    <p class="text-sm text-slate-500">Trillions USD. Post-pandemic recovery trajectory.</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="growthTrendChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: THE TITANS (Compare) -->
+        <!-- Goal: Compare. Chart: Bar. Lib: Chart.js (Canvas) -->
+        <section id="leaders" class="bg-white rounded-2xl shadow-md p-8">
+            <div class="max-w-3xl mx-auto text-center mb-10">
+                <h2 class="text-3xl font-bold text-slate-900">The Titans of Trade</h2>
+                <p class="mt-4 text-slate-600">
+                    China and the United States continue to dominate the global landscape, though emerging markets like India and Vietnam are rapidly climbing the ranks. This chart compares the Export (Outflow) and Import (Inflow) volumes of the top 10 trading nations.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2">
+                    <div class="chart-container" style="height: 500px; max-height: 500px;">
+                        <canvas id="topNationsChart"></canvas>
+                    </div>
+                </div>
+                <!-- Contextual Analysis Card -->
+                <div class="bg-slate-50 rounded-xl p-6 flex flex-col justify-center space-y-6">
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-lg mb-2">Key Insight</h4>
+                        <p class="text-slate-600 text-sm">
+                            China retains the top spot for exports ($3.9T), driven by EV and solar manufacturing. The USA remains the world's largest consumer market, with imports exceeding $3.5T.
+                        </p>
+                    </div>
+                    <hr class="border-slate-200">
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-lg mb-2">Trade Surplus Leaders</h4>
+                        <ul class="space-y-3">
+                            <li class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-slate-700">1. China</span>
+                                <span class="text-sm font-bold text-green-600">+$850B</span>
+                            </li>
+                            <li class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-slate-700">2. Germany</span>
+                                <span class="text-sm font-bold text-green-600">+$210B</span>
+                            </li>
+                            <li class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-slate-700">3. Russia</span>
+                                <span class="text-sm font-bold text-green-600">+$180B</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: SECTORAL BREAKDOWN & REGIONS (Organize/Composition) -->
+        <!-- Goal: Organize. Chart: Doughnut & Polar. Lib: Chart.js (Canvas) -->
+        <section id="sectors" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Commodity Composition -->
+            <div class="bg-white rounded-2xl shadow-md p-6">
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold text-slate-900">What the World Trades</h3>
+                    <p class="text-sm text-slate-500 mt-2">
+                        Electronics and Energy dominate the global basket. Note the rise of "Green Tech" as a distinct major category.
+                    </p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="commodityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Regional Blocs -->
+            <div class="bg-white rounded-2xl shadow-md p-6">
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold text-slate-900">Regional Power Blocs</h3>
+                    <p class="text-sm text-slate-500 mt-2">
+                        Trade is becoming more regionalized. The RCEP (Asia-Pacific) is now the largest trading bloc by volume.
+                    </p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="regionChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: BILATERAL RELATIONSHIPS (Relationships) -->
+        <!-- Goal: Relationships. Chart: Bubble. Lib: Chart.js (Canvas) -->
+        <section id="relationships" class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-xl p-8 text-white">
+            <div class="mb-8 flex flex-col md:flex-row justify-between items-end">
+                <div class="max-w-2xl">
+                    <h2 class="text-3xl font-bold text-white">Bilateral Trade Matrix</h2>
+                    <p class="mt-2 text-slate-300">
+                        Analyzing the symbiotic relationships between major economies. 
+                        <br><span class="text-xs text-slate-400 italic">X-Axis: Export Intensity | Y-Axis: Import Dependency | Bubble Size: Total Volume</span>
+                    </p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <span class="px-4 py-2 bg-white/10 rounded-lg text-sm font-medium backdrop-blur-sm border border-white/20">
+                        Top Pair: USA & Mexico ($890B)
+                    </span>
+                </div>
+            </div>
+
+            <div class="chart-container bg-white/5 rounded-xl border border-white/10 p-4" style="height: 500px; max-height: 600px;">
+                <canvas id="bilateralChart"></canvas>
+            </div>
+        </section>
+
+        <!-- SECTION 5: ADVANCED ANALYSIS (3D Plot) -->
+        <!-- Goal: Analysis. Chart: 3D Scatter. Lib: Plotly (WebGL) -->
+        <section class="bg-white rounded-2xl shadow-md p-8">
+            <div class="mb-6 border-b border-slate-100 pb-4">
+                <h2 class="text-2xl font-bold text-slate-900">Growth vs. Stability: A 3D Perspective</h2>
+                <p class="text-slate-600 mt-2">
+                    Visualizing the interaction between a nation's GDP Growth Rate (X), Trade Openness (Y), and Innovation Index (Z). Interactive WebGL visualization.
+                </p>
+            </div>
+            <!-- Plotly Container -->
+            <!-- Note: Plotly needs a specific ID and strictly NO SVG configuration -->
+            <div id="plotly3dDiv" class="w-full h-[500px] border border-slate-200 rounded-lg"></div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center py-10 text-slate-400 text-sm">
+            <p>&copy; 2025 Global Trade Analytics Group. All rights reserved.</p>
+            <p class="mt-2">Generated for educational visualization purposes.</p>
+        </footer>
+
+    </main>
+
+    <!-- SCRIPT SECTION -->
+    <script>
+        // --- UTILITY: Label Wrapping (16 Char Limit) ---
+        function formatLabels(labels) {
+            return labels.map(label => {
+                if (label.length > 16) {
+                    const words = label.split(' ');
+                    const lines = [];
+                    let currentLine = words[0];
+
+                    for (let i = 1; i < words.length; i++) {
+                        if ((currentLine + " " + words[i]).length < 16) {
+                            currentLine += " " + words[i];
+                        } else {
+                            lines.push(currentLine);
+                            currentLine = words[i];
+                        }
+                    }
+                    lines.push(currentLine);
+                    return lines;
+                }
+                return label;
+            });
+        }
+
+        // --- UTILITY: Standard Tooltip Config ---
+        const standardTooltipConfig = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) {
+                        return label.join(' ');
+                    } else {
+                        return label;
+                    }
+                }
+            }
+        };
+
+        // --- PALETTE ---
+        const colors = {
+            primary: '#2563EB',   // Blue 600
+            secondary: '#7C3AED', // Violet 600
+            accent: '#F59E0B',    // Amber 500
+            success: '#059669',   // Emerald 600
+            danger: '#DC2626',    // Red 600
+            chart1: '#3B82F6',
+            chart2: '#8B5CF6',
+            chart3: '#EC4899',
+            chart4: '#F97316',
+            chart5: '#10B981'
+        };
+
+        // --- CHART 1: GROWTH TREND (Line) ---
+        const ctxGrowth = document.getElementById('growthTrendChart').getContext('2d');
+        const rawGrowthLabels = ['2020', '2021', '2022', '2023', '2024', '2025 (Proj)'];
+        new Chart(ctxGrowth, {
+            type: 'line',
+            data: {
+                labels: formatLabels(rawGrowthLabels),
+                datasets: [{
+                    label: 'Global Trade Volume ($ Trillions)',
+                    data: [22.5, 25.0, 26.8, 28.5, 30.2, 32.4],
+                    borderColor: colors.primary,
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: colors.primary,
+                    pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: standardTooltipConfig
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { borderDash: [5, 5] }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // --- CHART 2: TOP NATIONS (Bar) ---
+        const ctxNations = document.getElementById('topNationsChart').getContext('2d');
+        // Labels intentionally long to test wrapping
+        const nationLabels = [
+            'China (People\'s Republic)', 'United States of America', 'Germany (Federal Republic)', 
+            'Japan', 'Netherlands', 'South Korea', 'India', 'Italy', 'France', 'United Kingdom'
+        ];
+        new Chart(ctxNations, {
+            type: 'bar',
+            data: {
+                labels: formatLabels(nationLabels),
+                datasets: [
+                    {
+                        label: 'Exports ($T)',
+                        data: [3.9, 2.1, 1.7, 0.75, 0.9, 0.7, 0.55, 0.65, 0.6, 0.5],
+                        backgroundColor: colors.chart1,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Imports ($T)',
+                        data: [3.1, 3.5, 1.5, 0.8, 0.8, 0.65, 0.7, 0.6, 0.75, 0.85],
+                        backgroundColor: colors.chart2,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y', // Horizontal Bar
+                plugins: {
+                    tooltip: standardTooltipConfig,
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    x: {
+                        grid: { borderDash: [2, 2] },
+                        title: { display: true, text: 'Trillions USD' }
+                    },
+                    y: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // --- CHART 3: COMMODITIES (Doughnut) ---
+        const ctxCommodity = document.getElementById('commodityChart').getContext('2d');
+        new Chart(ctxCommodity, {
+            type: 'doughnut',
+            data: {
+                labels: formatLabels(['Electronics & Semiconductors', 'Energy & Fuels', 'Automotive & EV', 'Machinery & Equipment', 'Chemicals & Pharma', 'Agriculture & Food', 'Textiles & Apparel']),
+                datasets: [{
+                    data: [28, 18, 15, 12, 11, 9, 7],
+                    backgroundColor: [
+                        colors.chart1, colors.chart2, colors.chart3, colors.chart4, colors.chart5, '#64748B', '#94A3B8'
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: standardTooltipConfig,
+                    legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+                }
+            }
+        });
+
+        // --- CHART 4: REGIONAL BLOCS (Polar Area) ---
+        const ctxRegion = document.getElementById('regionChart').getContext('2d');
+        new Chart(ctxRegion, {
+            type: 'polarArea',
+            data: {
+                labels: ['RCEP (Asia)', 'EU (Europe)', 'USMCA (N. America)', 'ASEAN', 'Mercosur', 'African CFTA'],
+                datasets: [{
+                    data: [32, 28, 24, 15, 6, 4], // Percentages (approx)
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(139, 92, 246, 0.7)',
+                        'rgba(236, 72, 153, 0.7)',
+                        'rgba(249, 115, 22, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(100, 116, 139, 0.7)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: standardTooltipConfig,
+                    legend: { position: 'bottom' }
+                },
+                scales: {
+                    r: { ticks: { display: false }, grid: { color: '#e2e8f0' } }
+                }
+            }
+        });
+
+        // --- CHART 5: BILATERAL RELATIONS (Bubble) ---
+        // Using Chart.js for strict Canvas compliance (Bubble Chart)
+        const ctxBilateral = document.getElementById('bilateralChart').getContext('2d');
+        new Chart(ctxBilateral, {
+            type: 'bubble',
+            data: {
+                datasets: [{
+                    label: 'Major Trading Pairs',
+                    // x: Export Flow, y: Import Flow, r: Total Volume Scaled
+                    data: [
+                        { x: 500, y: 450, r: 35, pair: 'USA - Mexico' },
+                        { x: 480, y: 320, r: 30, pair: 'China - USA' },
+                        { x: 400, y: 380, r: 28, pair: 'USA - Canada' },
+                        { x: 600, y: 500, r: 40, pair: 'China - ASEAN' },
+                        { x: 250, y: 220, r: 15, pair: 'Germany - France' },
+                        { x: 300, y: 280, r: 20, pair: 'China - EU' },
+                        { x: 150, y: 150, r: 10, pair: 'UK - USA' },
+                        { x: 180, y: 200, r: 12, pair: 'Japan - China' },
+                    ],
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    borderColor: 'rgba(255, 255, 255, 1)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.raw.pair + ': $' + (context.raw.r * 25) + 'B';
+                            }
+                        }
+                    },
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Export Volume (Billions)', color: '#94a3b8' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#cbd5e1' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Import Volume (Billions)', color: '#94a3b8' },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#cbd5e1' }
+                    }
+                }
+            }
+        });
+
+        // --- CHART 6: PLOTLY 3D (WebGL) ---
+        // 3D Scatter showing Growth (X), Openness (Y), Innovation (Z)
+        const plotlyData = [{
+            x: [5.2, 1.8, 1.1, 0.9, 6.5, 6.0, 2.5, 3.2], // GDP Growth %
+            y: [38, 25, 85, 30, 45, 90, 55, 60], // Trade % of GDP
+            z: [75, 95, 88, 92, 60, 65, 80, 70], // Innovation Index
+            mode: 'markers',
+            type: 'scatter3d',
+            text: ['China', 'USA', 'Germany', 'Japan', 'India', 'Vietnam', 'UK', 'France'],
+            marker: {
+                size: 10,
+                color: [5.2, 1.8, 1.1, 0.9, 6.5, 6.0, 2.5, 3.2],
+                colorscale: 'Viridis',
+                opacity: 0.8
+            }
+        }];
+
+        const plotlyLayout = {
+            margin: { l: 0, r: 0, b: 0, t: 0 },
+            paper_bgcolor: 'rgba(0,0,0,0)', // Transparent
+            scene: {
+                xaxis: { title: 'GDP Growth %' },
+                yaxis: { title: 'Trade Openness' },
+                zaxis: { title: 'Innovation Idx' }
+            }
+        };
+
+        Plotly.newPlot('plotly3dDiv', plotlyData, plotlyLayout, {responsive: true});
+
+    </script>
+</body>
+</html>
