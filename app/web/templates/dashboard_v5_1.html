@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Global Trade Analysis · Dashboard v5</title>
+  <title>Global Trade Analysis · Dashboard v5.1</title>
   <link rel="icon" href="{{ base_path }}/favicon.ico" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -41,6 +41,30 @@
     .section-toggle.collapsed .chevron { transform: rotate(-90deg); }
     .section-content { transition: max-height 0.3s ease; overflow: hidden; }
     .section-content.collapsed { max-height: 0 !important; padding-top: 0; padding-bottom: 0; }
+
+    /* World map styling (light theme) */
+    .land { fill: rgba(148,163,184,.15); stroke: rgba(148,163,184,.25); stroke-width: 0.5; cursor: pointer; transition: fill 0.15s; }
+    .land:hover { fill: rgba(96,165,250,.20); }
+    .land.has-data { fill: rgba(96,165,250,.15); stroke: rgba(96,165,250,.30); stroke-width: 0.6; }
+    .land.selected, .land.highlighted { fill: rgba(37,99,235,.30); stroke: rgba(37,99,235,.60); stroke-width: 1.2; }
+    .land.dimmed { fill: rgba(226,232,240,.3); stroke: rgba(226,232,240,.4); }
+    .graticule { fill: none; stroke: rgba(148,163,184,.12); stroke-width: 0.5; }
+
+    /* Map bubbles (light theme) */
+    .bubble { fill: rgba(34,197,94,.35); stroke: rgba(34,197,94,.65); stroke-width: 1; }
+    .bubble.import { fill: rgba(96,165,250,.30); stroke: rgba(96,165,250,.70); }
+    .bubble.zero { fill: rgba(148,163,184,.12); stroke: rgba(148,163,184,.35); }
+    .map-label { fill: rgba(51,65,85,.85); font-size: 10px; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; pointer-events: none; }
+
+    /* Flow arcs (light theme) */
+    .flow-arc { fill: none; cursor: pointer; transition: opacity 0.2s; }
+    .flow-arc:hover { opacity: 1 !important; }
+    .flow-label { fill: rgba(51,65,85,.80); font-size: 10px; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; pointer-events: none; }
+
+    /* Map metric buttons */
+    .map-metric-btn { border: 1px solid #e2e8f0; background: #fff; color: #64748b; cursor: pointer; transition: all 0.15s; }
+    .map-metric-btn:hover { background: #f1f5f9; }
+    .map-metric-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
 
     body.monochrome .text-blue-800,
     body.monochrome .text-emerald-800,
@@ -96,7 +120,7 @@
     <header class="mb-8 flex flex-wrap justify-between items-center gap-3">
       <div>
         <h1 class="text-3xl font-bold text-slate-800">
-          Global Trade Analysis <span class="text-xs font-medium align-top text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full ml-2">v5</span>
+          Global Trade Analysis <span class="text-xs font-medium align-top text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full ml-2">v5.1</span>
         </h1>
         <p class="text-slate-500 text-sm mt-1">$POC · data-driven trade insights$</p>
       </div>
@@ -111,7 +135,7 @@
         <a class="hover:text-blue-600" href="{{ base }}/v3">v3</a>
         <a class="hover:text-blue-600" href="{{ base }}/v4">v4</a>
         <a class="hover:text-blue-600" href="{{ base }}/v5">v5</a>
-        <a class="hover:text-blue-600" href="{{ base }}/v5_1">v5.1</a>
+        <a class="text-blue-600 font-semibold" href="{{ base }}/v5_1">v5.1</a>
         <a class="hover:text-blue-600" href="{{ base }}/v7">v7</a>
         <span class="text-slate-300">|</span>
         <a class="hover:text-blue-600" href="{{ base }}/health">Health</a>
@@ -152,6 +176,38 @@
           <!-- populated by JS -->
         </div>
       </div>
+    </section>
+
+    <!-- World Map (country view) -->
+    <section class="card p-3 md:p-4 relative overflow-hidden mb-8">
+      <div class="flex flex-wrap items-center justify-between px-2 pt-1 pb-2 gap-2">
+        <div>
+          <div class="text-xs text-slate-500 font-mono">Interactive Map</div>
+          <div class="text-sm text-slate-700 mt-0.5">Click any country to filter trade &amp; wealth data</div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div id="mapMetricBtns" class="flex gap-1 text-xs font-mono">
+            <button class="map-metric-btn active px-3 py-1.5 rounded-lg font-semibold" data-metric="export">Exports</button>
+            <button class="map-metric-btn px-3 py-1.5 rounded-lg font-semibold" data-metric="import">Imports</button>
+            <button class="map-metric-btn px-3 py-1.5 rounded-lg font-semibold" data-metric="balance">Balance</button>
+            <button class="map-metric-btn px-3 py-1.5 rounded-lg font-semibold" data-metric="flows">Flows</button>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 px-2 pb-2 text-[11px] text-slate-400 font-mono flex-wrap">
+        <span id="legendBubbleExport" class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(34,197,94,.35);border:1px solid rgba(34,197,94,.65);display:inline-block;"></span> Export bubble</span>
+        <span id="legendBubbleImport" class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(96,165,250,.30);border:1px solid rgba(96,165,250,.70);display:inline-block;"></span> Import bubble</span>
+        <span id="legendBubbleZero" class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.12);border:1px solid rgba(148,163,184,.35);display:inline-block;"></span> Zero / missing</span>
+        <span id="legendFlowArc" class="inline-flex items-center gap-1 hidden"><span style="width:20px;height:3px;display:inline-block;background:linear-gradient(90deg,rgba(34,197,94,.75),rgba(96,165,250,.75));border-radius:2px;"></span> Trade corridor</span>
+        <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(37,99,235,.30);border:1px solid rgba(37,99,235,.60);display:inline-block;"></span> Selected</span>
+      </div>
+      <div id="mapContainer" class="relative" style="height: 50vh; min-height: 400px;">
+        <svg id="mapSvg" style="width:100%;height:100%;" aria-label="World map"></svg>
+        <div id="mapHud" class="absolute left-3 top-3 card rounded-xl px-3 py-2 font-mono text-[11px] text-slate-500">
+          <div id="hudLine">Loading map&hellip;</div>
+        </div>
+      </div>
+      <div id="mapMetricHint" class="px-2 pt-1 text-[11px] text-slate-400 font-mono">Bubble size = latest export USD per country</div>
     </section>
 
     <section id="widgets" class="space-y-6">
@@ -409,6 +465,8 @@
     </section>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
     <script>
       function toggleNumberColors() {
         const body = document.body;
@@ -422,6 +480,489 @@
     <script>
       const BASE = "{{ base }}";
       const DASHBOARD_DATA = {{ dashboard_data | tojson }};
+
+      /* ISO numeric → alpha-2 lookup (for topojson country IDs) */
+      const ISO_NUM = {
+        '4':'AF','8':'AL','12':'DZ','24':'AO','32':'AR','36':'AU','40':'AT','50':'BD',
+        '56':'BE','64':'BT','68':'BO','70':'BA','72':'BW','76':'BR','100':'BG','104':'MM',
+        '108':'BI','116':'KH','120':'CM','124':'CA','140':'CF','144':'LK','148':'TD','152':'CL',
+        '156':'CN','170':'CO','178':'CG','180':'CD','188':'CR','191':'HR','192':'CU','196':'CY',
+        '203':'CZ','204':'BJ','208':'DK','214':'DO','218':'EC','818':'EG','222':'SV','226':'GQ',
+        '232':'ER','233':'EE','231':'ET','242':'FJ','246':'FI','250':'FR','266':'GA','270':'GM',
+        '268':'GE','276':'DE','288':'GH','300':'GR','320':'GT','324':'GN','328':'GY','332':'HT',
+        '340':'HN','344':'HK','348':'HU','352':'IS','356':'IN','360':'ID','364':'IR','368':'IQ',
+        '372':'IE','376':'IL','380':'IT','384':'CI','388':'JM','392':'JP','400':'JO','398':'KZ',
+        '404':'KE','410':'KR','414':'KW','418':'LA','422':'LB','426':'LS','430':'LR','434':'LY',
+        '440':'LT','442':'LU','450':'MG','454':'MW','458':'MY','466':'ML','478':'MR','484':'MX',
+        '496':'MN','504':'MA','508':'MZ','516':'NA','524':'NP','528':'NL','540':'NC','554':'NZ',
+        '558':'NI','562':'NE','566':'NG','578':'NO','512':'OM','586':'PK','591':'PA','598':'PG',
+        '600':'PY','604':'PE','608':'PH','616':'PL','620':'PT','630':'PR','634':'QA','642':'RO',
+        '643':'RU','646':'RW','682':'SA','686':'SN','688':'RS','694':'SL','702':'SG','703':'SK',
+        '704':'VN','705':'SI','706':'SO','710':'ZA','716':'ZW','724':'ES','736':'SD','740':'SR',
+        '752':'SE','756':'CH','760':'SY','762':'TJ','764':'TH','768':'TG','780':'TT','788':'TN',
+        '792':'TR','795':'TM','800':'UG','804':'UA','784':'AE','826':'GB','834':'TZ','840':'US',
+        '858':'UY','860':'UZ','862':'VE','887':'YE','894':'ZM','158':'TW'
+      };
+
+      const ISO_TO_GEO = {
+        'AF':'Afghanistan','AL':'Albania','DZ':'Algeria','AO':'Angola','AR':'Argentina',
+        'AU':'Australia','AT':'Austria','BD':'Bangladesh','BE':'Belgium','BT':'Bhutan',
+        'BO':'Bolivia','BA':'Bosnia and Herzegovina','BW':'Botswana','BR':'Brazil','BG':'Bulgaria',
+        'MM':'Myanmar','BI':'Burundi','KH':'Cambodia','CM':'Cameroon','CA':'Canada',
+        'CF':'Central African Republic','LK':'Sri Lanka','TD':'Chad','CL':'Chile','CN':'China',
+        'CO':'Colombia','CG':'Republic of Congo','CD':'Democratic Republic of the Congo',
+        'CR':'Costa Rica','HR':'Croatia','CU':'Cuba','CY':'Cyprus','CZ':'Czech Republic',
+        'BJ':'Benin','DK':'Denmark','DO':'Dominican Republic','EC':'Ecuador','EG':'Egypt',
+        'SV':'El Salvador','GQ':'Equatorial Guinea','ER':'Eritrea','EE':'Estonia','ET':'Ethiopia',
+        'FJ':'Fiji','FI':'Finland','FR':'France','GA':'Gabon','GM':'Gambia','GE':'Georgia',
+        'DE':'Germany','GH':'Ghana','GR':'Greece','GT':'Guatemala','GN':'Guinea','GY':'Guyana',
+        'HT':'Haiti','HN':'Honduras','HK':'Hong Kong','HU':'Hungary','IS':'Iceland','IN':'India',
+        'ID':'Indonesia','IR':'Iran','IQ':'Iraq','IE':'Ireland','IL':'Israel','IT':'Italy',
+        'CI':'Ivory Coast','JM':'Jamaica','JP':'Japan','JO':'Jordan','KZ':'Kazakhstan',
+        'KE':'Kenya','KR':'South Korea','KW':'Kuwait','LA':'Laos','LB':'Lebanon','LS':'Lesotho',
+        'LR':'Liberia','LY':'Libya','LT':'Lithuania','LU':'Luxembourg','MG':'Madagascar',
+        'MW':'Malawi','MY':'Malaysia','ML':'Mali','MR':'Mauritania','MX':'Mexico','MN':'Mongolia',
+        'MA':'Morocco','MZ':'Mozambique','NA':'Namibia','NP':'Nepal','NL':'Netherlands',
+        'NC':'New Caledonia','NZ':'New Zealand','NI':'Nicaragua','NE':'Niger','NG':'Nigeria',
+        'NO':'Norway','OM':'Oman','PK':'Pakistan','PA':'Panama','PG':'Papua New Guinea',
+        'PY':'Paraguay','PE':'Peru','PH':'Philippines','PL':'Poland','PT':'Portugal',
+        'PR':'Puerto Rico','QA':'Qatar','RO':'Romania','RU':'Russia','RW':'Rwanda',
+        'SA':'Saudi Arabia','SN':'Senegal','RS':'Serbia','SL':'Sierra Leone','SG':'Singapore',
+        'SK':'Slovakia','VN':'Vietnam','SI':'Slovenia','SO':'Somalia','ZA':'South Africa',
+        'ZW':'Zimbabwe','ES':'Spain','SD':'Sudan','SR':'Suriname','SE':'Sweden','CH':'Switzerland',
+        'SY':'Syria','TJ':'Tajikistan','TH':'Thailand','TG':'Togo','TT':'Trinidad and Tobago',
+        'TN':'Tunisia','TR':'Turkey','TM':'Turkmenistan','UG':'Uganda','UA':'Ukraine',
+        'AE':'United Arab Emirates','GB':'United Kingdom','TZ':'Tanzania','US':'United States',
+        'UY':'Uruguay','UZ':'Uzbekistan','VE':'Venezuela','YE':'Yemen','ZM':'Zambia','TW':'Taiwan'
+      };
+
+      const geoDataIndex = {};
+      const dataGeoSet = new Set();
+
+      function buildGeoIndex() {
+        const tc  = DASHBOARD_DATA.trade_corridors || {};
+        const geos = tc.geos || [];
+        const byGeo = tc.by_geo || {};
+        const exim = DASHBOARD_DATA.trade_exim_by_geo || {};
+        const wealth = DASHBOARD_DATA.wealth_indicators_by_geo || {};
+        const age = DASHBOARD_DATA.wealth_age_structure_by_geo || {};
+        const disp = (DASHBOARD_DATA.wealth_disposable_latest || {}).rows || {};
+
+        const allGeos = new Set([...geos, ...Object.keys(exim), ...Object.keys(wealth), ...Object.keys(age), ...Object.keys(disp)]);
+        allGeos.forEach(g => {
+          if (g === 'Global') return;
+          geoDataIndex[g] = { trade: byGeo[g] || null, exim: exim[g] || null, wealth: wealth[g] || null, age: age[g] || null, disp: disp[g] || null };
+          dataGeoSet.add(g);
+        });
+        geoDataIndex['Global'] = { trade: byGeo['Global'] || null, exim: exim['Global'] || null, wealth: wealth['Global'] || null, age: age['Global'] || null, disp: disp['Global'] || null };
+      }
+
+      function resolveGeo(isoAlpha2) {
+        if (!isoAlpha2) return null;
+        const fullName = ISO_TO_GEO[isoAlpha2];
+        if (fullName && geoDataIndex[fullName]) return fullName;
+        if (geoDataIndex[isoAlpha2]) return isoAlpha2;
+        return fullName || isoAlpha2;
+      }
+
+      function geoHasData(geoName) { return dataGeoSet.has(geoName); }
+
+      const mapState = {
+        world: null,
+        centroids: {},
+        points: [],        // per-country {geo, export_usd, import_usd, balance_usd, year}
+        metric: 'export',  // 'export' | 'import' | 'balance' | 'flows'
+        selectedIso: null,
+        selectedGeo: null,
+        year: null,
+      };
+
+      /* ---- map: fmtUSD for map HUD (local, avoids conflict with dashboard fmtUSD) ---- */
+      function mapFmtUSD(v) {
+        if (v === null || v === undefined || isNaN(v)) return '\u2014';
+        const abs = Math.abs(v);
+        const sign = v < 0 ? '-' : '';
+        if (abs >= 1e12) return sign + '$' + (abs/1e12).toFixed(2) + 'T';
+        if (abs >= 1e9)  return sign + '$' + (abs/1e9).toFixed(2) + 'B';
+        if (abs >= 1e6)  return sign + '$' + (abs/1e6).toFixed(2) + 'M';
+        return sign + '$' + abs.toFixed(0);
+      }
+
+      /* ---- map: value accessor for current metric ---- */
+      function mapValueOf(p) {
+        if (mapState.metric === 'flows') return null;
+        if (mapState.metric === 'export') return p.export_usd;
+        if (mapState.metric === 'import') return p.import_usd;
+        return p.balance_usd;
+      }
+
+      /* ---- map: bubble color class ---- */
+      function mapColorClass(p) {
+        const v = mapValueOf(p);
+        if (!v) return 'zero';
+        if (mapState.metric === 'import') return 'import';
+        if (mapState.metric === 'balance') return v >= 0 ? '' : 'import';
+        return '';
+      }
+
+      /* ---- map: build reverse lookup (full name -> ISO-2) ---- */
+      const GEO_TO_ISO = {};
+      Object.entries(ISO_TO_GEO).forEach(([iso, name]) => { GEO_TO_ISO[name] = iso; });
+
+      /* ---- map: centroid lookup with fallback (try key, then ISO, then full name) ---- */
+      function mapCentroid(key) {
+        if (!key) return null;
+        return mapState.centroids[key]
+          || mapState.centroids[GEO_TO_ISO[key]]
+          || mapState.centroids[ISO_TO_GEO[key]]
+          || null;
+      }
+
+      /* ---- map: sync metric button active states + legend + hint ---- */
+      function syncMapMetricButtons() {
+        document.querySelectorAll('#mapMetricBtns [data-metric]').forEach(btn => {
+          btn.classList.toggle('active', btn.getAttribute('data-metric') === mapState.metric);
+        });
+        // Toggle legend visibility
+        const isFlows = mapState.metric === 'flows';
+        document.getElementById('legendBubbleExport').classList.toggle('hidden', isFlows);
+        document.getElementById('legendBubbleImport').classList.toggle('hidden', isFlows);
+        document.getElementById('legendBubbleZero').classList.toggle('hidden', isFlows);
+        document.getElementById('legendFlowArc').classList.toggle('hidden', !isFlows);
+        // Hint text
+        const hints = {
+          export:  'Bubble size = latest export USD per country',
+          import:  'Bubble size = latest import USD per country',
+          balance: 'Balance = export \u2212 import (green = surplus, blue = deficit)',
+          flows:   'Curved arcs show bilateral trade corridors by value. Click a country to filter.',
+        };
+        const hint = document.getElementById('mapMetricHint');
+        if (hint) hint.textContent = hints[mapState.metric] || '';
+      }
+
+      /* ---- map: render flow arcs with arrows (ported from trade_flow_map, light theme) ---- */
+      function renderMapFlows(svg, projection) {
+        const tc  = (DASHBOARD_DATA.trade_corridors || {});
+        const gl  = ((tc.by_geo || {}).Global) || {};
+        const corridors = (gl.value_usd_top || []);
+        if (!corridors.length) {
+          document.getElementById('hudLine').textContent = 'No corridor data available';
+          return;
+        }
+
+        const sel = mapState.selectedIso;
+        const selGeo = mapState.selectedGeo;
+        const visible = selGeo
+          ? corridors.filter(c => c.origin === selGeo || c.dest === selGeo || c.origin === sel || c.dest === sel)
+          : corridors;
+
+        const maxFlow = d3.max(corridors, c => c.value_usd) || 1;
+        const strokeScale = d3.scaleLinear().domain([0, maxFlow]).range([1.5, 8]);
+
+        // SVG defs: arrow marker + per-arc gradients
+        const defs = svg.append('defs');
+        defs.append('marker')
+          .attr('id', 'mapArrowHead')
+          .attr('viewBox', '0 0 10 10')
+          .attr('refX', 10).attr('refY', 5)
+          .attr('markerWidth', 6).attr('markerHeight', 6)
+          .attr('orient', 'auto')
+          .append('path')
+            .attr('d', 'M0,0 L10,5 L0,10 Z')
+            .attr('fill', 'rgba(96,165,250,.8)');
+
+        const arcG  = svg.append('g').attr('class', 'flow-arcs');
+        const lblG  = svg.append('g').attr('class', 'flow-labels');
+
+        visible.forEach((c, i) => {
+          const oC = mapCentroid(c.origin);
+          const dC = mapCentroid(c.dest);
+          if (!oC || !dC) return;
+
+          const p1 = projection([oC.lon, oC.lat]);
+          const p2 = projection([dC.lon, dC.lat]);
+          if (!p1 || !p2) return;
+
+          const [x1, y1] = p1;
+          const [x2, y2] = p2;
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const dr = Math.sqrt(dx * dx + dy * dy);
+
+          // per-arc gradient (green origin -> blue dest)
+          const gid = `mfg${i}`;
+          const grad = defs.append('linearGradient')
+            .attr('id', gid)
+            .attr('gradientUnits', 'userSpaceOnUse')
+            .attr('x1', x1).attr('y1', y1)
+            .attr('x2', x2).attr('y2', y2);
+          grad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(34,197,94,.75)');
+          grad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(96,165,250,.75)');
+
+          arcG.append('path')
+            .attr('class', 'flow-arc')
+            .attr('d', `M${x1},${y1} A${dr},${dr} 0 0,1 ${x2},${y2}`)
+            .attr('stroke', `url(#${gid})`)
+            .attr('stroke-width', strokeScale(c.value_usd))
+            .attr('marker-end', 'url(#mapArrowHead)')
+            .attr('opacity', 0.65)
+            .datum(c)
+            .on('mouseenter', function(ev, datum) {
+              arcG.selectAll('.flow-arc').attr('opacity', 0.12);
+              d3.select(this).attr('opacity', 1);
+              document.getElementById('hudLine').textContent =
+                `${datum.origin} \u2192 ${datum.dest} \u00b7 ${mapFmtUSD(datum.value_usd)} \u00b7 rank #${datum.rank || '?'}`;
+            })
+            .on('mouseleave', function() {
+              arcG.selectAll('.flow-arc').attr('opacity', 0.65);
+              const msg = selGeo
+                ? `Filtered: ${selGeo} \u00b7 ${visible.length} corridor(s)`
+                : `${corridors.length} corridor(s) \u00b7 metric=flows`;
+              document.getElementById('hudLine').textContent = msg;
+            });
+
+          // label at arc midpoint
+          const mx = (x1 + x2) / 2;
+          const my = (y1 + y2) / 2;
+          const chordLen = Math.sqrt(dx * dx + dy * dy) || 1;
+          const off = chordLen * 0.12;
+          const nx = -dy / chordLen;
+          const ny =  dx / chordLen;
+
+          lblG.append('text')
+            .attr('class', 'flow-label')
+            .attr('x', mx + nx * off)
+            .attr('y', my + ny * off)
+            .attr('text-anchor', 'middle')
+            .attr('dy', -4)
+            .text(`${c.origin}\u2192${c.dest} ${mapFmtUSD(c.value_usd)}`);
+        });
+
+        // HUD
+        const msg = selGeo
+          ? `Filtered: ${selGeo} \u00b7 ${visible.length} corridor(s)`
+          : `${corridors.length} corridor(s) \u00b7 metric=flows`;
+        document.getElementById('hudLine').textContent = msg;
+      }
+
+      /* ---- map: main render ---- */
+      function renderMap() {
+        if (!mapState.world) return;
+        const svg = d3.select('#mapSvg');
+        svg.selectAll('*').remove();
+
+        const { width, height } = svg.node().getBoundingClientRect();
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+        const projection = d3.geoNaturalEarth1()
+          .translate([width / 2, height / 2])
+          .scale(Math.min(width, height) * 0.33);
+
+        const path = d3.geoPath(projection);
+        const land = topojson.feature(mapState.world, mapState.world.objects.countries);
+
+        // graticule
+        svg.append('path').attr('class', 'graticule').attr('d', path(d3.geoGraticule10()));
+
+        // Build a set of geos that have exim data (for land coloring in flows mode)
+        const eximGeoSet = new Set(mapState.points.map(p => p.geo));
+
+        // All corridors for highlighting related countries in flows mode
+        const tc  = (DASHBOARD_DATA.trade_corridors || {});
+        const allCorridors = (((tc.by_geo || {}).Global || {}).value_usd_top || []);
+
+        const sel = mapState.selectedIso;
+        const selGeo = mapState.selectedGeo;
+
+        // land paths
+        svg.append('g')
+          .selectAll('path')
+          .data(land.features)
+          .join('path')
+          .attr('class', d => {
+            const iso = ISO_NUM[String(d.id)];
+            const geo = iso ? resolveGeo(iso) : null;
+            const hasData = geo && (geoHasData(geo) || eximGeoSet.has(geo));
+            if (sel && iso === sel) return 'land highlighted';
+            if (mapState.metric === 'flows' && sel) {
+              // In flows mode with selection, dim unrelated countries
+              const related = allCorridors.some(c => {
+                const oIso = Object.entries(ISO_TO_GEO).find(([k,v]) => v === c.origin || k === c.origin);
+                const dIso = Object.entries(ISO_TO_GEO).find(([k,v]) => v === c.dest || k === c.dest);
+                return c.origin === geo || c.dest === geo || c.origin === iso || c.dest === iso;
+              });
+              if (!related && !hasData) return 'land dimmed';
+            }
+            if (hasData) return 'land has-data';
+            return 'land dimmed';
+          })
+          .attr('d', path)
+          .on('click', function(ev, d) {
+            ev.stopPropagation();
+            const iso = ISO_NUM[String(d.id)];
+            if (!iso) return;
+            const geo = resolveGeo(iso);
+            if (mapState.selectedIso === iso) {
+              // Deselect
+              mapState.selectedIso = null;
+              mapState.selectedGeo = null;
+              renderMap();
+              if (typeof setTradeGeo === 'function') setTradeGeo('Global');
+              if (typeof setWealthGeo === 'function') setWealthGeo('Global');
+              return;
+            }
+            mapState.selectedIso = iso;
+            mapState.selectedGeo = geo;
+            renderMap();
+            if (typeof setTradeGeo === 'function') setTradeGeo(geo);
+            if (typeof setWealthGeo === 'function') setWealthGeo(geo);
+          })
+          .on('mouseenter', function(ev, d) {
+            const iso = ISO_NUM[String(d.id)];
+            if (!iso) return;
+            const geo = resolveGeo(iso);
+            // Show country info in HUD
+            const pt = mapState.points.find(p => p.geo === geo || p.geo === iso);
+            if (pt && mapState.metric !== 'flows') {
+              const v = mapValueOf(pt);
+              document.getElementById('hudLine').textContent = `${geo || iso} \u00b7 ${mapState.metric}=${mapFmtUSD(v)} \u00b7 year=${pt.year ?? '\u2014'}`;
+            } else {
+              document.getElementById('hudLine').textContent = `${geo || iso} ${geoHasData(geo) || eximGeoSet.has(geo) ? '\u00b7 has data' : '\u00b7 no data'}`;
+            }
+          })
+          .on('mouseleave', function() {
+            if (mapState.metric === 'flows') {
+              const msg = selGeo
+                ? `Filtered: ${selGeo} \u00b7 click background to deselect`
+                : `${allCorridors.length} corridor(s) \u00b7 click a country to filter`;
+              document.getElementById('hudLine').textContent = msg;
+            } else {
+              document.getElementById('hudLine').textContent = `${mapState.points.length} economies \u00b7 metric=${mapState.metric}`;
+            }
+          });
+
+        // Click SVG background to deselect
+        svg.on('click', function(ev) {
+          if (ev.target === svg.node()) {
+            if (mapState.selectedIso) {
+              mapState.selectedIso = null;
+              mapState.selectedGeo = null;
+              renderMap();
+              if (typeof setTradeGeo === 'function') setTradeGeo('Global');
+              if (typeof setWealthGeo === 'function') setWealthGeo('Global');
+            }
+          }
+        });
+
+        // Branch: flows mode vs bubble mode
+        if (mapState.metric === 'flows') {
+          renderMapFlows(svg, projection);
+          return;
+        }
+
+        // ---- Bubble mode ----
+        const vals = mapState.points.map(mapValueOf).filter(v => v !== null && v !== undefined && !isNaN(v));
+        const maxV = d3.max(vals.map(v => Math.abs(v))) || 1;
+        const r = d3.scaleSqrt().domain([0, maxV]).range([0, Math.min(width, height) * 0.075]);
+
+        const pts = mapState.points
+          .map(p => {
+            const c = mapCentroid(p.geo);
+            if (!c) return null;
+            const xy = projection([c.lon, c.lat]);
+            if (!xy) return null;
+            return { ...p, x: xy[0], y: xy[1] };
+          })
+          .filter(Boolean);
+
+        const g = svg.append('g');
+
+        g.selectAll('circle')
+          .data(pts)
+          .join('circle')
+          .attr('class', d => `bubble ${mapColorClass(d)}`)
+          .attr('cx', d => d.x)
+          .attr('cy', d => d.y)
+          .attr('r', d => {
+            const v = mapValueOf(d);
+            return v ? r(Math.abs(v)) : 3;
+          })
+          .attr('opacity', d => {
+            if (sel) return d.geo === selGeo ? 0.92 : 0.2;
+            return mapValueOf(d) ? 0.85 : 0.5;
+          })
+          .on('mouseenter', (ev, d) => {
+            const v = mapValueOf(d);
+            document.getElementById('hudLine').textContent = `${d.geo} \u00b7 ${mapState.metric}=${mapFmtUSD(v)} \u00b7 year=${d.year ?? '\u2014'}`;
+          })
+          .on('mouseleave', () => {
+            const msg = selGeo
+              ? `Filtered: ${selGeo} \u00b7 ${mapState.points.length} economies`
+              : `${mapState.points.length} economies \u00b7 metric=${mapState.metric}`;
+            document.getElementById('hudLine').textContent = msg;
+          });
+
+        // Labels for top bubbles (avoid clutter — only label top 10 by value)
+        const sortedPts = pts.slice().sort((a, b) => Math.abs(mapValueOf(b) || 0) - Math.abs(mapValueOf(a) || 0));
+        const labelPts = sel ? sortedPts.filter(d => d.geo === selGeo) : sortedPts.slice(0, 10);
+
+        g.selectAll('.map-label')
+          .data(labelPts)
+          .join('text')
+          .attr('class', 'map-label')
+          .attr('x', d => d.x)
+          .attr('y', d => d.y)
+          .attr('text-anchor', 'middle')
+          .attr('dy', d => {
+            const v = mapValueOf(d);
+            const rr = v ? r(Math.abs(v)) : 3;
+            return -(rr + 5);
+          })
+          .text(d => d.geo);
+
+        // HUD
+        document.getElementById('hudLine').textContent = `${mapState.points.length} economies \u00b7 metric=${mapState.metric}`;
+      }
+
+      /* ---- map: init (load topology + centroids + exim data) ---- */
+      function initMap() {
+        buildGeoIndex();
+
+        // Hook metric buttons
+        document.querySelectorAll('#mapMetricBtns [data-metric]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            mapState.metric = btn.getAttribute('data-metric');
+            mapState.selectedIso = null;
+            mapState.selectedGeo = null;
+            syncMapMetricButtons();
+            renderMap();
+          });
+        });
+        syncMapMetricButtons();
+
+        // Load topology, centroids, and exim data in parallel
+        Promise.all([
+          d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'),
+          fetch(`${BASE}/static/country_centroids.json`).then(r => r.json()),
+          fetch(`${BASE}/api/trade/exim-latest-all`).then(r => r.json()),
+        ]).then(([world, centroids, eximData]) => {
+          mapState.world = world;
+          mapState.centroids = centroids;
+          mapState.points = (eximData.rows || []).map(x => ({
+            geo: x.geo,
+            export_usd: x.export_usd,
+            import_usd: x.import_usd,
+            balance_usd: x.balance_usd,
+            year: x.year,
+          }));
+          mapState.year = eximData.year || null;
+          renderMap();
+          window.addEventListener('resize', () => renderMap());
+        }).catch(err => {
+          console.error('Map init failed:', err);
+          document.getElementById('hudLine').textContent = 'Failed to load map data. Check console.';
+        });
+      }
 
       function fmtUSD(n) {
         if (n == null) return "—";
@@ -563,7 +1104,7 @@
           : '';
 
         const financeSentence = f
-          ? ` In <strong class="text-slate-700">M&amp;A activity</strong>, the top 10 industries account for <span class="text-blue-900 font-bold text-lg">${f.dealCount}</span> deals worth <span class="text-blue-900 font-bold text-lg">${f.dealValue}bn</span> USD, led by ${f.topIndustry} (by value) and concentrated in ${f.topCountry} (by country).`
+          ? ` In <strong class="text-slate-700">M&amp;A activity</strong>, the top 5 industries account for <span class="text-blue-900 font-bold text-lg">${f.dealCount}</span> deals worth <span class="text-blue-900 font-bold text-lg">${f.dealValue}bn</span> USD, led by ${f.topIndustry} (by value) and concentrated in ${f.topCountry} (by country).`
           : '';
 
         const watchItems = [];
@@ -602,8 +1143,8 @@
           pills.push(_pill('Disposable pc', w.dispPc, 'blue'));
         }
         if (f) {
-          pills.push(_pill('M&A Deals (top 10)', f.dealCount, 'blue'));
-          pills.push(_pill('M&A Value (top 10)', f.dealValue ? f.dealValue + 'bn' : '—', 'fuchsia'));
+          pills.push(_pill('M&A Deals (top 5)', f.dealCount, 'blue'));
+          pills.push(_pill('M&A Value (top 5)', f.dealValue ? f.dealValue + 'bn' : '—', 'fuchsia'));
         }
         panel.innerHTML = pills.join('');
       }
@@ -1461,7 +2002,7 @@
 
         // Industry
         const ind = await loadFinIndustry();
-        const indRows = (ind.rows || []).slice(0, 10);
+        const indRows = (ind.rows || []).slice(0, 5);
         const indLabels = indRows.map(r => r.industry);
         const indDeals = indRows.map(r => r.deals);
         const indVal = indRows.map(r => r.value_usd_bil);
@@ -1489,7 +2030,7 @@
 
         // Country
         const cty = await loadFinCountry();
-        const ctyRows = (cty.rows || []).slice(0, 10);
+        const ctyRows = (cty.rows || []).slice(0, 5);
         const ctyLabels = ctyRows.map(r => r.country);
         const ctyDeals = ctyRows.map(r => r.deals);
         const ctyVal = ctyRows.map(r => r.value_bil);
@@ -1512,8 +2053,8 @@
         const fk = document.getElementById('fin_kpi');
         if (fk) {
           fk.innerHTML = [
-            _pill('Deal count (top 10)', finTop10Deals.toLocaleString(), 'blue'),
-            _pill('Deal value (top 10, bn USD)', finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—', 'fuchsia'),
+            _pill('Deal count (top 5)', finTop10Deals.toLocaleString(), 'blue'),
+            _pill('Deal value (top 5, bn USD)', finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—', 'fuchsia'),
             _pill('Top industry by value', topIndByVal ? topIndByVal.industry : '—', 'amber'),
             _pill('Top country by value', topCtyLabel, 'emerald'),
           ].join('');
@@ -1539,6 +2080,7 @@
         document.getElementById('fin_country_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinCty && iFinCty.source_updated_at);
       }
 
+      initMap();
       Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});
     </script>
 
