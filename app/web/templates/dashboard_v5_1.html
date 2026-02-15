@@ -51,20 +51,13 @@
     .graticule { fill: none; stroke: rgba(148,163,184,.12); stroke-width: 0.5; }
 
     /* Map bubbles (light theme) */
-    .bubble { fill: rgba(34,197,94,.35); stroke: rgba(34,197,94,.65); stroke-width: 1; }
-    .bubble.import { fill: rgba(96,165,250,.30); stroke: rgba(96,165,250,.70); }
-    .bubble.zero { fill: rgba(148,163,184,.12); stroke: rgba(148,163,184,.35); }
-    .map-label { fill: rgba(51,65,85,.85); font-size: 10px; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; pointer-events: none; }
+
 
     /* Flow arcs (light theme) */
-    .flow-arc { fill: none; cursor: pointer; transition: opacity 0.2s; }
-    .flow-arc:hover { opacity: 1 !important; }
-    .flow-label { fill: rgba(51,65,85,.80); font-size: 10px; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; pointer-events: none; }
+
 
     /* Map metric buttons */
-    .map-metric-btn { border: 1px solid #e2e8f0; background: #fff; color: #64748b; cursor: pointer; transition: all 0.15s; }
-    .map-metric-btn:hover { background: #f1f5f9; }
-    .map-metric-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+
 
     /* Drawer (light theme) */
     .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.18); z-index: 45; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
@@ -200,26 +193,16 @@
 
     <!-- World Map (country view) -->
     <section class="card p-3 md:p-4 relative overflow-hidden mb-8">
-      <div class="flex flex-wrap items-center justify-between px-2 pt-1 pb-2 gap-2">
+      <div class="flex items-center justify-between px-2 pt-1 pb-2">
         <div>
           <div class="text-xs text-slate-500 font-mono">Interactive Map</div>
           <div class="text-sm text-slate-700 mt-0.5">Click any country to explore its trade &amp; wealth data</div>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <div id="mapMetricBtns" class="flex gap-1 text-xs font-mono">
-            <button class="map-metric-btn active px-3 py-1.5 rounded-lg font-semibold" data-metric="export">Exports</button>
-            <button class="map-metric-btn px-3 py-1.5 rounded-lg font-semibold" data-metric="import">Imports</button>
-            <button class="map-metric-btn px-3 py-1.5 rounded-lg font-semibold" data-metric="balance">Balance</button>
-            <button class="map-metric-btn px-3 py-1.5 rounded-lg font-semibold" data-metric="flows">Flows</button>
-          </div>
+        <div class="flex items-center gap-3 text-[11px] text-slate-500 font-mono">
+          <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.18);border:1px solid rgba(148,163,184,.35);display:inline-block;"></span> Has data</span>
+          <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.06);border:1px solid rgba(148,163,184,.12);display:inline-block;"></span> No data</span>
+          <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(96,165,250,.25);border:1px solid rgba(96,165,250,.5);display:inline-block;"></span> Selected</span>
         </div>
-      </div>
-      <div class="flex items-center gap-3 px-2 pb-2 text-[11px] text-slate-400 font-mono flex-wrap">
-        <span id="legendBubbleExport" class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(34,197,94,.35);border:1px solid rgba(34,197,94,.65);display:inline-block;"></span> Export bubble</span>
-        <span id="legendBubbleImport" class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(96,165,250,.30);border:1px solid rgba(96,165,250,.70);display:inline-block;"></span> Import bubble</span>
-        <span id="legendBubbleZero" class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.12);border:1px solid rgba(148,163,184,.35);display:inline-block;"></span> Zero / missing</span>
-        <span id="legendFlowArc" class="inline-flex items-center gap-1 hidden"><span style="width:20px;height:3px;display:inline-block;background:linear-gradient(90deg,rgba(34,197,94,.75),rgba(96,165,250,.75));border-radius:2px;"></span> Trade corridor</span>
-        <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(37,99,235,.30);border:1px solid rgba(37,99,235,.60);display:inline-block;"></span> Selected</span>
       </div>
       <div id="mapContainer" class="relative" style="height: 50vh; min-height: 400px;">
         <svg id="mapSvg" style="width:100%;height:100%;" aria-label="World map"></svg>
@@ -227,7 +210,6 @@
           <div id="hudLine">Loading map&hellip;</div>
         </div>
       </div>
-      <div id="mapMetricHint" class="px-2 pt-1 text-[11px] text-slate-400 font-mono">Bubble size = latest export USD per country</div>
     </section>
 
     <section id="widgets" class="space-y-6">
@@ -241,15 +223,11 @@
         <div id="trade_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
           <div class="mt-4">
-            <div class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Scope</div>
-            <div id="trade_geo_buttons" class="flex flex-wrap gap-2 text-xs font-mono"><button type="button" class="trade-geo-btn hidden"></button></div>
-          </div>
-
-          <div class="mt-4">
             <div class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Category</div>
             <div class="flex flex-wrap gap-2 text-xs font-mono">
           <button data-tab="corridors" class="trade-tab px-3 py-1 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Corridors</button>
-          <button data-tab="exim" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Export/Import</button>
+          <button data-tab="export" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Export</button>
+          <button data-tab="import" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Import</button>
           <button data-tab="balance" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Surplus/Deficit</button>
           <button data-tab="wci" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Freight (WCI)</button>
           <button data-tab="portwatch" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">PortWatch</button>
@@ -272,26 +250,27 @@
           </div>
           </div>
 
-          <div id="trade_panel_exim" class="trade-panel hidden">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <div class="text-slate-700 font-semibold">Export</div>
-                <div id="trade_export" class="text-blue-900 text-lg font-bold mt-1 font-mono">—</div>
-              </div>
-              <div>
-                <div class="text-slate-700 font-semibold">Import</div>
-                <div id="trade_import" class="text-blue-900 text-lg font-bold mt-1 font-mono">—</div>
-              </div>
-            </div>
-            <div class="mt-3">
-              <canvas id="trade_exim_chart" height="120"></canvas>
-              <div id="trade_exim_chart_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
-            </div>
-            <div id="trade_exim_commentary" class="text-slate-600 text-sm mt-2"></div>
+          <div id="trade_panel_export" class="trade-panel hidden">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Export</div>
+            <canvas id="trade_export_top5_chart" height="160" class="mt-2"></canvas>
+            <div id="trade_export_top5_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="trade_export_commentary" class="text-slate-600 text-sm mt-2"></div>
             <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
               <div class="text-xs text-slate-500 font-mono">Insight</div>
               <div class="text-slate-700 text-sm mt-1" id="trade_exim_insight_text">—</div>
               <div class="text-xs text-slate-400 font-mono mt-2" id="trade_exim_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="trade_panel_import" class="trade-panel hidden">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Import</div>
+            <canvas id="trade_import_top5_chart" height="160" class="mt-2"></canvas>
+            <div id="trade_import_top5_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="trade_import_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="trade_import_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="trade_import_source_updated">Source updated: —</div>
             </div>
           </div>
 
@@ -350,11 +329,6 @@
         <div id="wealth_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
 
           <div class="mt-4">
-            <div class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Scope</div>
-            <div id="wealth_geo_buttons" class="flex flex-wrap gap-2 text-xs font-mono"><button type="button" class="wealth-geo-btn hidden"></button></div>
-          </div>
-
-          <div class="mt-4">
             <div class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Category</div>
             <div class="flex flex-wrap gap-2 text-xs font-mono">
               <button data-tab="gdp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-800 text-white hover:bg-slate-700">GDP pc</button>
@@ -367,7 +341,8 @@
 
         <div class="mt-4 text-sm">
           <div id="wealth_panel_gdp_pc" class="wealth-panel">
-            <canvas id="wealth_gdp_pc_chart" height="120"></canvas>
+            <div class="text-slate-700 font-semibold">Top 5 Countries by GDP per Capita</div>
+            <canvas id="wealth_gdp_pc_chart" height="160" class="mt-2"></canvas>
             <div id="wealth_gdp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_gdp_pc_commentary" class="text-slate-600 text-sm mt-2"></div>
             <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
@@ -378,8 +353,8 @@
           </div>
 
           <div id="wealth_panel_disp_pc" class="wealth-panel hidden">
-            <div class="text-slate-700 font-semibold">Disposable income (per capita, latest)</div>
-            <div id="wealth_disp_pc" class="text-blue-900 text-lg font-bold mt-1 font-mono">Loading…</div>
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Disposable Income (per capita)</div>
+            <canvas id="wealth_disp_pc_chart" height="160" class="mt-2"></canvas>
             <div id="wealth_disp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_disp_pc_commentary" class="text-slate-600 text-sm mt-2"></div>
             <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
@@ -390,8 +365,8 @@
           </div>
 
           <div id="wealth_panel_disp_hh" class="wealth-panel hidden">
-            <div class="text-slate-700 font-semibold">Disposable income (per household, latest)</div>
-            <div id="wealth_disp_hh" class="text-blue-900 text-lg font-bold mt-1 font-mono">Loading…</div>
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Disposable Income (per household)</div>
+            <canvas id="wealth_disp_hh_chart" height="160" class="mt-2"></canvas>
             <div id="wealth_disp_hh_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_disp_hh_commentary" class="text-slate-600 text-sm mt-2"></div>
             <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
@@ -402,7 +377,8 @@
           </div>
 
           <div id="wealth_panel_cons" class="wealth-panel hidden">
-            <canvas id="wealth_cons_chart" height="120"></canvas>
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Consumption Expenditure</div>
+            <canvas id="wealth_cons_chart" height="160" class="mt-2"></canvas>
             <div id="wealth_cons_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_cons_commentary" class="text-slate-600 text-sm mt-2"></div>
             <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
@@ -413,7 +389,7 @@
           </div>
 
           <div id="wealth_panel_age" class="wealth-panel hidden">
-            <div class="text-slate-700 font-semibold">Age structure (% of population, latest)</div>
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Working-Age Population Share</div>
             <canvas id="wealth_age_chart" height="160" class="mt-2"></canvas>
             <div id="wealth_age_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
             <div id="wealth_age_commentary" class="text-slate-600 text-sm mt-2"></div>
@@ -608,39 +584,10 @@
         world: null,
         centroids: {},
         points: [],        // per-country {geo, export_usd, import_usd, balance_usd, year}
-        metric: 'export',  // 'export' | 'import' | 'balance' | 'flows'
         selectedIso: null,
         selectedGeo: null,
         year: null,
       };
-
-      /* ---- map: fmtUSD for map HUD (local, avoids conflict with dashboard fmtUSD) ---- */
-      function mapFmtUSD(v) {
-        if (v === null || v === undefined || isNaN(v)) return '\u2014';
-        const abs = Math.abs(v);
-        const sign = v < 0 ? '-' : '';
-        if (abs >= 1e12) return sign + '$' + (abs/1e12).toFixed(2) + 'T';
-        if (abs >= 1e9)  return sign + '$' + (abs/1e9).toFixed(2) + 'B';
-        if (abs >= 1e6)  return sign + '$' + (abs/1e6).toFixed(2) + 'M';
-        return sign + '$' + abs.toFixed(0);
-      }
-
-      /* ---- map: value accessor for current metric ---- */
-      function mapValueOf(p) {
-        if (mapState.metric === 'flows') return null;
-        if (mapState.metric === 'export') return p.export_usd;
-        if (mapState.metric === 'import') return p.import_usd;
-        return p.balance_usd;
-      }
-
-      /* ---- map: bubble color class ---- */
-      function mapColorClass(p) {
-        const v = mapValueOf(p);
-        if (!v) return 'zero';
-        if (mapState.metric === 'import') return 'import';
-        if (mapState.metric === 'balance') return v >= 0 ? '' : 'import';
-        return '';
-      }
 
       /* ---- map: build reverse lookup (full name -> ISO-2) ---- */
       const GEO_TO_ISO = {};
@@ -655,134 +602,7 @@
           || null;
       }
 
-      /* ---- map: sync metric button active states + legend + hint ---- */
-      function syncMapMetricButtons() {
-        document.querySelectorAll('#mapMetricBtns [data-metric]').forEach(btn => {
-          btn.classList.toggle('active', btn.getAttribute('data-metric') === mapState.metric);
-        });
-        // Toggle legend visibility
-        const isFlows = mapState.metric === 'flows';
-        document.getElementById('legendBubbleExport').classList.toggle('hidden', isFlows);
-        document.getElementById('legendBubbleImport').classList.toggle('hidden', isFlows);
-        document.getElementById('legendBubbleZero').classList.toggle('hidden', isFlows);
-        document.getElementById('legendFlowArc').classList.toggle('hidden', !isFlows);
-        // Hint text
-        const hints = {
-          export:  'Bubble size = latest export USD per country',
-          import:  'Bubble size = latest import USD per country',
-          balance: 'Balance = export \u2212 import (green = surplus, blue = deficit)',
-          flows:   'Curved arcs show bilateral trade corridors by value. Click a country to filter.',
-        };
-        const hint = document.getElementById('mapMetricHint');
-        if (hint) hint.textContent = hints[mapState.metric] || '';
-      }
-
-      /* ---- map: render flow arcs with arrows (ported from trade_flow_map, light theme) ---- */
-      function renderMapFlows(svg, projection) {
-        const tc  = (DASHBOARD_DATA.trade_corridors || {});
-        const gl  = ((tc.by_geo || {}).Global) || {};
-        const corridors = (gl.value_usd_top || []);
-        if (!corridors.length) {
-          document.getElementById('hudLine').textContent = 'No corridor data available';
-          return;
-        }
-
-        const sel = mapState.selectedIso;
-        const selGeo = mapState.selectedGeo;
-        const visible = selGeo
-          ? corridors.filter(c => c.origin === selGeo || c.dest === selGeo || c.origin === sel || c.dest === sel)
-          : corridors;
-
-        const maxFlow = d3.max(corridors, c => c.value_usd) || 1;
-        const strokeScale = d3.scaleLinear().domain([0, maxFlow]).range([1.5, 8]);
-
-        // SVG defs: arrow marker + per-arc gradients
-        const defs = svg.append('defs');
-        defs.append('marker')
-          .attr('id', 'mapArrowHead')
-          .attr('viewBox', '0 0 10 10')
-          .attr('refX', 10).attr('refY', 5)
-          .attr('markerWidth', 6).attr('markerHeight', 6)
-          .attr('orient', 'auto')
-          .append('path')
-            .attr('d', 'M0,0 L10,5 L0,10 Z')
-            .attr('fill', 'rgba(96,165,250,.8)');
-
-        const arcG  = svg.append('g').attr('class', 'flow-arcs');
-        const lblG  = svg.append('g').attr('class', 'flow-labels');
-
-        visible.forEach((c, i) => {
-          const oC = mapCentroid(c.origin);
-          const dC = mapCentroid(c.dest);
-          if (!oC || !dC) return;
-
-          const p1 = projection([oC.lon, oC.lat]);
-          const p2 = projection([dC.lon, dC.lat]);
-          if (!p1 || !p2) return;
-
-          const [x1, y1] = p1;
-          const [x2, y2] = p2;
-          const dx = x2 - x1;
-          const dy = y2 - y1;
-          const dr = Math.sqrt(dx * dx + dy * dy);
-
-          // per-arc gradient (green origin -> blue dest)
-          const gid = `mfg${i}`;
-          const grad = defs.append('linearGradient')
-            .attr('id', gid)
-            .attr('gradientUnits', 'userSpaceOnUse')
-            .attr('x1', x1).attr('y1', y1)
-            .attr('x2', x2).attr('y2', y2);
-          grad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(34,197,94,.75)');
-          grad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(96,165,250,.75)');
-
-          arcG.append('path')
-            .attr('class', 'flow-arc')
-            .attr('d', `M${x1},${y1} A${dr},${dr} 0 0,1 ${x2},${y2}`)
-            .attr('stroke', `url(#${gid})`)
-            .attr('stroke-width', strokeScale(c.value_usd))
-            .attr('marker-end', 'url(#mapArrowHead)')
-            .attr('opacity', 0.65)
-            .datum(c)
-            .on('mouseenter', function(ev, datum) {
-              arcG.selectAll('.flow-arc').attr('opacity', 0.12);
-              d3.select(this).attr('opacity', 1);
-              document.getElementById('hudLine').textContent =
-                `${datum.origin} \u2192 ${datum.dest} \u00b7 ${mapFmtUSD(datum.value_usd)} \u00b7 rank #${datum.rank || '?'}`;
-            })
-            .on('mouseleave', function() {
-              arcG.selectAll('.flow-arc').attr('opacity', 0.65);
-              const msg = selGeo
-                ? `Filtered: ${selGeo} \u00b7 ${visible.length} corridor(s)`
-                : `${corridors.length} corridor(s) \u00b7 metric=flows`;
-              document.getElementById('hudLine').textContent = msg;
-            });
-
-          // label at arc midpoint
-          const mx = (x1 + x2) / 2;
-          const my = (y1 + y2) / 2;
-          const chordLen = Math.sqrt(dx * dx + dy * dy) || 1;
-          const off = chordLen * 0.12;
-          const nx = -dy / chordLen;
-          const ny =  dx / chordLen;
-
-          lblG.append('text')
-            .attr('class', 'flow-label')
-            .attr('x', mx + nx * off)
-            .attr('y', my + ny * off)
-            .attr('text-anchor', 'middle')
-            .attr('dy', -4)
-            .text(`${c.origin}\u2192${c.dest} ${mapFmtUSD(c.value_usd)}`);
-        });
-
-        // HUD
-        const msg = selGeo
-          ? `Filtered: ${selGeo} \u00b7 ${visible.length} corridor(s)`
-          : `${corridors.length} corridor(s) \u00b7 metric=flows`;
-        document.getElementById('hudLine').textContent = msg;
-      }
-
-      /* ---- map: main render ---- */
+      /* ---- map: main render (simplified: has-data / no-data / selected) ---- */
       function renderMap() {
         if (!mapState.world) return;
         const svg = d3.select('#mapSvg');
@@ -801,12 +621,8 @@
         // graticule
         svg.append('path').attr('class', 'graticule').attr('d', path(d3.geoGraticule10()));
 
-        // Build a set of geos that have exim data (for land coloring in flows mode)
+        // Build a set of geos that have exim data
         const eximGeoSet = new Set(mapState.points.map(p => p.geo));
-
-        // All corridors for highlighting related countries in flows mode
-        const tc  = (DASHBOARD_DATA.trade_corridors || {});
-        const allCorridors = (((tc.by_geo || {}).Global || {}).value_usd_top || []);
 
         const sel = mapState.selectedIso;
         const selGeo = mapState.selectedGeo;
@@ -821,15 +637,6 @@
             const geo = iso ? resolveGeo(iso) : null;
             const hasData = geo && (geoHasData(geo) || eximGeoSet.has(geo));
             if (sel && iso === sel) return 'land highlighted';
-            if (mapState.metric === 'flows' && sel) {
-              // In flows mode with selection, dim unrelated countries
-              const related = allCorridors.some(c => {
-                const oIso = Object.entries(ISO_TO_GEO).find(([k,v]) => v === c.origin || k === c.origin);
-                const dIso = Object.entries(ISO_TO_GEO).find(([k,v]) => v === c.dest || k === c.dest);
-                return c.origin === geo || c.dest === geo || c.origin === iso || c.dest === iso;
-              });
-              if (!related && !hasData) return 'land dimmed';
-            }
             if (hasData) return 'land has-data';
             return 'land dimmed';
           })
@@ -844,39 +651,21 @@
               mapState.selectedGeo = null;
               renderMap();
               closeDrawer();
-              if (typeof setTradeGeo === 'function') setTradeGeo('Global');
-              if (typeof setWealthGeo === 'function') setWealthGeo('Global');
               return;
             }
             mapState.selectedIso = iso;
             mapState.selectedGeo = geo;
             renderMap();
             openDrawer(geo, iso);
-            if (typeof setTradeGeo === 'function') setTradeGeo(geo);
-            if (typeof setWealthGeo === 'function') setWealthGeo(geo);
           })
           .on('mouseenter', function(ev, d) {
             const iso = ISO_NUM[String(d.id)];
             if (!iso) return;
             const geo = resolveGeo(iso);
-            // Show country info in HUD
-            const pt = mapState.points.find(p => p.geo === geo || p.geo === iso);
-            if (pt && mapState.metric !== 'flows') {
-              const v = mapValueOf(pt);
-              document.getElementById('hudLine').textContent = `${geo || iso} \u00b7 ${mapState.metric}=${mapFmtUSD(v)} \u00b7 year=${pt.year ?? '\u2014'}`;
-            } else {
-              document.getElementById('hudLine').textContent = `${geo || iso} ${geoHasData(geo) || eximGeoSet.has(geo) ? '\u00b7 has data' : '\u00b7 no data'}`;
-            }
+            document.getElementById('hudLine').textContent = `${geo || iso} ${geoHasData(geo) || eximGeoSet.has(geo) ? '\u00b7 has data' : '\u00b7 no data'}`;
           })
           .on('mouseleave', function() {
-            if (mapState.metric === 'flows') {
-              const msg = selGeo
-                ? `Filtered: ${selGeo} \u00b7 click background to deselect`
-                : `${allCorridors.length} corridor(s) \u00b7 click a country to filter`;
-              document.getElementById('hudLine').textContent = msg;
-            } else {
-              document.getElementById('hudLine').textContent = `${mapState.points.length} economies \u00b7 metric=${mapState.metric}`;
-            }
+            document.getElementById('hudLine').textContent = `${mapState.points.length} economies`;
           });
 
         // Click SVG background to deselect
@@ -887,97 +676,17 @@
               mapState.selectedGeo = null;
               renderMap();
               closeDrawer();
-              if (typeof setTradeGeo === 'function') setTradeGeo('Global');
-              if (typeof setWealthGeo === 'function') setWealthGeo('Global');
             }
           }
         });
 
-        // Branch: flows mode vs bubble mode
-        if (mapState.metric === 'flows') {
-          renderMapFlows(svg, projection);
-          return;
-        }
-
-        // ---- Bubble mode ----
-        const vals = mapState.points.map(mapValueOf).filter(v => v !== null && v !== undefined && !isNaN(v));
-        const maxV = d3.max(vals.map(v => Math.abs(v))) || 1;
-        const r = d3.scaleSqrt().domain([0, maxV]).range([0, Math.min(width, height) * 0.075]);
-
-        const pts = mapState.points
-          .map(p => {
-            const c = mapCentroid(p.geo);
-            if (!c) return null;
-            const xy = projection([c.lon, c.lat]);
-            if (!xy) return null;
-            return { ...p, x: xy[0], y: xy[1] };
-          })
-          .filter(Boolean);
-
-        const g = svg.append('g');
-
-        g.selectAll('circle')
-          .data(pts)
-          .join('circle')
-          .attr('class', d => `bubble ${mapColorClass(d)}`)
-          .attr('cx', d => d.x)
-          .attr('cy', d => d.y)
-          .attr('r', d => {
-            const v = mapValueOf(d);
-            return v ? r(Math.abs(v)) : 3;
-          })
-          .attr('opacity', d => {
-            if (sel) return d.geo === selGeo ? 0.92 : 0.2;
-            return mapValueOf(d) ? 0.85 : 0.5;
-          })
-          .on('mouseenter', (ev, d) => {
-            const v = mapValueOf(d);
-            document.getElementById('hudLine').textContent = `${d.geo} \u00b7 ${mapState.metric}=${mapFmtUSD(v)} \u00b7 year=${d.year ?? '\u2014'}`;
-          })
-          .on('mouseleave', () => {
-            const msg = selGeo
-              ? `Filtered: ${selGeo} \u00b7 ${mapState.points.length} economies`
-              : `${mapState.points.length} economies \u00b7 metric=${mapState.metric}`;
-            document.getElementById('hudLine').textContent = msg;
-          });
-
-        // Labels for top bubbles (avoid clutter — only label top 10 by value)
-        const sortedPts = pts.slice().sort((a, b) => Math.abs(mapValueOf(b) || 0) - Math.abs(mapValueOf(a) || 0));
-        const labelPts = sel ? sortedPts.filter(d => d.geo === selGeo) : sortedPts.slice(0, 10);
-
-        g.selectAll('.map-label')
-          .data(labelPts)
-          .join('text')
-          .attr('class', 'map-label')
-          .attr('x', d => d.x)
-          .attr('y', d => d.y)
-          .attr('text-anchor', 'middle')
-          .attr('dy', d => {
-            const v = mapValueOf(d);
-            const rr = v ? r(Math.abs(v)) : 3;
-            return -(rr + 5);
-          })
-          .text(d => d.geo);
-
         // HUD
-        document.getElementById('hudLine').textContent = `${mapState.points.length} economies \u00b7 metric=${mapState.metric}`;
+        document.getElementById('hudLine').textContent = `${mapState.points.length} economies`;
       }
 
       /* ---- map: init (load topology + centroids + exim data) ---- */
       function initMap() {
         buildGeoIndex();
-
-        // Hook metric buttons
-        document.querySelectorAll('#mapMetricBtns [data-metric]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            mapState.metric = btn.getAttribute('data-metric');
-            mapState.selectedIso = null;
-            mapState.selectedGeo = null;
-            syncMapMetricButtons();
-            renderMap();
-          });
-        });
-        syncMapMetricButtons();
 
         // Load topology, centroids, and exim data in parallel
         Promise.all([
@@ -1225,8 +934,9 @@
       }
 
       let TRADE_DATA = null;
-      let TRADE_GEO = 'Global';
-      let EXIM_CHART = null;
+      
+      let EXPORT_TOP5_CHART = null;
+      let IMPORT_TOP5_CHART = null;
       let BAL_CHART = null;
       let CORR_VAL_CHART = null;
       let CORR_VOL_CHART = null;
@@ -1241,38 +951,84 @@
         return n / 1e9;
       }
 
-      function upsertEximChart(payload) {
-        const ctx = document.getElementById('trade_exim_chart');
-        if (!ctx) return;
-        const labels = (payload.series || []).map(r => r.period);
-        const exp = (payload.series || []).map(r => toBillions(r.export_usd));
-        const imp = (payload.series || []).map(r => toBillions(r.import_usd));
+      /* ---- Trade: build TOP 5 countries ranking for export or import ---- */
+      function buildTradeTop5(field) {
+        const allExim = DASHBOARD_DATA.trade_exim_by_geo || {};
+        const entries = [];
+        Object.entries(allExim).forEach(([geo, payload]) => {
+          if (geo === 'Global') return;
+          const series = payload.series || [];
+          if (!series.length) return;
+          const latest = series[series.length - 1];
+          if (latest && latest[field] != null) {
+            entries.push({ geo, value: latest[field], period: latest.period, source: payload.source, frequency: payload.frequency, date: payload.date });
+          }
+        });
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 5);
+      }
+
+      function upsertTradeTop5Chart(canvasId, rows, color, label) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+        const labels = rows.map(r => r.geo);
+        const values = rows.map(r => toBillions(r.value));
 
         const data = {
           labels,
-          datasets: [
-            { label: 'Export (USD, bn)', data: exp, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.15)', tension: 0.25 },
-            { label: 'Import (USD, bn)', data: imp, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.15)', tension: 0.25 },
-          ]
+          datasets: [{
+            label,
+            data: values,
+            backgroundColor: color,
+            borderRadius: 4,
+          }]
         };
 
         const opts = {
+          indexAxis: 'y',
           responsive: true,
           plugins: {
-            legend: { labels: { color: '#475569' } },
-            tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw == null ? '—' : c.raw.toFixed(1)}` } }
+            legend: { display: false },
+            tooltip: { callbacks: { label: (c) => `${c.raw == null ? '—' : c.raw.toFixed(1)} bn USD` } }
           },
           scales: {
-            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
-            y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+            x: { ticks: { color: '#64748b', callback: (v) => v + ' bn' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+            y: { ticks: { color: '#334155', font: { weight: 'bold' } }, grid: { display: false } },
           }
         };
 
-        if (EXIM_CHART) EXIM_CHART.destroy();
-        EXIM_CHART = new Chart(ctx, { type: 'line', data, options: opts });
+        return new Chart(ctx, { type: 'bar', data, options: opts });
+      }
 
-        const meta = document.getElementById('trade_exim_chart_meta');
-        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
+      function renderTradeTop5() {
+        if (EXPORT_TOP5_CHART) EXPORT_TOP5_CHART.destroy();
+        if (IMPORT_TOP5_CHART) IMPORT_TOP5_CHART.destroy();
+
+        const exportRows = buildTradeTop5('export_usd');
+        const importRows = buildTradeTop5('import_usd');
+
+        EXPORT_TOP5_CHART = upsertTradeTop5Chart('trade_export_top5_chart', exportRows, 'rgba(96,165,250,0.55)', 'Export (USD, bn)');
+        IMPORT_TOP5_CHART = upsertTradeTop5Chart('trade_import_top5_chart', importRows, 'rgba(52,211,153,0.55)', 'Import (USD, bn)');
+
+        // Meta
+        const eMeta = document.getElementById('trade_export_top5_meta');
+        if (eMeta && exportRows.length) eMeta.textContent = `Source: ${exportRows[0].source} · Period: ${exportRows[0].period}`;
+        const iMeta = document.getElementById('trade_import_top5_meta');
+        if (iMeta && importRows.length) iMeta.textContent = `Source: ${importRows[0].source} · Period: ${importRows[0].period}`;
+
+        // Commentary
+        if (exportRows.length) {
+          _setObsRec('trade_export_commentary',
+            `Top exporter: ${exportRows[0].geo} at $${(exportRows[0].value/1e9).toFixed(1)}B.`,
+            `Monitor export leaders for shifts in global supply chains and trade policy impacts.`
+          );
+        }
+        if (importRows.length) {
+          _setObsRec('trade_import_commentary',
+            `Top importer: ${importRows[0].geo} at $${(importRows[0].value/1e9).toFixed(1)}B.`,
+            `Track import leaders to gauge demand shifts; rising imports often signal economic expansion or supply dependency.`
+          );
+        }
       }
 
       function upsertBalanceChart(payload) {
@@ -1310,7 +1066,6 @@
       async function refreshChartsForGeo(geo) {
         try {
           const ex = await loadEximSeries(geo);
-          upsertEximChart(ex);
           upsertBalanceChart(ex);
 
           // Analysis-style commentary (English) based on last two points
@@ -1318,21 +1073,13 @@
           if (s.length >= 2) {
             const a = s[s.length - 2];
             const b = s[s.length - 1];
-            const dx = ((b.export_usd - a.export_usd) / a.export_usd) * 100.0;
-            const dm = ((b.import_usd - a.import_usd) / a.import_usd) * 100.0;
             const db = ((b.balance_usd - a.balance_usd) / (Math.abs(a.balance_usd) || 1)) * 100.0;
-            _setObsRec(
-              'trade_exim_commentary',
-              `Exports ${dx >= 0 ? 'rose' : 'fell'} ${Math.abs(dx).toFixed(1)}% YoY; imports ${dm >= 0 ? 'rose' : 'fell'} ${Math.abs(dm).toFixed(1)}% YoY.`,
-              `If this divergence persists, expect balance and FX sensitivity to increase; confirm with next release.`
-            );
             _setObsRec(
               'trade_balance_commentary',
               `Balance moved to ${fmtSignedUSD(b.balance_usd)} in ${b.period} (vs ${fmtSignedUSD(a.balance_usd)} in ${a.period}).`,
               `Large inflections in balance tend to lead policy/logistics responses; monitor corridors and freight costs.`
             );
           } else {
-            _setObsRec('trade_exim_commentary', 'Not enough history to compute YoY yet.', 'Wait for one more point before drawing trend conclusions.');
             _setObsRec('trade_balance_commentary', 'Not enough history to compute YoY yet.', 'Wait for one more point before drawing trend conclusions.');
           }
         } catch (e) {
@@ -1342,7 +1089,7 @@
 
       function renderTrade() {
         if (!TRADE_DATA) return;
-        const geo = (TRADE_GEO || 'Global');
+        const geo = 'Global';
         const d = (TRADE_DATA.by_geo || {})[geo] || {};
 
         // Insights (from DB)
@@ -1361,6 +1108,12 @@
         const iEx = _getInsight('trade_flow','exim', geo);
         document.getElementById('trade_exim_insight_text').textContent = (iEx && iEx.content) || '—';
         document.getElementById('trade_exim_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iEx && iEx.source_updated_at);
+
+        // Also populate import insight (may share source with exim)
+        const elImInsight = document.getElementById('trade_import_insight_text');
+        if (elImInsight) elImInsight.textContent = (iEx && iEx.content) || '—';
+        const elImSrc = document.getElementById('trade_import_source_updated');
+        if (elImSrc) elImSrc.textContent = 'Source updated: ' + _fmtSourceUpdated(iEx && iEx.source_updated_at);
 
         const iBal = _getInsight('trade_flow','balance', geo);
         document.getElementById('trade_balance_insight_text').textContent = (iBal && iBal.content) || '—';
@@ -1384,7 +1137,7 @@
         CORR_VAL_CHART = upsertCorridorBar('trade_corridors_value_chart', vRows, 'value_bil', 'rgba(96,165,250,0.55)', ' bn USD');
         CORR_VOL_CHART = upsertCorridorBar('trade_corridors_volume_chart', volRows, 'volume_bilkg', 'rgba(52,211,153,0.55)', ' bn kg');
 
-        // If fewer than Top 5 are available (e.g. MVP stub), reflect it in the label.
+        // If fewer than Top 5 are available, reflect it in the label.
         const valN = vRows.length || 0;
         const volN = volRows.length || 0;
         const elVal = document.getElementById('trade_corridors_value_topn');
@@ -1392,11 +1145,9 @@
         if (elVal) elVal.textContent = String(Math.min(topN, valN || topN));
         if (elVol) elVol.textContent = String(Math.min(topN, volN || topN));
 
-        document.getElementById('trade_export').textContent = d.export_usd != null ? `$${fmtUSD(d.export_usd)}` : '—';
-        document.getElementById('trade_import').textContent = d.import_usd != null ? `$${fmtUSD(d.import_usd)}` : '—';
         document.getElementById('trade_balance').textContent = d.trade_balance_usd != null ? fmtSignedUSD(d.trade_balance_usd) : '—';
 
-        // --- v3 executive layer: KPIs + observations/recommendations ---
+        // --- KPIs + observations/recommendations ---
         const bal = d.trade_balance_usd;
         const geoExim = (DASHBOARD_DATA.trade_exim_by_geo || {})[geo] || { series: [], source: 'N/A', frequency: 'annual', date: '' };
         const yoyEx = _yoyPct(geoExim.series, 'export_usd');
@@ -1426,15 +1177,6 @@
           : `Treat corridor signal as low-confidence until snapshots are populated.`;
         _setObsRec('trade_corridors_commentary', corrObs, corrRec);
 
-        // Export/Import
-        const exObs = (yoyEx != null || yoyIm != null)
-          ? `Exports ${_fmtPct(yoyEx)} YoY; imports ${_fmtPct(yoyIm)} YoY.`
-          : `Not enough history to compute YoY yet.`;
-        const exRec = (yoyEx != null && yoyIm != null)
-          ? `If import growth outpaces export growth, expect balance pressure; monitor next release and shipping cost trend.`
-          : `Wait for one more data point before acting on export/import trend.`;
-        _setObsRec('trade_exim_commentary', exObs, exRec);
-
         // Balance
         const balObs = (bal != null)
           ? `${geo} is currently a ${bal >= 0 ? 'net exporter' : 'net importer'} (balance: ${fmtSignedUSD(bal)}).`
@@ -1443,6 +1185,9 @@
           ? `Use balance direction to stress-test exposure (FX, demand, supply-chain); focus on large YoY inflections.`
           : `Treat balance signal as pending until series is available.`;
         _setObsRec('trade_balance_commentary', balObs, balRec);
+
+        // Render TOP 5 export/import charts
+        renderTradeTop5();
 
         // WCI
         document.getElementById('trade_wci').innerHTML = wci.value_usd_per_40ft != null
@@ -1478,48 +1223,17 @@
         document.getElementById('trade_source').textContent = `Source: ${TRADE_DATA.source} · Updated: ${TRADE_DATA.updated_at}`;
       }
 
-      function setTradeGeo(nextGeo) {
-        TRADE_GEO = nextGeo || 'Global';
-        // toggle active styles
-        document.querySelectorAll('.trade-geo-btn').forEach(b => {
-          if (b.dataset.geo === TRADE_GEO) {
-            b.classList.remove('bg-white');
-            b.classList.add('bg-slate-800', 'text-white');
-          } else {
-            b.classList.remove('bg-slate-800', 'text-white');
-            b.classList.add('bg-white');
-          }
-        });
-        renderTrade();
-        refreshChartsForGeo(TRADE_GEO);
-      }
-
       async function loadTrade() {
         const data = DASHBOARD_DATA.trade_corridors || {};
         TRADE_DATA = data;
-
-        // One-click scope selector (button group)
-        const wrap = document.getElementById('trade_geo_buttons');
-        if (wrap) {
-          wrap.innerHTML = '';
-          (data.geos || ['Global']).forEach(g => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.dataset.geo = g;
-            btn.className = 'trade-geo-btn px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100';
-            btn.textContent = g;
-            btn.addEventListener('click', () => setTradeGeo(g));
-            wrap.appendChild(btn);
-          });
-        }
 
         document.querySelectorAll('.trade-tab').forEach(b => {
           b.addEventListener('click', () => setTradeTab(b.dataset.tab));
         });
         setTradeTab('corridors');
 
-        // default
-        setTradeGeo((data.geos && data.geos.includes('Global')) ? 'Global' : ((data.geos && data.geos[0]) || 'Global'));
+        renderTrade();
+        refreshChartsForGeo('Global');
       }
 
       function setWealthTab(active) {
@@ -1538,282 +1252,196 @@
         });
       }
 
-      let WEALTH_GEO = 'Global';
       let WEALTH_GDP_CHART = null;
+      let WEALTH_DISP_PC_CHART = null;
+      let WEALTH_DISP_HH_CHART = null;
       let WEALTH_CONS_CHART = null;
       let WEALTH_AGE_CHART = null;
 
-      async function loadWealthIndicators(geo) {
+      /* ---- wealth: build TOP 5 helpers ---- */
+      function buildWealthTop5(field) {
         const all = DASHBOARD_DATA.wealth_indicators_by_geo || {};
-        return all[geo] || { source: 'N/A', frequency: 'annual', date: '', series: [] };
+        const entries = [];
+        Object.keys(all).forEach(geo => {
+          if (geo === 'Global') return;
+          const series = (all[geo].series || []).filter(r => r[field] != null);
+          if (!series.length) return;
+          const latest = series[series.length - 1];
+          if (latest && latest[field] != null) {
+            entries.push({ geo, value: latest[field], source: all[geo].source, frequency: all[geo].frequency, date: all[geo].date });
+          }
+        });
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 5);
       }
 
-      async function loadDisposableLatest() {
-        return DASHBOARD_DATA.wealth_disposable_latest || { rows: {}, source: 'N/A', link: '' };
+      function buildDispTop5(field) {
+        const disp = DASHBOARD_DATA.wealth_disposable_latest || { rows: {} };
+        const entries = [];
+        Object.keys(disp.rows || {}).forEach(geo => {
+          const row = disp.rows[geo];
+          if (row && row[field] != null) {
+            entries.push({ geo, value: row[field], source: disp.source, link: disp.link });
+          }
+        });
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 5);
       }
 
-      async function loadWealthAgeStructure(geo) {
+      function buildAgeTop5() {
         const all = DASHBOARD_DATA.wealth_age_structure_by_geo || {};
-        return all[geo] || { source: 'N/A', frequency: 'annual', period: '', rows: [] };
+        const entries = [];
+        Object.keys(all).forEach(geo => {
+          if (geo === 'Global') return;
+          const rows = all[geo].rows || [];
+          // working-age is typically the second bucket (15-64)
+          const working = rows.find(r => /15|work/i.test(r.label));
+          if (working && working.pct != null) {
+            entries.push({ geo, value: working.pct, source: all[geo].source, frequency: all[geo].frequency, period: all[geo].period });
+          }
+        });
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 5);
       }
 
-      function upsertWealthGdpChart(payload, geoLabel) {
-        // v3 change: show one geo at a time (no multi-country overlay)
-        const ctx = document.getElementById('wealth_gdp_pc_chart');
-        if (!ctx) return;
-
-        const labels = (payload.series || []).map(r => r.period);
-        const vals = (payload.series || []).map(r => r.gdp_per_capita_usd == null ? null : r.gdp_per_capita_usd);
+      function upsertWealthTop5Chart(chartVar, canvasId, rows, color, label, fmtCb) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+        const labels = rows.map(r => r.geo);
+        const values = rows.map(r => fmtCb ? fmtCb(r.value) : r.value);
 
         const data = {
           labels,
-          datasets: [
-            {
-              label: `${geoLabel} GDP per capita (US$)`,
-              data: vals,
-              borderColor: '#fbbf24',
-              backgroundColor: 'rgba(251,191,36,0.10)',
-              tension: 0.25,
-              borderWidth: 2.5,
-              pointRadius: 2,
-              pointHoverRadius: 3,
-            },
-          ],
+          datasets: [{
+            label,
+            data: values,
+            backgroundColor: color,
+            borderRadius: 4,
+          }]
         };
 
         const opts = {
+          indexAxis: 'y',
           responsive: true,
           plugins: {
-            legend: { labels: { color: '#475569' }, position: 'bottom' },
+            legend: { display: false },
             tooltip: {
               callbacks: {
-                label: (ctx) => {
-                  const v = ctx.parsed.y;
-                  return `${geoLabel}: ${v == null ? '—' : ('$' + Math.round(v).toLocaleString())}`;
-                },
-              },
-            },
+                label: (tip) => `${tip.formattedValue}`
+              }
+            }
           },
           scales: {
             x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
-            y: {
-              ticks: {
-                color: '#64748b',
-                callback: (v) => '$' + Number(v).toLocaleString(),
-              },
-              grid: { color: 'rgba(226,232,240,0.8)' },
-            },
-          },
-        };
-
-        if (WEALTH_GDP_CHART) WEALTH_GDP_CHART.destroy();
-        WEALTH_GDP_CHART = new Chart(ctx, { type: 'line', data, options: opts });
-
-        const meta = document.getElementById('wealth_gdp_pc_meta');
-        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date} · Scope: ${geoLabel}`;
-
-        _setObsRec(
-          'wealth_gdp_pc_commentary',
-          `GDP per capita shown for ${geoLabel} (single-scope view).`,
-          `Use YoY direction to gauge demand capacity; switch scope to compare countries one by one.`
-        );
-      }
-
-      function upsertWealthConsChart(payload) {
-        const ctx = document.getElementById('wealth_cons_chart');
-        if (!ctx) return;
-        const labels = (payload.series || []).map(r => r.period);
-        const vals = (payload.series || []).map(r => r.consumption_expenditure_usd == null ? null : r.consumption_expenditure_usd/1e12);
-
-        const data = {
-          labels,
-          datasets: [
-            { label: 'Household consumption (US$, tn)', data: vals, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.12)', tension: 0.25 },
-          ]
-        };
-
-        const opts = {
-          responsive: true,
-          plugins: { legend: { labels: { color: '#475569' } } },
-          scales: {
-            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
-            y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+            y: { ticks: { color: '#334155', font: { weight: '600' } }, grid: { display: false } },
           }
         };
 
-        if (WEALTH_CONS_CHART) WEALTH_CONS_CHART.destroy();
-        WEALTH_CONS_CHART = new Chart(ctx, { type: 'line', data, options: opts });
-
-        const meta = document.getElementById('wealth_cons_meta');
-        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
-
-        const s = (payload.series || []).filter(r => r.consumption_expenditure_usd != null);
-        if (s.length >= 2) {
-          const a = s[s.length-2].consumption_expenditure_usd;
-          const b = s[s.length-1].consumption_expenditure_usd;
-          const pct = ((b-a)/a)*100.0;
-          _setObsRec(
-            'wealth_cons_commentary',
-            `Consumption expenditure ${pct>=0?'rose':'fell'} ${Math.abs(pct).toFixed(1)}% YoY (nominal USD).`,
-            `If consumption is decelerating, expect weaker domestic demand; watch inflation/FX effects on nominal series.`
-          );
-        } else {
-          _setObsRec('wealth_cons_commentary', 'Not enough history to compute YoY yet.', 'Wait for one more point before drawing trend conclusions.');
-        }
+        if (chartVar) chartVar.destroy();
+        return new Chart(ctx, { type: 'bar', data, options: opts });
       }
 
-      async function refreshWealthForGeo(geo) {
-        WEALTH_GEO = geo || 'Global';
-        const ind = await loadWealthIndicators(WEALTH_GEO);
-        // GDP chart: single geo at a time (switch in scope buttons)
-        upsertWealthGdpChart(ind, WEALTH_GEO);
-        upsertWealthConsChart(ind);
+      async function renderWealth() {
+        // --- GDP per capita TOP 5 ---
+        const gdpRows = buildWealthTop5('gdp_per_capita_usd');
+        WEALTH_GDP_CHART = upsertWealthTop5Chart(WEALTH_GDP_CHART, 'wealth_gdp_pc_chart', gdpRows, 'rgba(251,191,36,0.55)', 'GDP per capita (US$)', v => Math.round(v));
+        const gdpMeta = document.getElementById('wealth_gdp_pc_meta');
+        if (gdpMeta && gdpRows.length) gdpMeta.textContent = `Source: ${gdpRows[0].source} · Frequency: ${gdpRows[0].frequency} · Period: ${gdpRows[0].date}`;
+        _setObsRec('wealth_gdp_pc_commentary',
+          gdpRows.length ? `Top 5 countries by GDP per capita: ${gdpRows.map(r => r.geo).join(', ')}.` : 'No GDP per capita data available.',
+          gdpRows.length ? `Compare leaders for demand-capacity benchmarking.` : 'Treat as pending until data is populated.'
+        );
 
-        // v3 KPI strip (at-a-glance)
-        const yoyGdp = _yoyPct(ind.series || [], 'gdp_per_capita_usd');
-        const yoyCons = _yoyPct(ind.series || [], 'consumption_expenditure_usd');
-        const kpi = document.getElementById('wealth_kpi');
-        if (kpi) {
-          kpi.innerHTML = [
-            _pill(`GDP pc (${WEALTH_GEO}) YoY`, _fmtPct(yoyGdp), 'amber'),
-            _pill(`Consumption (${WEALTH_GEO}) YoY`, _fmtPct(yoyCons), 'emerald'),
-          ].join('');
-        }
-
-        const iGdp = _getInsight('wealth','gdp_pc', geo);
+        const iGdp = _getInsight('wealth','gdp_pc','Global');
         document.getElementById('wealth_gdp_pc_insight_text').textContent = (iGdp && iGdp.content) || '—';
         document.getElementById('wealth_gdp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iGdp && iGdp.source_updated_at);
 
-        const iCons = _getInsight('wealth','cons', geo);
-        document.getElementById('wealth_cons_insight_text').textContent = (iCons && iCons.content) || '—';
-        document.getElementById('wealth_cons_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCons && iCons.source_updated_at);
-
-        const disp = await loadDisposableLatest();
-        const row = (disp.rows || {})[geo] || null;
-        const pc = row && row.per_capita_usd != null ? `$${Math.round(row.per_capita_usd).toLocaleString()}` : '—';
-        const hh = row && row.per_household_usd != null ? `$${Math.round(row.per_household_usd).toLocaleString()}` : '—';
-
-        // extend KPI strip with latest disposable snapshots
-        const kpi2 = document.getElementById('wealth_kpi');
-        if (kpi2) {
-          const existing = kpi2.innerHTML || '';
-          kpi2.innerHTML = existing + [
-            _pill(`Disposable pc (${geo})`, pc, 'blue'),
-            _pill(`Disposable hh (${geo})`, hh, 'blue'),
-          ].join('');
-        }
-
-        document.getElementById('wealth_disp_pc').textContent = pc;
-        document.getElementById('wealth_disp_hh').textContent = hh;
-        document.getElementById('wealth_disp_pc_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
-        document.getElementById('wealth_disp_hh_meta').textContent = `Source: ${disp.source} · Latest point (no 5Y history guaranteed) · Link: ${disp.link}`;
-        _setObsRec(
-          'wealth_disp_pc_commentary',
-          `Latest disposable income per capita: ${pc}.`,
-          `Use as a quick affordability proxy; add historical series once source cadence is stable.`
-        );
-        _setObsRec(
-          'wealth_disp_hh_commentary',
-          `Latest disposable income per household: ${hh}.`,
-          `Track as a household-level buffer; add historical series once source cadence is stable.`
+        // --- Disposable per capita TOP 5 ---
+        const dispPcRows = buildDispTop5('per_capita_usd');
+        WEALTH_DISP_PC_CHART = upsertWealthTop5Chart(WEALTH_DISP_PC_CHART, 'wealth_disp_pc_chart', dispPcRows, 'rgba(96,165,250,0.55)', 'Disposable income per capita (US$)', v => Math.round(v));
+        const dispPcMeta = document.getElementById('wealth_disp_pc_meta');
+        if (dispPcMeta && dispPcRows.length) dispPcMeta.textContent = `Source: ${dispPcRows[0].source} · Latest point · Link: ${dispPcRows[0].link || '—'}`;
+        _setObsRec('wealth_disp_pc_commentary',
+          dispPcRows.length ? `Top 5 countries by disposable income (per capita): ${dispPcRows.map(r => r.geo).join(', ')}.` : 'No disposable income (per capita) data available.',
+          dispPcRows.length ? `Use as a quick affordability proxy across countries.` : 'Treat as pending until data is populated.'
         );
 
-        const iDispPc = _getInsight('wealth','disp_pc', geo);
+        const iDispPc = _getInsight('wealth','disp_pc','Global');
         document.getElementById('wealth_disp_pc_insight_text').textContent = (iDispPc && iDispPc.content) || '—';
         document.getElementById('wealth_disp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispPc && iDispPc.source_updated_at);
 
-        const iDispHh = _getInsight('wealth','disp_hh', geo);
+        // --- Disposable per household TOP 5 ---
+        const dispHhRows = buildDispTop5('per_household_usd');
+        WEALTH_DISP_HH_CHART = upsertWealthTop5Chart(WEALTH_DISP_HH_CHART, 'wealth_disp_hh_chart', dispHhRows, 'rgba(96,165,250,0.55)', 'Disposable income per household (US$)', v => Math.round(v));
+        const dispHhMeta = document.getElementById('wealth_disp_hh_meta');
+        if (dispHhMeta && dispHhRows.length) dispHhMeta.textContent = `Source: ${dispHhRows[0].source} · Latest point · Link: ${dispHhRows[0].link || '—'}`;
+        _setObsRec('wealth_disp_hh_commentary',
+          dispHhRows.length ? `Top 5 countries by disposable income (per household): ${dispHhRows.map(r => r.geo).join(', ')}.` : 'No disposable income (per household) data available.',
+          dispHhRows.length ? `Track as a household-level buffer across countries.` : 'Treat as pending until data is populated.'
+        );
+
+        const iDispHh = _getInsight('wealth','disp_hh','Global');
         document.getElementById('wealth_disp_hh_insight_text').textContent = (iDispHh && iDispHh.content) || '—';
         document.getElementById('wealth_disp_hh_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispHh && iDispHh.source_updated_at);
 
-        // Age structure (ring)
-        const age = await loadWealthAgeStructure(geo);
-        const ageLabels = (age.rows || []).map(r => r.label);
-        const ageVals = (age.rows || []).map(r => r.pct);
-        if (WEALTH_AGE_CHART) WEALTH_AGE_CHART.destroy();
-        WEALTH_AGE_CHART = new Chart(document.getElementById('wealth_age_chart'), {
-          type: 'doughnut',
-          data: { labels: ageLabels, datasets: [{ data: ageVals, backgroundColor: ['#60a5fa','#34d399','#fbbf24'], borderColor: '#ffffff', borderWidth: 2 }] },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            cutout: '62%',
-            plugins: {
-              legend: { position: 'right', labels: { color: '#475569', boxWidth: 10, boxHeight: 10 } },
-              tooltip: {
-                callbacks: {
-                  label: (ctx) => {
-                    const label = ctx.label || '';
-                    const v = Number(ctx.parsed || 0);
-                    return `${label}: ${v.toFixed(1)}%`;
-                  }
-                }
-              }
-            }
-          }
-        });
-        const ageMeta = document.getElementById('wealth_age_meta');
-        if (ageMeta) ageMeta.textContent = `Source: ${age.source} · Frequency: ${age.frequency} · Period: ${age.period || '—'}`;
-        if (ageVals.length === 3) {
-          _setObsRec(
-            'wealth_age_commentary',
-            `Working-age share (15–64) is ${ageVals[1].toFixed(1)}% (latest).`,
-            `Higher working-age share generally supports growth; watch for aging drag and policy responses over the medium term.`
-          );
-        } else {
-          _setObsRec('wealth_age_commentary', 'Age structure not available yet.', 'Treat demographic signal as pending until snapshot is populated.');
-        }
+        // --- Consumption expenditure TOP 5 ---
+        const consRows = buildWealthTop5('consumption_expenditure_usd');
+        WEALTH_CONS_CHART = upsertWealthTop5Chart(WEALTH_CONS_CHART, 'wealth_cons_chart', consRows, 'rgba(52,211,153,0.55)', 'Consumption (US$, bn)', v => +(v / 1e9).toFixed(1));
+        const consMeta = document.getElementById('wealth_cons_meta');
+        if (consMeta && consRows.length) consMeta.textContent = `Source: ${consRows[0].source} · Frequency: ${consRows[0].frequency} · Period: ${consRows[0].date}`;
+        _setObsRec('wealth_cons_commentary',
+          consRows.length ? `Top 5 countries by consumption expenditure: ${consRows.map(r => r.geo).join(', ')}.` : 'No consumption data available.',
+          consRows.length ? `If consumption is concentrated, watch for demand-shift ripple effects.` : 'Treat as pending until data is populated.'
+        );
 
-        const iAge = _getInsight('wealth','age', geo);
+        const iCons = _getInsight('wealth','cons','Global');
+        document.getElementById('wealth_cons_insight_text').textContent = (iCons && iCons.content) || '—';
+        document.getElementById('wealth_cons_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCons && iCons.source_updated_at);
+
+        // --- Age structure (working-age %) TOP 5 ---
+        const ageRows = buildAgeTop5();
+        WEALTH_AGE_CHART = upsertWealthTop5Chart(WEALTH_AGE_CHART, 'wealth_age_chart', ageRows, 'rgba(251,191,36,0.55)', 'Working-age share (%)', v => +v.toFixed(1));
+        const ageMeta = document.getElementById('wealth_age_meta');
+        if (ageMeta && ageRows.length) ageMeta.textContent = `Source: ${ageRows[0].source} · Frequency: ${ageRows[0].frequency} · Period: ${ageRows[0].period || '—'}`;
+        _setObsRec('wealth_age_commentary',
+          ageRows.length ? `Top 5 countries by working-age population share: ${ageRows.map(r => r.geo).join(', ')}.` : 'Age structure not available yet.',
+          ageRows.length ? `Higher working-age share generally supports growth; watch for aging drag across economies.` : 'Treat demographic signal as pending until snapshot is populated.'
+        );
+
+        const iAge = _getInsight('wealth','age','Global');
         document.getElementById('wealth_age_insight_text').textContent = (iAge && iAge.content) || '—';
         document.getElementById('wealth_age_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iAge && iAge.source_updated_at);
 
-        // Update executive summary (wealth slice) — structured data for v4 narrative
+        // --- KPI strip ---
+        const globalInd = (DASHBOARD_DATA.wealth_indicators_by_geo || {})['Global'] || { series: [] };
+        const yoyGdp = _yoyPct(globalInd.series || [], 'gdp_per_capita_usd');
+        const yoyCons = _yoyPct(globalInd.series || [], 'consumption_expenditure_usd');
+        const kpi = document.getElementById('wealth_kpi');
+        if (kpi) {
+          const topDispPc = dispPcRows.length ? `$${Math.round(dispPcRows[0].value).toLocaleString()}` : '—';
+          kpi.innerHTML = [
+            _pill('GDP pc (Global) YoY', _fmtPct(yoyGdp), 'amber'),
+            _pill('Consumption (Global) YoY', _fmtPct(yoyCons), 'emerald'),
+            _pill(`Top Disp. pc (${dispPcRows.length ? dispPcRows[0].geo : '—'})`, topDispPc, 'blue'),
+          ].join('');
+        }
+
+        // --- Executive summary ---
+        const topDispPcVal = dispPcRows.length ? `$${Math.round(dispPcRows[0].value).toLocaleString()}` : '—';
         _setExecSlice('wealth', {
           gdpYoY: _fmtPct(yoyGdp),
           gdpYoYRaw: yoyGdp,
           consYoY: _fmtPct(yoyCons),
           consYoYRaw: yoyCons,
-          dispPc: pc,
+          dispPc: topDispPcVal,
         });
         _renderExecMetrics();
       }
 
-      function setWealthGeo(nextGeo) {
-        WEALTH_GEO = nextGeo || 'Global';
-        document.querySelectorAll('.wealth-geo-btn').forEach(b => {
-          if (b.dataset.geo === WEALTH_GEO) {
-            b.classList.remove('bg-white');
-            b.classList.add('bg-slate-800', 'text-white');
-          } else {
-            b.classList.remove('bg-slate-800', 'text-white');
-            b.classList.add('bg-white');
-          }
-        });
-        refreshWealthForGeo(WEALTH_GEO);
-      }
-
       async function loadWealth() {
-        // One-click scope selector (button group)
-        const geos = ['Global', 'India', 'Mexico', 'Singapore', 'Hong Kong'];
-        const wrap = document.getElementById('wealth_geo_buttons');
-        if (wrap) {
-          wrap.innerHTML = '';
-          geos.forEach(g => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.dataset.geo = g;
-            btn.className = 'wealth-geo-btn px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100';
-            btn.textContent = g;
-            btn.addEventListener('click', () => setWealthGeo(g));
-            wrap.appendChild(btn);
-          });
-        }
-
         document.querySelectorAll('.wealth-tab').forEach(b => b.addEventListener('click', () => setWealthTab(b.dataset.tab)));
         setWealthTab('gdp_pc');
-
-        setWealthGeo('Global');
+        renderWealth();
       }
 
       function setFinTab(active) {
