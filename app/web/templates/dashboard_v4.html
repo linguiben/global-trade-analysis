@@ -58,19 +58,9 @@
         Data Updated: {{ data_updated_at }}<br>
         Stale: {% if data_is_stale %}YES{% else %}NO{% endif %}
       </div>
-      <nav class="w-full text-right text-xs text-slate-500 space-x-3">
-        <a class="hover:text-blue-600" href="{{ base }}/">v1</a>
-        <a class="hover:text-blue-600" href="{{ base }}/v2">v2</a>
-        <a class="hover:text-blue-600" href="{{ base }}/v3">v3</a>
-        <a class="text-blue-600 font-semibold" href="{{ base }}/v4">v4</a>
-        <a class="hover:text-blue-600" href="{{ base }}/v5">v5</a>
-        <a class="hover:text-blue-600" href="{{ base }}/v5_1">v5.1</a>
-        <a class="hover:text-blue-600" href="{{ base }}/v6">v6</a>
-        <a class="hover:text-blue-600" href="{{ base }}/v7">v7</a>
-        <span class="text-slate-300">|</span>
-        <a class="hover:text-blue-600" href="{{ base }}/health">Health</a>
-        <a class="hover:text-blue-600" href="{{ base }}/jobs">Jobs</a>
-      </nav>
+      {% set current_ver = 'v4' %}
+      {% set nav_theme = 'light' %}
+      {% include '_nav.html' %}
     </header>
 
     <!-- Executive summary (v4) — concise management briefing -->
@@ -310,7 +300,7 @@
 
         <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-mono">
           <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 text-white hover:bg-slate-700">By industry</button>
-          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">By country</button>
+          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">By region</button>
         </div>
 
         <div class="mt-2 flex flex-wrap items-center gap-2 text-xs font-mono">
@@ -501,7 +491,7 @@
           : '';
 
         const financeSentence = f
-          ? ` In <strong class="text-fuchsia-600">M&amp;A activity</strong>, the top 10 industries account for ${f.dealCount} deals worth ${f.dealValue}bn USD, led by ${f.topIndustry} (by value) and concentrated in ${f.topCountry} (by country).`
+          ? ` In <strong class="text-fuchsia-600">M&amp;A activity</strong>, the top 10 industries account for ${f.dealCount} deals worth ${f.dealValue}bn USD, led by ${f.topIndustry} (by value) and concentrated in ${f.topCountry} (by region).`
           : '';
 
         const watchItems = [];
@@ -973,7 +963,7 @@
         _setObsRec(
           'wealth_gdp_pc_commentary',
           `GDP per capita shown for ${geoLabel} (single-scope view).`,
-          `Use YoY direction to gauge demand capacity; switch scope to compare countries one by one.`
+          `Use YoY direction to gauge demand capacity; switch scope to compare regions one by one.`
         );
       }
 
@@ -1453,14 +1443,14 @@
             _pill('Deal count (top 10)', finTop10Deals.toLocaleString(), 'blue'),
             _pill('Deal value (top 10, bn USD)', finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—', 'fuchsia'),
             _pill('Top industry by value', topIndByVal ? topIndByVal.industry : '—', 'amber'),
-            _pill('Top country by value', topCtyLabel, 'emerald'),
+            _pill('Top region by value', topCtyLabel, 'emerald'),
           ].join('');
         }
 
         _setObsRec(
           'fin_country_commentary',
-          `Top country by value: ${topCtyByVal ? (topCtyByVal.country + ' (' + (topCtyByVal.currency || '') + ')') : '—'}.`,
-          `Cross-country shifts can signal regulatory/risk repricing; normalize currencies when comparing levels.`
+          `Top region by value: ${topCtyByVal ? (topCtyByVal.country + ' (' + (topCtyByVal.currency || '') + ')') : '—'}.`,
+          `Cross-region shifts can signal regulatory/risk repricing; normalize currencies when comparing levels.`
         );
 
         // Update executive summary (finance slice) — structured data for v4 narrative

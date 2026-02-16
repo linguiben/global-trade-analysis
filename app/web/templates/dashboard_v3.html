@@ -52,19 +52,8 @@
         Data Updated: {{ data_updated_at }}<br>
         Stale: {% if data_is_stale %}YES{% else %}NO{% endif %}
       </div>
-      <nav class="w-full text-right text-xs text-slate-400 space-x-3">
-        <a class="hover:text-blue-300" href="{{ base }}/">v1</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v2">v2</a>
-        <a class="text-blue-300 font-semibold" href="{{ base }}/v3">v3</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v4">v4</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v5">v5</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v5_1">v5.1</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v6">v6</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v7">v7</a>
-        <span class="text-slate-600">|</span>
-        <a class="hover:text-blue-300" href="{{ base }}/health">Health</a>
-        <a class="hover:text-blue-300" href="{{ base }}/jobs">Jobs</a>
-      </nav>
+      {% set current_ver = 'v3' %}
+      {% include '_nav.html' %}
     </header>
 
     <!-- Executive summary (v3) -->
@@ -284,7 +273,7 @@
 
         <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-mono">
           <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">By industry</button>
-          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">By country</button>
+          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">By region</button>
         </div>
 
         <div class="mt-2 flex flex-wrap items-center gap-2 text-xs font-mono">
@@ -867,7 +856,7 @@
         _setObsRec(
           'wealth_gdp_pc_commentary',
           `GDP per capita shown for ${geoLabel} (single-scope view).`,
-          `Use YoY direction to gauge demand capacity; switch scope to compare countries one by one.`
+          `Use YoY direction to gauge demand capacity; switch scope to compare regions one by one.`
         );
       }
 
@@ -1343,20 +1332,20 @@
             _pill('Deal count (top 10)', finTop10Deals.toLocaleString(), 'blue'),
             _pill('Deal value (top 10, bn USD)', finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—', 'fuchsia'),
             _pill('Top industry by value', topIndByVal ? topIndByVal.industry : '—', 'amber'),
-            _pill('Top country by value', topCtyLabel, 'emerald'),
+            _pill('Top region by value', topCtyLabel, 'emerald'),
           ].join('');
         }
 
         _setObsRec(
           'fin_country_commentary',
-          `Top country by value: ${topCtyByVal ? (topCtyByVal.country + ' (' + (topCtyByVal.currency || '') + ')') : '—'}.`,
-          `Cross-country shifts can signal regulatory/risk repricing; normalize currencies when comparing levels.`
+          `Top region by value: ${topCtyByVal ? (topCtyByVal.country + ' (' + (topCtyByVal.currency || '') + ')') : '—'}.`,
+          `Cross-region shifts can signal regulatory/risk repricing; normalize currencies when comparing levels.`
         );
 
         // Update executive summary (finance slice) — single narrative sentence
         _setExecSlice(
           'finance',
-          `Finance shows ${finTop10Deals.toLocaleString()} top-10 deals totaling ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'}bn USD; <strong class="font-semibold text-slate-50">stay selective and watch for rotation in where value concentrates (industry/country)</strong>.`
+          `Finance shows ${finTop10Deals.toLocaleString()} top-10 deals totaling ${finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—'}bn USD; <strong class="font-semibold text-slate-50">stay selective and watch for rotation in where value concentrates (industry/region)</strong>.`
         );
 
         const iFinCty = _getInsight('finance','country','Global');

@@ -1,0 +1,62 @@
+{#
+  _nav.html — version navigation bar (single source of truth)
+
+  Required variables (set before {% include %}):
+    base          - URL prefix (e.g. '/gta' or '')
+    current_ver   - current version id (e.g. 'v1', 'v5_2')
+
+  Optional variables:
+    nav_theme     - 'dark' (default) | 'light' | 'v2'
+    show_map      - true to show Map link
+    show_geos     - true to show Geos link
+    show_color_toggle - true to show Colorful button
+#}
+
+{% set versions = [
+  ('/', 'v1', 'v1'),
+  ('/v2', 'v2', 'v2'),
+  ('/v3', 'v3', 'v3'),
+  ('/v4', 'v4', 'v4'),
+  ('/v5', 'v5', 'v5'),
+  ('/v5_1', 'v5.1', 'v5_1'),
+  ('/v5_2', 'v5.2', 'v5_2'),
+  ('/v6', 'v6', 'v6'),
+  ('/v7', 'v7', 'v7'),
+] %}
+
+{% if nav_theme == 'v2' %}
+{# v2: custom CSS class-based nav (no Tailwind) #}
+<nav class="version-nav">
+  {% for path, label, ver_id in versions %}
+    <a{% if current_ver == ver_id %} class="active"{% endif %} href="{{ base }}{{ path }}">{{ label }}</a>
+  {% endfor %}
+  <span class="sep">|</span>
+  {% if show_map | default(false) %}<a href="{{ base }}/map/trade-flow">Map</a>{% endif %}
+  <a href="{{ base }}/health">Health</a>
+  <a href="{{ base }}/jobs">Jobs</a>
+  {% if show_geos | default(false) %}<a href="{{ base }}/geos">Geos</a>{% endif %}
+</nav>
+{% else %}
+{# dark / light Tailwind nav #}
+{% set _link_cls   = 'hover:text-blue-300'  if nav_theme != 'light' else 'hover:text-blue-600' %}
+{% set _active_cls = 'text-blue-300 font-semibold' if nav_theme != 'light' else 'text-blue-600 font-semibold' %}
+{% set _sep_cls    = 'text-slate-600' if nav_theme != 'light' else 'text-slate-300' %}
+{% set _nav_text   = 'text-slate-400' if nav_theme != 'light' else 'text-slate-500' %}
+
+<nav class="w-full text-right text-xs {{ _nav_text }} space-x-3">
+  {% for path, label, ver_id in versions %}
+    <a class="{{ _active_cls if current_ver == ver_id else _link_cls }}" href="{{ base }}{{ path }}">{{ label }}</a>
+  {% endfor %}
+  <span class="{{ _sep_cls }}">|</span>
+  {% if show_map | default(false) %}<a class="{{ _link_cls }}" href="{{ base }}/map/trade-flow">Map</a>{% endif %}
+  <a class="{{ _link_cls }}" href="{{ base }}/health">Health</a>
+  <a class="{{ _link_cls }}" href="{{ base }}/jobs">Jobs</a>
+  {% if show_geos | default(false) %}<a class="{{ _link_cls }}" href="{{ base }}/geos">Geos</a>{% endif %}
+  {% if show_color_toggle | default(false) %}
+    <span class="{{ _sep_cls }}">|</span>
+    <button id="colorToggleBtn" type="button"
+            class="px-3 py-1 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 transition-colors text-xs font-mono"
+            onclick="toggleNumberColors()">&#127912; Colorful</button>
+  {% endif %}
+</nav>
+{% endif %}

@@ -52,19 +52,8 @@
         Data Updated: {{ data_updated_at }}<br>
         Stale: {% if data_is_stale %}YES{% else %}NO{% endif %}
       </div>
-      <nav class="w-full text-right text-xs text-slate-400 space-x-3">
-        <a class="text-blue-300 font-semibold" href="{{ base }}/">v1</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v2">v2</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v3">v3</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v4">v4</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v5">v5</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v5_1">v5.1</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v6">v6</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v7">v7</a>
-        <span class="text-slate-600">|</span>
-        <a class="hover:text-blue-300" href="{{ base }}/health">Health</a>
-        <a class="hover:text-blue-300" href="{{ base }}/jobs">Jobs</a>
-      </nav>
+      {% set current_ver = 'v1' %}
+      {% include '_nav.html' %}
     </header>
 
     <section class="card rounded-3xl p-6 md:p-10 mb-6">
@@ -277,12 +266,12 @@
       <div class="card rounded-3xl p-6 transition-all hover:border-fuchsia-500/50">
         <div class="text-xs text-slate-400">Widget</div>
         <div class="mt-1 text-xl font-bold">Global Financial Flow</div>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed">M&A activity breakdown by industry and country (IMAA). Deal-level “daily biggest” is not included.</p>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">M&A activity breakdown by industry and region (IMAA). Deal-level “daily biggest” is not included.</p>
         <div class="mt-4 text-xs text-slate-500 font-mono">Status: MVP → M&A breakdown</div>
 
         <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-mono">
           <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">By industry</button>
-          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">By country</button>
+          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">By region</button>
           <span class="ml-auto text-slate-500">Chart</span>
           <button data-chart="ring" class="fin-chart px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700">Ring</button>
           <button data-chart="bar" class="fin-chart px-3 py-1 rounded-lg bg-slate-900/40 hover:bg-slate-700">Bar</button>
@@ -1101,7 +1090,7 @@
         FIN_CTY_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
         FIN_CTY_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
         document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-300" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
-        document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA country narratives; values may mix currencies (USD/EUR) unless converted.';
+        document.getElementById('fin_country_commentary').textContent = 'Commentary (EN): derived from IMAA region narratives; values may mix currencies (USD/EUR) unless converted.';
 
         const iFinCty = _getInsight('finance','country','Global');
         document.getElementById('fin_country_insight_text').textContent = (iFinCty && iFinCty.content) || '—';

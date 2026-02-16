@@ -201,19 +201,10 @@
       </div>
     </div>
 
-    <nav class="version-nav">
-      <a href="{{ base_path }}/">v1</a>
-      <a class="active" href="{{ base_path }}/v2">v2</a>
-      <a href="{{ base_path }}/v3">v3</a>
-      <a href="{{ base_path }}/v4">v4</a>
-      <a href="{{ base_path }}/v5">v5</a>
-      <a href="{{ base_path }}/v5_1">v5.1</a>
-      <a href="{{ base_path }}/v6">v6</a>
-      <a href="{{ base_path }}/v7">v7</a>
-      <span class="sep">|</span>
-      <a href="{{ base_path }}/health">Health</a>
-      <a href="{{ base_path }}/jobs">Jobs</a>
-    </nav>
+    {% set base = base_path or '' %}
+    {% set current_ver = 'v2' %}
+    {% set nav_theme = 'v2' %}
+    {% include '_nav.html' %}
 
     <section class="kpis" aria-label="KPI Strip">
       <div class="card">

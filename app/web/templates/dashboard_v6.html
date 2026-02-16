@@ -56,20 +56,9 @@
         Data Updated: {{ data_updated_at }}<br>
         Stale: {% if data_is_stale %}YES{% else %}NO{% endif %}
       </div>
-      <nav class="w-full text-right text-xs text-slate-400 space-x-3">
-        <a class="hover:text-blue-300" href="{{ base }}/">v1</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v2">v2</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v3">v3</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v4">v4</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v5">v5</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v5_1">v5.1</a>
-        <a class="text-blue-300 font-semibold" href="{{ base }}/v6">v6</a>
-        <a class="hover:text-blue-300" href="{{ base }}/v7">v7</a>
-        <span class="text-slate-600">|</span>
-        <a class="hover:text-blue-300" href="{{ base }}/map/trade-flow">Map</a>
-        <a class="hover:text-blue-300" href="{{ base }}/health">Health</a>
-        <a class="hover:text-blue-300" href="{{ base }}/jobs">Jobs</a>
-      </nav>
+      {% set current_ver = 'v6' %}
+      {% set show_map = true %}
+      {% include '_nav.html' %}
     </header>
 
         <section class="card rounded-3xl p-6 md:p-8 mb-4">
@@ -90,7 +79,7 @@
       <div class="flex items-center justify-between px-2 pt-1 pb-2">
         <div>
           <div class="text-xs text-slate-400 font-mono">Interactive Map</div>
-          <div class="text-sm text-slate-300 mt-0.5">Click any country to explore trade &amp; wealth data</div>
+          <div class="text-sm text-slate-300 mt-0.5">Click any region to explore trade &amp; wealth data</div>
         </div>
         <div class="flex items-center gap-3 text-[11px] text-slate-500 font-mono">
           <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.18);border:1px solid rgba(148,163,184,.35);display:inline-block;"></span> Has data</span>
@@ -109,8 +98,8 @@
         <section class="card rounded-3xl p-6 mb-4">
       <h3 class="text-lg font-bold">Notes</h3>
       <ul class="mt-3 text-sm text-slate-400 space-y-2 list-disc pl-5">
-        <li>Click a country on the map to see its trade, wealth, and demographic data in the side panel.</li>
-        <li>Countries with available data are shaded brighter; dimmed countries have no tracked data yet.</li>
+        <li>Click a region on the map to see its trade, wealth, and demographic data in the side panel.</li>
+        <li>Regions with available data are shaded brighter; dimmed regions have no tracked data yet.</li>
         <li>All data sourced from scheduled DB snapshots — no live external calls.</li>
       </ul>
     </section>
@@ -691,7 +680,7 @@
         }
 
         if (maCty.rows && maCty.rows.length > 0) {
-          html += `<div class="text-[10px] text-slate-500 mb-1">Top 3 Countries by Deals</div>
+          html += `<div class="text-[10px] text-slate-500 mb-1">Top 3 Regions by Deals</div>
             <div class="space-y-1">`;
           maCty.rows.slice(0, 3).forEach(r => {
             html += `<div class="flex items-center justify-between text-xs">
