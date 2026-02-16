@@ -127,6 +127,54 @@ CREATE INDEX IF NOT EXISTS idx_widget_snapshots_lookup
 CREATE INDEX IF NOT EXISTS idx_widget_snapshots_fetched_at
     ON public.widget_snapshots(fetched_at);
 
+-- Geo dictionary: DB-driven list of geos used by jobs and dashboard.
+CREATE TABLE IF NOT EXISTS public.geo_dictionary (
+    geo_name VARCHAR(80) PRIMARY KEY,
+    iso_alpha2 VARCHAR(4) NOT NULL DEFAULT '',
+    iso_alpha3 VARCHAR(4) NOT NULL DEFAULT '',
+    wdi_code VARCHAR(10) NOT NULL DEFAULT '',
+    display_name VARCHAR(160) NOT NULL DEFAULT '',
+    region VARCHAR(80) NOT NULL DEFAULT '',
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 100,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.geo_dictionary IS 'Master dictionary of geographic scopes used by jobs, dashboard, and APIs. Replaces hardcoded ALLOWED_GEOS.';
+COMMENT ON COLUMN public.geo_dictionary.geo_name IS 'Canonical geo name (primary key, used in widget_snapshots.scope and job params).';
+COMMENT ON COLUMN public.geo_dictionary.iso_alpha2 IS 'ISO 3166-1 alpha-2 code (empty for aggregates like Global).';
+COMMENT ON COLUMN public.geo_dictionary.iso_alpha3 IS 'ISO 3166-1 alpha-3 code (empty for aggregates).';
+COMMENT ON COLUMN public.geo_dictionary.wdi_code IS 'World Bank WDI country/aggregate code (e.g. WLD, IND, CHN).';
+COMMENT ON COLUMN public.geo_dictionary.display_name IS 'Human-readable display name for UI.';
+COMMENT ON COLUMN public.geo_dictionary.region IS 'Geographic region grouping (e.g. Asia, Europe, Americas, Middle East).';
+COMMENT ON COLUMN public.geo_dictionary.enabled IS 'Whether this geo is active for job scheduling and dashboard display.';
+COMMENT ON COLUMN public.geo_dictionary.sort_order IS 'Display ordering (lower = first). Global should be 0.';
+COMMENT ON COLUMN public.geo_dictionary.created_at IS 'Row creation time.';
+COMMENT ON COLUMN public.geo_dictionary.updated_at IS 'Row update time (maintained by trigger).';
+
+DROP TRIGGER IF EXISTS trg_geo_dictionary_updated_at ON public.geo_dictionary;
+CREATE TRIGGER trg_geo_dictionary_updated_at
+BEFORE UPDATE ON public.geo_dictionary
+FOR EACH ROW
+EXECUTE FUNCTION public.set_updated_at();
+
+-- Seed geo_dictionary with default geos (idempotent via ON CONFLICT).
+INSERT INTO public.geo_dictionary (geo_name, iso_alpha2, iso_alpha3, wdi_code, display_name, region, enabled, sort_order) VALUES
+    ('Global',         '',   '',    'WLD', 'Global',              '',              TRUE,  0),
+    ('China',          'CN', 'CHN', 'CHN', 'China',               'Asia',          TRUE, 10),
+    ('United States',  'US', 'USA', 'USA', 'United States',       'Americas',      TRUE, 11),
+    ('Japan',          'JP', 'JPN', 'JPN', 'Japan',               'Asia',          TRUE, 12),
+    ('Germany',        'DE', 'DEU', 'DEU', 'Germany',             'Europe',        TRUE, 13),
+    ('United Kingdom', 'GB', 'GBR', 'GBR', 'United Kingdom',      'Europe',        TRUE, 14),
+    ('India',          'IN', 'IND', 'IND', 'India',               'Asia',          TRUE, 20),
+    ('Mexico',         'MX', 'MEX', 'MEX', 'Mexico',              'Americas',      TRUE, 21),
+    ('Singapore',      'SG', 'SGP', 'SGP', 'Singapore',           'Asia',          TRUE, 22),
+    ('Hong Kong',      'HK', 'HKG', 'HKG', 'Hong Kong',           'Asia',          TRUE, 23),
+    ('Middle East',    '',   '',    'MEA', 'Middle East & North Africa', 'Middle East', TRUE, 30),
+    ('Taiwan',         'TW', 'TWN', 'TWN', 'Taiwan',              'Asia',          TRUE, 24)
+ON CONFLICT (geo_name) DO NOTHING;
+
 -- Optional v2 tables (additive; safe to ignore if not used by app yet)
 
 -- Public context cache (used for Insight research prompts)

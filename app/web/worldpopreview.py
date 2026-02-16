@@ -144,6 +144,11 @@ def fetch_disposable_income_latest(ttl_seconds: int = 24 * 60 * 60, force: bool 
     # Look for patterns like: <td>Singapore</td> ... <td>$xx,xxx</td>
     # We only keep the countries we care about.
     targets = {
+        "China": ["China"],
+        "United States": ["United States", "US", "USA"],
+        "Japan": ["Japan"],
+        "Germany": ["Germany"],
+        "United Kingdom": ["United Kingdom", "UK"],
         "India": ["India"],
         "Mexico": ["Mexico"],
         "Singapore": ["Singapore"],
@@ -177,6 +182,11 @@ def fetch_disposable_income_latest(ttl_seconds: int = 24 * 60 * 60, force: bool 
     # World Bank API uses 2-letter ISO codes for many economies; aggregates like WLD also work.
     wb_geo_map = {
         "Global": "WLD",
+        "China": "CN",
+        "United States": "US",
+        "Japan": "JP",
+        "Germany": "DE",
+        "United Kingdom": "GB",
         "India": "IN",
         "Mexico": "MX",
         "Singapore": "SG",

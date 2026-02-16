@@ -12,21 +12,73 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.models import InsightGenerateLog, JobDefinition, JobRun, WidgetInsight, WidgetSnapshot
+from app.db.models import GeoDictionary, InsightGenerateLog, JobDefinition, JobRun, WidgetInsight, WidgetSnapshot
 from app.db.session import SessionLocal
 from app.web import widget_data
 from app.web.imaa import fetch_ma_by_country, fetch_ma_by_industry
 from app.web.worldbank import fetch_age_structure_latest, fetch_trade_exim_5y, fetch_wealth_indicators_5y
 from app.web.worldpopreview import fetch_disposable_income_latest
 
-ALLOWED_GEOS = ["Global", "India", "Mexico", "Singapore", "Hong Kong"]
-GEO_TO_WDI = {
+_FALLBACK_GEOS = ["Global", "India", "Mexico", "Singapore", "Hong Kong"]
+_FALLBACK_GEO_TO_WDI = {
     "Global": "WLD",
     "India": "IND",
     "Mexico": "MEX",
     "Singapore": "SGP",
     "Hong Kong": "HKG",
 }
+
+
+def get_allowed_geos(db: Session | None = None) -> list[str]:
+    """Return enabled geo names from DB, ordered by sort_order. Falls back to hardcoded list on error."""
+    try:
+        close_after = False
+        if db is None:
+            db = SessionLocal()
+            close_after = True
+        try:
+            rows = (
+                db.query(GeoDictionary.geo_name)
+                .filter(GeoDictionary.enabled.is_(True))
+                .order_by(GeoDictionary.sort_order, GeoDictionary.geo_name)
+                .all()
+            )
+            if rows:
+                return [r.geo_name for r in rows]
+        finally:
+            if close_after:
+                db.close()
+    except Exception:
+        pass
+    return list(_FALLBACK_GEOS)
+
+
+def get_geo_to_wdi(db: Session | None = None) -> dict[str, str]:
+    """Return {geo_name: wdi_code} mapping from DB for enabled geos with non-empty wdi_code."""
+    try:
+        close_after = False
+        if db is None:
+            db = SessionLocal()
+            close_after = True
+        try:
+            rows = (
+                db.query(GeoDictionary.geo_name, GeoDictionary.wdi_code)
+                .filter(GeoDictionary.enabled.is_(True), GeoDictionary.wdi_code != "")
+                .all()
+            )
+            if rows:
+                return {r.geo_name: r.wdi_code for r in rows}
+        finally:
+            if close_after:
+                db.close()
+    except Exception:
+        pass
+    return dict(_FALLBACK_GEO_TO_WDI)
+
+
+# Backward-compatible module-level references (lazy, read on first access)
+ALLOWED_GEOS = _FALLBACK_GEOS
+GEO_TO_WDI = _FALLBACK_GEO_TO_WDI
 ALLOWED_INSIGHT_CARD_KEYS = {"trade_flow", "wealth", "finance"}
 ALLOWED_INSIGHT_TAB_KEYS = {
     "corridors",
@@ -93,18 +145,19 @@ def _as_int(value: Any, default: int, min_value: int, max_value: int) -> int:
     return iv
 
 
-def _as_geo_list(value: Any) -> list[str]:
+def _as_geo_list(value: Any, db: Session | None = None) -> list[str]:
+    allowed = get_allowed_geos(db)
     if value is None:
-        return list(ALLOWED_GEOS)
+        return list(allowed)
     items: list[str]
     if isinstance(value, str):
         items = [x.strip() for x in value.split(",") if x.strip()]
     elif isinstance(value, list):
         items = [str(x).strip() for x in value if str(x).strip()]
     else:
-        return list(ALLOWED_GEOS)
+        return list(allowed)
 
-    canonical_map = {g.lower(): g for g in ALLOWED_GEOS}
+    canonical_map = {g.lower(): g for g in allowed}
     out: list[str] = []
     for raw in items:
         key = raw.lower()
@@ -113,14 +166,15 @@ def _as_geo_list(value: Any) -> list[str]:
         geo = canonical_map[key]
         if geo not in out:
             out.append(geo)
-    return out or list(ALLOWED_GEOS)
+    return out or list(allowed)
 
 
-def _canonical_scope(value: Any) -> str | None:
+def _canonical_scope(value: Any, db: Session | None = None) -> str | None:
     s = str(value or "").strip()
     if not s:
         return None
-    canonical_map = {g.lower(): g for g in ALLOWED_GEOS}
+    allowed = get_allowed_geos(db)
+    canonical_map = {g.lower(): g for g in allowed}
     return canonical_map.get(s.lower())
 
 
@@ -311,8 +365,9 @@ def _infer_annual_source_updated_at(period: str | None) -> tuple[datetime | None
 def _run_trade_exim(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     count = 0
     failed = 0
+    wdi_map = get_geo_to_wdi(db)
     for geo in params["geo_list"]:
-        code = GEO_TO_WDI.get(geo)
+        code = wdi_map.get(geo)
         if not code:
             continue
         payload = fetch_trade_exim_5y(
@@ -352,8 +407,9 @@ def _run_trade_exim(db: Session, params: dict[str, Any], job_run_id: int | None)
 def _run_wealth_indicators(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     count = 0
     failed = 0
+    wdi_map = get_geo_to_wdi(db)
     for geo in params["geo_list"]:
-        code = GEO_TO_WDI.get(geo)
+        code = wdi_map.get(geo)
         if not code:
             continue
         payload = fetch_wealth_indicators_5y(
@@ -414,8 +470,9 @@ def _run_wealth_disposable(db: Session, params: dict[str, Any], job_run_id: int 
 def _run_wealth_age_structure(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
     count = 0
     failed = 0
+    wdi_map = get_geo_to_wdi(db)
     for geo in params["geo_list"]:
-        code = GEO_TO_WDI.get(geo)
+        code = wdi_map.get(geo)
         if not code:
             continue
         payload = fetch_age_structure_latest(
@@ -876,7 +933,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
 
     lang = str((params or {}).get("lang") or "en").strip() or "en"
     requested_geos = (params or {}).get("geo_list")
-    geo_list = _as_geo_list(requested_geos)
+    geo_list = _as_geo_list(requested_geos, db=db)
     force_regen = _as_bool((params or {}).get("force_regen"), False)
 
     # Optional manual filtering: scope/card/tab
@@ -911,7 +968,7 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
             geos_to_process = geo_list
         else:
             if not geo_list:
-                geo_list = list(ALLOWED_GEOS)
+                geo_list = get_allowed_geos(db)
             geos_to_process = [geo_list[geo_idx % len(geo_list)]]
             state.value = {"geo_idx": (geo_idx + 1) % len(geo_list)}
             state.updated_at = _now_utc()

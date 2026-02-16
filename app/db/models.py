@@ -12,6 +12,29 @@ class Base(DeclarativeBase):
     pass
 
 
+class GeoDictionary(Base):
+    __tablename__ = "geo_dictionary"
+
+    geo_name: Mapped[str] = mapped_column(String(80), primary_key=True)
+    iso_alpha2: Mapped[str] = mapped_column(String(4), nullable=False, default="")
+    iso_alpha3: Mapped[str] = mapped_column(String(4), nullable=False, default="")
+    wdi_code: Mapped[str] = mapped_column(String(10), nullable=False, default="")
+    display_name: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    region: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class UserVisitLog(Base):
     __tablename__ = "user_visit_log"
 

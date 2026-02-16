@@ -17,7 +17,8 @@ def utc_now_iso() -> str:
 
 def trade_corridors_mvp(force_wci: bool = False) -> dict:
     # MVP stub. TODO: integrate UN Comtrade (monthly) + WITS/WB where possible + IMF PortWatch.
-    geos = ["Global", "India", "Mexico", "Singapore", "Hong Kong"]
+    geos = ["Global", "China", "United States", "Japan", "Germany",
+            "United Kingdom", "India", "Mexico", "Singapore", "Hong Kong"]
 
     by_geo = {
         "Global": {
@@ -26,14 +27,94 @@ def trade_corridors_mvp(force_wci: bool = False) -> dict:
                 {"rank": 1, "origin": "CN", "dest": "US", "value_usd": 575_000_000_000},
                 {"rank": 2, "origin": "DE", "dest": "US", "value_usd": 160_000_000_000},
                 {"rank": 3, "origin": "MX", "dest": "US", "value_usd": 155_000_000_000},
+                {"rank": 4, "origin": "JP", "dest": "US", "value_usd": 135_000_000_000},
+                {"rank": 5, "origin": "CN", "dest": "JP", "value_usd": 130_000_000_000},
+                {"rank": 6, "origin": "IN", "dest": "US", "value_usd": 85_000_000_000},
+                {"rank": 7, "origin": "CN", "dest": "DE", "value_usd": 78_000_000_000},
+                {"rank": 8, "origin": "GB", "dest": "US", "value_usd": 65_000_000_000},
+                {"rank": 9, "origin": "HK", "dest": "CN", "value_usd": 42_000_000_000},
+                {"rank": 10, "origin": "SG", "dest": "CN", "value_usd": 35_000_000_000},
             ],
             "volume_top": [
                 {"rank": 1, "origin": "CN", "dest": "US", "volume_kg": 92_000_000_000},
                 {"rank": 2, "origin": "CN", "dest": "VN", "volume_kg": 45_000_000_000},
                 {"rank": 3, "origin": "US", "dest": "CA", "volume_kg": 40_000_000_000},
+                {"rank": 4, "origin": "CN", "dest": "JP", "volume_kg": 38_000_000_000},
+                {"rank": 5, "origin": "DE", "dest": "US", "volume_kg": 22_000_000_000},
             ],
             "export_usd": 25_600_000_000_000,
             "import_usd": 26_200_000_000_000,
+        },
+        "China": {
+            "period": "2025 (example)",
+            "value_usd_top": [
+                {"rank": 1, "origin": "CN", "dest": "US", "value_usd": 575_000_000_000},
+                {"rank": 2, "origin": "CN", "dest": "JP", "value_usd": 130_000_000_000},
+                {"rank": 3, "origin": "CN", "dest": "DE", "value_usd": 78_000_000_000},
+            ],
+            "volume_top": [
+                {"rank": 1, "origin": "CN", "dest": "US", "volume_kg": 92_000_000_000},
+                {"rank": 2, "origin": "CN", "dest": "VN", "volume_kg": 45_000_000_000},
+                {"rank": 3, "origin": "CN", "dest": "JP", "volume_kg": 38_000_000_000},
+            ],
+            "export_usd": 3_600_000_000_000,
+            "import_usd": 2_700_000_000_000,
+        },
+        "United States": {
+            "period": "2025 (example)",
+            "value_usd_top": [
+                {"rank": 1, "origin": "US", "dest": "CA", "value_usd": 320_000_000_000},
+                {"rank": 2, "origin": "US", "dest": "MX", "value_usd": 265_000_000_000},
+                {"rank": 3, "origin": "US", "dest": "CN", "value_usd": 150_000_000_000},
+            ],
+            "volume_top": [
+                {"rank": 1, "origin": "US", "dest": "CA", "volume_kg": 40_000_000_000},
+                {"rank": 2, "origin": "US", "dest": "MX", "volume_kg": 28_000_000_000},
+            ],
+            "export_usd": 2_100_000_000_000,
+            "import_usd": 3_300_000_000_000,
+        },
+        "Japan": {
+            "period": "2025 (example)",
+            "value_usd_top": [
+                {"rank": 1, "origin": "JP", "dest": "US", "value_usd": 135_000_000_000},
+                {"rank": 2, "origin": "JP", "dest": "CN", "value_usd": 120_000_000_000},
+                {"rank": 3, "origin": "JP", "dest": "KR", "value_usd": 52_000_000_000},
+            ],
+            "volume_top": [
+                {"rank": 1, "origin": "JP", "dest": "CN", "volume_kg": 18_000_000_000},
+                {"rank": 2, "origin": "JP", "dest": "US", "volume_kg": 15_000_000_000},
+            ],
+            "export_usd": 920_000_000_000,
+            "import_usd": 950_000_000_000,
+        },
+        "Germany": {
+            "period": "2025 (example)",
+            "value_usd_top": [
+                {"rank": 1, "origin": "DE", "dest": "US", "value_usd": 160_000_000_000},
+                {"rank": 2, "origin": "DE", "dest": "FR", "value_usd": 120_000_000_000},
+                {"rank": 3, "origin": "DE", "dest": "CN", "value_usd": 105_000_000_000},
+            ],
+            "volume_top": [
+                {"rank": 1, "origin": "DE", "dest": "US", "volume_kg": 22_000_000_000},
+                {"rank": 2, "origin": "DE", "dest": "FR", "volume_kg": 18_000_000_000},
+            ],
+            "export_usd": 1_800_000_000_000,
+            "import_usd": 1_500_000_000_000,
+        },
+        "United Kingdom": {
+            "period": "2025 (example)",
+            "value_usd_top": [
+                {"rank": 1, "origin": "GB", "dest": "US", "value_usd": 65_000_000_000},
+                {"rank": 2, "origin": "GB", "dest": "DE", "value_usd": 45_000_000_000},
+                {"rank": 3, "origin": "GB", "dest": "NL", "value_usd": 38_000_000_000},
+            ],
+            "volume_top": [
+                {"rank": 1, "origin": "GB", "dest": "US", "volume_kg": 8_000_000_000},
+                {"rank": 2, "origin": "GB", "dest": "DE", "volume_kg": 6_500_000_000},
+            ],
+            "export_usd": 530_000_000_000,
+            "import_usd": 780_000_000_000,
         },
         "India": {
             "period": "2025 (example)",

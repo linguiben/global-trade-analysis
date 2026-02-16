@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTA Geo Dictionary</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; }
+    .card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(51, 65, 85, 1); backdrop-filter: blur(8px); }
+    textarea, input[type="text"], input[type="number"] { background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; color: #e2e8f0; }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+  {% set base = base_path or '' %}
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold">Geo Dictionary</h1>
+        <p class="text-slate-400 text-sm">Manage geographic scopes for jobs and dashboard</p>
+      </div>
+      <div class="text-xs text-slate-500 font-mono text-right">
+        {{ now }}<br>
+        <a class="underline hover:text-blue-300" href="{{ base }}/">Dashboard</a>
+        &middot;
+        <a class="underline hover:text-blue-300" href="{{ base }}/jobs">Jobs</a>
+      </div>
+    </header>
+
+    {% if msg %}
+    <section class="card rounded-xl p-3 mb-4 text-sm text-emerald-300">{{ msg }}</section>
+    {% endif %}
+
+    <section class="card rounded-2xl p-4 md:p-6 mb-6 overflow-x-auto">
+      <h2 class="text-lg font-semibold mb-4">Current Geos ({{ geos | length }})</h2>
+      <table class="w-full text-sm">
+        <thead class="text-slate-400">
+          <tr>
+            <th class="text-left py-2 pr-3">Geo Name</th>
+            <th class="text-left py-2 pr-3">Display</th>
+            <th class="text-left py-2 pr-3">ISO2</th>
+            <th class="text-left py-2 pr-3">ISO3</th>
+            <th class="text-left py-2 pr-3">WDI</th>
+            <th class="text-left py-2 pr-3">Region</th>
+            <th class="text-left py-2 pr-3">Order</th>
+            <th class="text-left py-2 pr-3">Enabled</th>
+            <th class="text-left py-2 pr-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for geo in geos %}
+          <tr class="border-t border-slate-700 align-top">
+            <td class="py-3 pr-3 font-semibold">{{ geo.geo_name }}</td>
+            <td class="py-3 pr-3">
+              <form method="post" action="{{ base }}/geos/update" class="flex flex-wrap gap-1 items-end">
+                <input type="hidden" name="geo_name" value="{{ geo.geo_name }}">
+                <input class="rounded px-1 py-0.5 text-xs w-24" type="text" name="display_name" value="{{ geo.display_name }}">
+            </td>
+            <td class="py-3 pr-3">
+                <input class="rounded px-1 py-0.5 text-xs w-12" type="text" name="iso_alpha2" value="{{ geo.iso_alpha2 }}">
+            </td>
+            <td class="py-3 pr-3">
+                <input class="rounded px-1 py-0.5 text-xs w-12" type="text" name="iso_alpha3" value="{{ geo.iso_alpha3 }}">
+            </td>
+            <td class="py-3 pr-3">
+                <input class="rounded px-1 py-0.5 text-xs w-12" type="text" name="wdi_code" value="{{ geo.wdi_code }}">
+            </td>
+            <td class="py-3 pr-3">
+                <input class="rounded px-1 py-0.5 text-xs w-20" type="text" name="region" value="{{ geo.region }}">
+            </td>
+            <td class="py-3 pr-3">
+                <input class="rounded px-1 py-0.5 text-xs w-12" type="number" name="sort_order" value="{{ geo.sort_order }}">
+            </td>
+            <td class="py-3 pr-3">
+                <input type="checkbox" name="enabled" {% if geo.enabled %}checked{% endif %}>
+            </td>
+            <td class="py-3 pr-3 space-x-1">
+                <button class="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold" type="submit">Save</button>
+              </form>
+              <form method="post" action="{{ base }}/geos/delete" class="inline" onsubmit="return confirm('Delete {{ geo.geo_name }}?')">
+                <input type="hidden" name="geo_name" value="{{ geo.geo_name }}">
+                <button class="px-2 py-1 rounded bg-red-700 hover:bg-red-600 text-xs font-semibold" type="submit">Del</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card rounded-2xl p-4 md:p-6">
+      <h2 class="text-lg font-semibold mb-4">Add New Geo</h2>
+      <form method="post" action="{{ base }}/geos/add" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-xs text-slate-400">Geo Name (PK)</label>
+          <input class="w-full rounded px-2 py-1 text-xs" type="text" name="geo_name" required placeholder="e.g. France">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400">Display Name</label>
+          <input class="w-full rounded px-2 py-1 text-xs" type="text" name="display_name" placeholder="France">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400">ISO Alpha-2</label>
+          <input class="w-full rounded px-2 py-1 text-xs" type="text" name="iso_alpha2" placeholder="FR">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400">ISO Alpha-3</label>
+          <input class="w-full rounded px-2 py-1 text-xs" type="text" name="iso_alpha3" placeholder="FRA">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400">WDI Code</label>
+          <input class="w-full rounded px-2 py-1 text-xs" type="text" name="wdi_code" placeholder="FRA">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400">Region</label>
+          <input class="w-full rounded px-2 py-1 text-xs" type="text" name="region" placeholder="Europe">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400">Sort Order</label>
+          <input class="w-full rounded px-2 py-1 text-xs" type="number" name="sort_order" value="100">
+        </div>
+        <div class="flex items-end">
+          <button class="px-4 py-1 rounded bg-blue-600 hover:bg-blue-500 text-xs font-semibold" type="submit">Add Geo</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</body>
+</html>

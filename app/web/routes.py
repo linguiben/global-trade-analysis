@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -13,6 +14,7 @@ from app.jobs.runtime import (
     ALLOWED_GEOS,
     ALLOWED_INSIGHT_CARD_KEYS,
     ALLOWED_INSIGHT_TAB_KEYS,
+    get_allowed_geos,
     get_latest_snapshot,
     get_latest_snapshots_by_key,
     get_next_run_time,
@@ -26,7 +28,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.models import JobRun, UserVisitLog, WidgetInsight, WidgetSnapshot
+from app.db.models import GeoDictionary, JobRun, UserVisitLog, WidgetInsight, WidgetSnapshot
 from app.db.session import get_db
 
 router = APIRouter()
@@ -107,9 +109,16 @@ def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
     fin_cty = get_latest_snapshot(db, "finance_ma_country", "Global")
 
     trade_payload = _snapshot_payload(trade)
-    geos = trade_payload.get("geos") if isinstance(trade_payload.get("geos"), list) else []
-    if not geos:
-        geos = ["Global", "India", "Mexico", "Singapore", "Hong Kong"]
+    corridor_geos = trade_payload.get("geos") if isinstance(trade_payload.get("geos"), list) else []
+    if not corridor_geos:
+        corridor_geos = ["Global", "India", "Mexico", "Singapore", "Hong Kong"]
+
+    # Merge all scopes that have ANY snapshot data (not just trade_corridors geos)
+    all_geos_set: set[str] = set(corridor_geos)
+    all_geos_set.update(trade_exim.keys())
+    all_geos_set.update(wealth_ind.keys())
+    all_geos_set.update(wealth_age.keys())
+    geos = sorted(all_geos_set, key=lambda g: (g != "Global", g))
 
     trade_exim_by_geo = {}
     wealth_ind_by_geo = {}
@@ -125,6 +134,8 @@ def _dashboard_payload(db: Session) -> tuple[dict, datetime | None, bool]:
 
     latest_at = max((s.fetched_at for s in all_snaps), default=None)
     is_stale = any(bool(s.is_stale) for s in all_snaps)
+
+    trade_payload["geos"] = geos
 
     payload = {
         "trade_corridors": trade_payload,
@@ -297,6 +308,31 @@ def homepage_v5_1(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse(
         "dashboard_v5_1.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "visited_count": visited_count,
+            "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            "dashboard_data": dashboard_data,
+            "data_updated_at": _fmt_utc(latest_at),
+            "data_is_stale": is_stale,
+        },
+    )
+
+
+@router.get("/v5_2", response_class=HTMLResponse)
+@router.head("/v5_2")
+def homepage_v5_2(request: Request, db: Session = Depends(get_db)):
+    ip = _client_ip(request)
+    ua = request.headers.get("user-agent", "")[:512]
+    db.add(UserVisitLog(ip=ip, user_agent=ua))
+    db.commit()
+
+    visited_count = db.query(func.count(UserVisitLog.id)).scalar() or 0
+    dashboard_data, latest_at, is_stale = _dashboard_payload(db)
+
+    return templates.TemplateResponse(
+        "dashboard_v5_2.html",
         {
             "request": request,
             "base_path": settings.BASE_PATH.rstrip("/"),
@@ -578,7 +614,7 @@ def jobs_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
             "jobs": jobs,
             "runs": runs,
             "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-            "allowed_geos": ALLOWED_GEOS,
+            "allowed_geos": get_allowed_geos(db),
             "allowed_card_keys": sorted(ALLOWED_INSIGHT_CARD_KEYS),
             "allowed_tab_keys": sorted(ALLOWED_INSIGHT_TAB_KEYS),
         },
@@ -623,7 +659,113 @@ def jobs_update(
 
 @router.head("/jobs")
 def jobs_head():
-    # Some clients (and link-preview bots) probe with HEAD first.
+    return Response(status_code=200)
+
+
+# --- Geo Dictionary Management ---
+
+
+def _geos_redirect_url(request: Request, msg: str) -> str:
+    base = settings.BASE_PATH.rstrip("/")
+    use_prefixed = bool(base) and request.url.path.startswith(f"{base}/")
+    path = f"{base}/geos" if use_prefixed else "/geos"
+    return f"{path}?msg={quote(msg)}"
+
+
+@router.get("/geos", response_class=HTMLResponse)
+def geos_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
+    rows = (
+        db.query(GeoDictionary)
+        .order_by(GeoDictionary.sort_order, GeoDictionary.geo_name)
+        .all()
+    )
+    return templates.TemplateResponse(
+        "geos.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "msg": msg,
+            "geos": rows,
+            "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        },
+    )
+
+
+@router.post("/geos/add")
+def geos_add(
+    request: Request,
+    db: Session = Depends(get_db),
+    geo_name: str = Form(...),
+    iso_alpha2: str = Form(default=""),
+    iso_alpha3: str = Form(default=""),
+    wdi_code: str = Form(default=""),
+    display_name: str = Form(default=""),
+    region: str = Form(default=""),
+    sort_order: int = Form(default=100),
+):
+    geo_name = geo_name.strip()
+    if not geo_name:
+        return RedirectResponse(url=_geos_redirect_url(request, "geo_name is required"), status_code=303)
+    existing = db.get(GeoDictionary, geo_name)
+    if existing:
+        return RedirectResponse(url=_geos_redirect_url(request, f"'{geo_name}' already exists"), status_code=303)
+    db.add(GeoDictionary(
+        geo_name=geo_name,
+        iso_alpha2=iso_alpha2.strip(),
+        iso_alpha3=iso_alpha3.strip(),
+        wdi_code=wdi_code.strip(),
+        display_name=display_name.strip() or geo_name,
+        region=region.strip(),
+        enabled=True,
+        sort_order=sort_order,
+    ))
+    db.commit()
+    return RedirectResponse(url=_geos_redirect_url(request, f"Added '{geo_name}'"), status_code=303)
+
+
+@router.post("/geos/update")
+def geos_update(
+    request: Request,
+    db: Session = Depends(get_db),
+    geo_name: str = Form(...),
+    iso_alpha2: str = Form(default=""),
+    iso_alpha3: str = Form(default=""),
+    wdi_code: str = Form(default=""),
+    display_name: str = Form(default=""),
+    region: str = Form(default=""),
+    enabled: str | None = Form(default=None),
+    sort_order: int = Form(default=100),
+):
+    row = db.get(GeoDictionary, geo_name.strip())
+    if not row:
+        return RedirectResponse(url=_geos_redirect_url(request, f"'{geo_name}' not found"), status_code=303)
+    row.iso_alpha2 = iso_alpha2.strip()
+    row.iso_alpha3 = iso_alpha3.strip()
+    row.wdi_code = wdi_code.strip()
+    row.display_name = display_name.strip() or geo_name
+    row.region = region.strip()
+    row.enabled = (enabled == "on")
+    row.sort_order = sort_order
+    db.commit()
+    return RedirectResponse(url=_geos_redirect_url(request, f"Updated '{geo_name}'"), status_code=303)
+
+
+@router.post("/geos/delete")
+def geos_delete(
+    request: Request,
+    db: Session = Depends(get_db),
+    geo_name: str = Form(...),
+):
+    row = db.get(GeoDictionary, geo_name.strip())
+    if row:
+        db.delete(row)
+        db.commit()
+        return RedirectResponse(url=_geos_redirect_url(request, f"Deleted '{geo_name}'"), status_code=303)
+    return RedirectResponse(url=_geos_redirect_url(request, f"'{geo_name}' not found"), status_code=303)
+
+
+@router.head("/geos")
+def geos_head():
     return Response(status_code=200)
 
 
@@ -641,6 +783,7 @@ def _register_base_path_aliases() -> None:
         {"path": f"{base}/v4", "endpoint": homepage_v4, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v4"},
         {"path": f"{base}/v5", "endpoint": homepage_v5, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v5"},
         {"path": f"{base}/v5_1", "endpoint": homepage_v5_1, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v5_1"},
+        {"path": f"{base}/v5_2", "endpoint": homepage_v5_2, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v5_2"},
         {"path": f"{base}/v6", "endpoint": homepage_v6, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v6"},
         {"path": f"{base}/v7", "endpoint": homepage_v7, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v7"},
         {"path": f"{base}/map/trade-flow", "endpoint": trade_flow_map, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_trade_flow_map"},
@@ -660,6 +803,11 @@ def _register_base_path_aliases() -> None:
         {"path": f"{base}/jobs", "endpoint": jobs_head, "methods": ["HEAD"], "response_class": HTMLResponse, "name": "prefixed_jobs_head"},
         {"path": f"{base}/jobs/run", "endpoint": jobs_run, "methods": ["POST"], "name": "prefixed_jobs_run"},
         {"path": f"{base}/jobs/update", "endpoint": jobs_update, "methods": ["POST"], "name": "prefixed_jobs_update"},
+        {"path": f"{base}/geos", "endpoint": geos_page, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_geos_page"},
+        {"path": f"{base}/geos", "endpoint": geos_head, "methods": ["HEAD"], "response_class": HTMLResponse, "name": "prefixed_geos_head"},
+        {"path": f"{base}/geos/add", "endpoint": geos_add, "methods": ["POST"], "name": "prefixed_geos_add"},
+        {"path": f"{base}/geos/update", "endpoint": geos_update, "methods": ["POST"], "name": "prefixed_geos_update"},
+        {"path": f"{base}/geos/delete", "endpoint": geos_delete, "methods": ["POST"], "name": "prefixed_geos_delete"},
     ]
 
     for spec in alias_specs:

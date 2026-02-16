@@ -1,0 +1,2251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Trade Analysis · Dashboard v5.2</title>
+  <link rel="icon" href="{{ base_path }}/favicon.ico" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html { -ms-overflow-style: none; scrollbar-width: none; }
+    html::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+    body { background-color: #f8fafc; color: #1e293b; font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; overflow: auto; -ms-overflow-style: none; }
+    body::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+    .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    [id$="_insight_text"] {
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-line;
+      line-height: 1.45;
+      padding-right: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148,163,184,0.55) rgba(241,245,249,0.8);
+    }
+    [id$="_insight_text"]::-webkit-scrollbar {
+      width: 7px;
+    }
+    [id$="_insight_text"]::-webkit-scrollbar-track {
+      background: rgba(241,245,249,0.8);
+      border-radius: 8px;
+    }
+    [id$="_insight_text"]::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.55);
+      border-radius: 8px;
+    }
+    [id$="_insight_text"]::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.75);
+    }
+    .section-toggle { cursor: pointer; user-select: none; }
+    .section-toggle .chevron { transition: transform 0.2s ease; display: inline-block; }
+    .section-toggle.collapsed .chevron { transform: rotate(-90deg); }
+    .section-content { transition: max-height 0.3s ease; overflow: hidden; }
+    .section-content.collapsed { max-height: 0 !important; padding-top: 0; padding-bottom: 0; }
+
+    /* World map styling (light theme) */
+    .land { fill: rgba(148,163,184,.15); stroke: rgba(148,163,184,.25); stroke-width: 0.5; cursor: pointer; transition: fill 0.15s; }
+    .land:hover { fill: rgba(96,165,250,.20); }
+    .land.has-data { fill: rgba(96,165,250,.15); stroke: rgba(96,165,250,.30); stroke-width: 0.6; }
+    .land.selected, .land.highlighted { fill: rgba(37,99,235,.30); stroke: rgba(37,99,235,.60); stroke-width: 1.2; }
+    .land.dimmed { fill: rgba(226,232,240,.3); stroke: rgba(226,232,240,.4); }
+    .graticule { fill: none; stroke: rgba(148,163,184,.12); stroke-width: 0.5; }
+
+    /* Map bubbles (light theme) */
+
+
+    /* Flow arcs (light theme) */
+    .flow-arc { fill: none; cursor: pointer; transition: opacity 0.2s; }
+    .flow-arc:hover { opacity: 1 !important; }
+    .flow-label { fill: rgba(30,41,59,.75); font-size: 10px; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; pointer-events: none; }
+
+    /* Flow control buttons */
+    .flow-topn-btn { transition: background 0.15s, color 0.15s; }
+    .flow-topn-btn.active { background: #1e293b; color: #ffffff; }
+
+    /* Map metric buttons */
+
+
+    /* Drawer (light theme) */
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.18); z-index: 45; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+    .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+    .drawer { position: fixed; top: 0; right: 0; width: 420px; max-width: 92vw; height: 100vh; z-index: 50;
+              background: rgba(255,255,255,0.98); backdrop-filter: blur(12px);
+              border-left: 1px solid #e2e8f0;
+              box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+              transform: translateX(100%); transition: transform 0.3s ease;
+              display: flex; flex-direction: column; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-scroll { flex: 1; overflow-y: auto; padding: 20px; scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.4) rgba(241,245,249,0.8); }
+    .drawer-scroll::-webkit-scrollbar { width: 6px; }
+    .drawer-scroll::-webkit-scrollbar-track { background: rgba(241,245,249,0.8); }
+    .drawer-scroll::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.4); border-radius: 8px; }
+
+    /* Drawer section card (light theme) */
+    .dsec { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .dsec-title { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+    body.monochrome .text-blue-800,
+    body.monochrome .text-emerald-800,
+    body.monochrome .text-fuchsia-800,
+    body.monochrome .text-amber-800,
+    body.monochrome .text-slate-600 {
+      color: #64748b !important;
+    }
+    body.monochrome .text-slate-800,
+    body.monochrome .text-slate-700 {
+      color: #1e293b !important;
+    }
+    body.monochrome .text-blue-200,
+    body.monochrome .text-emerald-200,
+    body.monochrome .text-fuchsia-200,
+    body.monochrome .text-amber-200,
+    body.monochrome .text-blue-600,
+    body.monochrome .text-emerald-600,
+    body.monochrome .text-fuchsia-600,
+    body.monochrome .text-amber-600 {
+      color: #94a3b8 !important;
+    }
+    body.monochrome .bg-blue-50,
+    body.monochrome .bg-emerald-50,
+    body.monochrome .bg-fuchsia-50,
+    body.monochrome .bg-amber-50,
+    body.monochrome .bg-blue-100,
+    body.monochrome .bg-emerald-100,
+    body.monochrome .bg-fuchsia-100,
+    body.monochrome .bg-amber-100 {
+      background-color: #f1f5f9 !important; /* Slightly distinct but muted bg in mono */
+    }
+    body.monochrome .border-blue-200,
+    body.monochrome .border-emerald-200,
+    body.monochrome .border-fuchsia-200,
+    body.monochrome .border-amber-200,
+    body.monochrome .border-blue-300,
+    body.monochrome .border-emerald-300,
+    body.monochrome .border-fuchsia-300,
+    body.monochrome .border-amber-300,
+    body.monochrome .ring-blue-300,
+    body.monochrome .ring-emerald-300,
+    body.monochrome .ring-fuchsia-300,
+    body.monochrome .ring-amber-300 {
+      border-color: #e2e8f0 !important;
+      --tw-ring-color: #e2e8f0 !important;
+    }
+  </style>
+</head>
+<body class="monochrome p-4 md:p-8">
+  {% set base = base_path or '' %}
+  <div class="max-w-5xl mx-auto">
+    <header class="mb-8 flex flex-wrap justify-between items-center gap-3">
+      <div>
+        <h1 class="text-3xl font-bold text-slate-800">
+          Global Trade Analysis <span class="text-xs font-medium align-top text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full ml-2">v5.2</span>
+        </h1>
+        <p class="text-slate-500 text-sm mt-1">$POC · data-driven trade insights$</p>
+      </div>
+      <div class="text-right text-xs text-slate-400 font-mono">
+        Visited: {{ visited_count }}<br>{{ now }}<br>
+        Data Updated: {{ data_updated_at }}<br>
+        Stale: {% if data_is_stale %}YES{% else %}NO{% endif %}
+      </div>
+      <nav class="w-full text-right text-xs text-slate-500 space-x-3">
+        <a class="hover:text-blue-600" href="{{ base }}/">v1</a>
+        <a class="hover:text-blue-600" href="{{ base }}/v2">v2</a>
+        <a class="hover:text-blue-600" href="{{ base }}/v3">v3</a>
+        <a class="hover:text-blue-600" href="{{ base }}/v4">v4</a>
+        <a class="hover:text-blue-600" href="{{ base }}/v5">v5</a>
+        <a class="hover:text-blue-600" href="{{ base }}/v5_1">v5.1</a>
+        <a class="text-blue-600 font-semibold" href="{{ base }}/v5_2">v5.2</a>
+        <a class="hover:text-blue-600" href="{{ base }}/v6">v6</a>
+        <a class="hover:text-blue-600" href="{{ base }}/v7">v7</a>
+        <span class="text-slate-300">|</span>
+        <a class="hover:text-blue-600" href="{{ base }}/health">Health</a>
+        <a class="hover:text-blue-600" href="{{ base }}/jobs">Jobs</a>
+        <a class="hover:text-blue-600" href="{{ base }}/geos">Geos</a>
+        <span class="text-slate-300">|</span>
+        <button id="colorToggleBtn" type="button"
+                class="px-3 py-1 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 transition-colors text-xs font-mono"
+                onclick="toggleNumberColors()">
+          &#127912; Colorful
+        </button>
+      </nav>
+    </header>
+
+    <!-- Executive summary (v4) — concise management briefing -->
+    <section class="card p-6 md:p-10 mb-8">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-800 mt-1">Executive Summary</h2>
+          <p class="text-sm text-slate-500 mt-1">A single-paragraph overview for leadership — details in the sections below.</p>
+        </div>
+        <div class="text-xs text-slate-400 font-mono">YoY = latest vs prior point</div>
+      </div>
+
+      <div class="mt-5">
+        <div id="exec_overall_commentary" class="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-base leading-relaxed text-slate-700">
+          —
+        </div>
+      </div>
+
+      <!-- Collapsible key metrics strip -->
+      <div class="mt-4">
+        <button id="exec_metrics_toggle" type="button"
+                class="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 font-mono transition-colors">
+          <span id="exec_metrics_arrow" class="transition-transform duration-200">&#9654;</span>
+          Key Metrics at a Glance
+        </button>
+        <div id="exec_metrics_panel" class="hidden mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-mono">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- World Map (country view) -->
+    <section class="card p-3 md:p-4 relative overflow-hidden mb-8">
+      <div class="flex items-center justify-between px-2 pt-1 pb-2">
+        <div>
+          <div class="text-xs text-slate-500 font-mono">Interactive Map</div>
+          <div class="text-sm text-slate-700 mt-0.5">Click any country to explore its trade &amp; wealth data</div>
+        </div>
+        <div class="flex items-center gap-3 text-[11px] text-slate-500 font-mono">
+          <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.18);border:1px solid rgba(148,163,184,.35);display:inline-block;"></span> Has data</span>
+          <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(148,163,184,.06);border:1px solid rgba(148,163,184,.12);display:inline-block;"></span> No data</span>
+          <span class="inline-flex items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:rgba(96,165,250,.25);border:1px solid rgba(96,165,250,.5);display:inline-block;"></span> Selected</span>
+          <span class="inline-flex items-center gap-1"><span style="width:20px;height:3px;display:inline-block;background:linear-gradient(90deg,rgba(34,197,94,.75),rgba(59,130,246,.75));border-radius:2px;"></span> Trade corridor</span>
+        </div>
+      </div>
+      <div id="mapContainer" class="relative" style="height: 50vh; min-height: 400px;">
+        <svg id="mapSvg" style="width:100%;height:100%;" aria-label="World map"></svg>
+        <div id="mapHud" class="absolute left-3 top-3 card rounded-xl px-3 py-2 font-mono text-[11px] text-slate-500">
+          <div id="hudLine">Loading map&hellip;</div>
+        </div>
+        <div id="flowControls" class="absolute left-3 bottom-3 flex items-center gap-1.5 z-10">
+          <span class="text-[10px] text-slate-400 font-mono mr-1">Corridors:</span>
+          <button data-topn="5"  class="flow-topn-btn active px-2 py-0.5 rounded text-[10px] font-mono border border-slate-200">Top 5</button>
+          <button data-topn="10" class="flow-topn-btn px-2 py-0.5 rounded text-[10px] font-mono bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Top 10</button>
+          <button data-topn="20" class="flow-topn-btn px-2 py-0.5 rounded text-[10px] font-mono bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Top 20</button>
+          <button data-topn="all" class="flow-topn-btn px-2 py-0.5 rounded text-[10px] font-mono bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">All</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="widgets" class="space-y-6">
+      <section class="card p-0 mb-6">
+        <div class="section-toggle p-6 flex items-center justify-between border-b border-slate-200" onclick="toggleSection(this)">
+          <h2 class="text-xl font-semibold text-slate-800">Global Trade Flow</h2>
+          <span class="chevron text-slate-400 text-lg">▼</span>
+        </div>
+        <div class="section-content p-6">
+
+        <div id="trade_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
+
+          <div class="mt-4">
+            <div class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Category</div>
+            <div class="flex flex-wrap gap-2 text-xs font-mono">
+          <button data-tab="corridors" class="trade-tab px-3 py-1 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Corridors</button>
+          <button data-tab="export" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Export</button>
+          <button data-tab="import" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Import</button>
+          <button data-tab="balance" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Surplus/Deficit</button>
+          <button data-tab="wci" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Freight (WCI)</button>
+          <button data-tab="portwatch" class="trade-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">PortWatch</button>
+            </div>
+          </div>
+
+        <div class="mt-4 text-sm">
+          <div id="trade_panel_corridors" class="trade-panel">
+            <div class="text-slate-700 font-semibold">Active corridors (Top <span id="trade_corridors_value_topn" class="text-blue-900 font-bold">5</span>, Value)</div>
+            <canvas id="trade_corridors_value_chart" height="130" class="mt-2"></canvas>
+
+            <div class="text-slate-700 font-semibold mt-4">Active corridors (Top <span id="trade_corridors_volume_topn" class="text-blue-900 font-bold">5</span>, Volume)</div>
+            <canvas id="trade_corridors_volume_chart" height="130" class="mt-2"></canvas>
+
+            <div id="trade_corridors_commentary" class="text-slate-600 text-sm mt-2"></div>
+          <div id="trade_corridors_insight" class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+            <div class="text-xs text-slate-500 font-mono">Insight</div>
+            <div class="text-slate-700 text-sm mt-1" id="trade_corridors_insight_text">—</div>
+            <div class="text-xs text-slate-400 font-mono mt-2" id="trade_corridors_source_updated">Source updated: —</div>
+          </div>
+          </div>
+
+          <div id="trade_panel_export" class="trade-panel hidden">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Export</div>
+            <canvas id="trade_export_top5_chart" height="160" class="mt-2"></canvas>
+            <div id="trade_export_top5_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="trade_export_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="trade_exim_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="trade_exim_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="trade_panel_import" class="trade-panel hidden">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Import</div>
+            <canvas id="trade_import_top5_chart" height="160" class="mt-2"></canvas>
+            <div id="trade_import_top5_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="trade_import_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="trade_import_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="trade_import_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="trade_panel_balance" class="trade-panel hidden">
+            <div class="text-slate-700 font-semibold">Trade balance</div>
+            <div id="trade_balance" class="text-blue-900 text-lg font-bold mt-1 font-mono">—</div>
+            <div class="mt-3">
+              <canvas id="trade_balance_chart" height="120"></canvas>
+              <div id="trade_balance_chart_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            </div>
+            <div id="trade_balance_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="trade_balance_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="trade_balance_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="trade_panel_wci" class="trade-panel hidden">
+            <div class="text-slate-700 font-semibold">World Container Index (Drewry)</div>
+            <div id="trade_wci" class="text-slate-600 text-sm mt-1 font-mono">—</div>
+            <div id="trade_wci_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="trade_wci_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="trade_wci_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="trade_panel_portwatch" class="trade-panel hidden">
+            <div class="text-slate-700 font-semibold">IMF PortWatch</div>
+            <div id="trade_portwatch" class="text-slate-600 text-sm mt-1 font-mono">—</div>
+            <div id="trade_portwatch_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="trade_portwatch_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="trade_portwatch_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3">
+            <div id="trade_period" class="text-xs text-slate-500 font-mono"></div>
+            <div id="trade_source" class="text-xs text-slate-400 font-mono mt-1"></div>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      <section class="card p-0 mb-6">
+        <div class="section-toggle collapsed p-6 flex items-center justify-between border-b border-slate-200" onclick="toggleSection(this)">
+          <h2 class="text-xl font-semibold text-slate-800">Global Wealth Distribution</h2>
+          <span class="chevron text-slate-400 text-lg">▼</span>
+        </div>
+        <div class="section-content collapsed p-6">
+
+        <div id="wealth_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
+
+          <div class="mt-4">
+            <div class="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Category</div>
+            <div class="flex flex-wrap gap-2 text-xs font-mono">
+              <button data-tab="gdp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-slate-800 text-white hover:bg-slate-700">GDP pc</button>
+              <button data-tab="disp_pc" class="wealth-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Disposable pc</button>
+              <button data-tab="disp_hh" class="wealth-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Disposable hh</button>
+              <button data-tab="cons" class="wealth-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Consumption</button>
+              <button data-tab="age" class="wealth-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Age</button>
+            </div>
+          </div>
+
+        <div class="mt-4 text-sm">
+          <div id="wealth_panel_gdp_pc" class="wealth-panel">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by GDP per Capita</div>
+            <canvas id="wealth_gdp_pc_chart" height="160" class="mt-2"></canvas>
+            <div id="wealth_gdp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_gdp_pc_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="wealth_gdp_pc_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="wealth_gdp_pc_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="wealth_panel_disp_pc" class="wealth-panel hidden">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Disposable Income (per capita)</div>
+            <canvas id="wealth_disp_pc_chart" height="160" class="mt-2"></canvas>
+            <div id="wealth_disp_pc_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_disp_pc_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="wealth_disp_pc_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="wealth_disp_pc_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="wealth_panel_disp_hh" class="wealth-panel hidden">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Disposable Income (per household)</div>
+            <canvas id="wealth_disp_hh_chart" height="160" class="mt-2"></canvas>
+            <div id="wealth_disp_hh_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_disp_hh_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="wealth_disp_hh_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="wealth_disp_hh_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="wealth_panel_cons" class="wealth-panel hidden">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Consumption Expenditure</div>
+            <canvas id="wealth_cons_chart" height="160" class="mt-2"></canvas>
+            <div id="wealth_cons_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_cons_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="wealth_cons_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="wealth_cons_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="wealth_panel_age" class="wealth-panel hidden">
+            <div class="text-slate-700 font-semibold">Top 5 Countries by Working-Age Population Share</div>
+            <canvas id="wealth_age_chart" height="160" class="mt-2"></canvas>
+            <div id="wealth_age_meta" class="text-xs text-slate-500 mt-2 font-mono"></div>
+            <div id="wealth_age_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="wealth_age_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="wealth_age_source_updated">Source updated: —</div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      <section class="card p-0 mb-6">
+        <div class="section-toggle collapsed p-6 flex items-center justify-between border-b border-slate-200" onclick="toggleSection(this)">
+          <h2 class="text-xl font-semibold text-slate-800">Global Financial Flow</h2>
+          <span class="chevron text-slate-400 text-lg">▼</span>
+        </div>
+        <div class="section-content collapsed p-6">
+
+        <div id="fin_kpi" class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono"></div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-mono">
+          <button data-tab="industry" class="fin-tab px-3 py-1 rounded-lg bg-slate-800 text-white hover:bg-slate-700">By industry</button>
+          <button data-tab="country" class="fin-tab px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">By country</button>
+        </div>
+
+        <div class="mt-2 flex flex-wrap items-center gap-2 text-xs font-mono">
+          <span class="text-slate-500 text-xs font-medium uppercase tracking-wide">Chart</span>
+          <button data-chart="ring" class="fin-chart px-3 py-1 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Ring</button>
+          <button data-chart="bar" class="fin-chart px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">Bar</button>
+        </div>
+
+        <div class="mt-4 text-sm">
+          <div id="fin_panel_industry" class="fin-panel">
+            <div class="text-slate-700 font-semibold">Deals (count)</div>
+            <canvas id="fin_industry_deals" height="140" class="mt-2"></canvas>
+
+            <div class="text-slate-700 font-semibold mt-4">Transaction value</div>
+            <canvas id="fin_industry_value" height="140" class="mt-2"></canvas>
+
+            <div id="fin_industry_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
+            <div id="fin_industry_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="fin_industry_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="fin_industry_source_updated">Source updated: —</div>
+            </div>
+          </div>
+
+          <div id="fin_panel_country" class="fin-panel hidden">
+            <div class="text-slate-700 font-semibold">Deals (count)</div>
+            <canvas id="fin_country_deals" height="140" class="mt-2"></canvas>
+
+            <div class="text-slate-700 font-semibold mt-4">Transaction value</div>
+            <canvas id="fin_country_value" height="140" class="mt-2"></canvas>
+
+            <div id="fin_country_meta" class="text-xs text-slate-500 mt-2 font-mono break-words leading-relaxed"></div>
+            <div id="fin_country_commentary" class="text-slate-600 text-sm mt-2"></div>
+            <div class="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-xs text-slate-500 font-mono">Insight</div>
+              <div class="text-slate-700 text-sm mt-1" id="fin_country_insight_text">—</div>
+              <div class="text-xs text-slate-400 font-mono mt-2" id="fin_country_source_updated">Source updated: —</div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- Country detail drawer (slide-in panel) -->
+    <div id="drawerOverlay" class="drawer-overlay"></div>
+    <div id="drawer" class="drawer">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+        <div>
+          <div id="drawer_geo_name" class="text-lg font-bold text-slate-800">—</div>
+          <div id="drawer_geo_sub" class="text-xs text-slate-400 font-mono mt-0.5"></div>
+        </div>
+        <button id="drawerClose" class="text-slate-400 hover:text-slate-600 transition-colors p-1" aria-label="Close panel">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
+        </button>
+      </div>
+      <div id="drawerBody" class="drawer-scroll">
+        <!-- dynamic content injected here -->
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+    <script>
+      function toggleNumberColors() {
+        const body = document.body;
+        const btn = document.getElementById('colorToggleBtn');
+        const isMono = body.classList.toggle('monochrome');
+        if (btn) {
+          btn.innerHTML = isMono ? '&#127912; Colorful' : '&#9899; Minimal';
+        }
+      }
+    </script>
+    <script>
+      const BASE = "{{ base }}";
+      const DASHBOARD_DATA = {{ dashboard_data | tojson }};
+
+      /* ISO numeric → alpha-2 lookup (for topojson country IDs) */
+      const ISO_NUM = {
+        '4':'AF','8':'AL','12':'DZ','24':'AO','32':'AR','36':'AU','40':'AT','50':'BD',
+        '56':'BE','64':'BT','68':'BO','70':'BA','72':'BW','76':'BR','100':'BG','104':'MM',
+        '108':'BI','116':'KH','120':'CM','124':'CA','140':'CF','144':'LK','148':'TD','152':'CL',
+        '156':'CN','170':'CO','178':'CG','180':'CD','188':'CR','191':'HR','192':'CU','196':'CY',
+        '203':'CZ','204':'BJ','208':'DK','214':'DO','218':'EC','818':'EG','222':'SV','226':'GQ',
+        '232':'ER','233':'EE','231':'ET','242':'FJ','246':'FI','250':'FR','266':'GA','270':'GM',
+        '268':'GE','276':'DE','288':'GH','300':'GR','320':'GT','324':'GN','328':'GY','332':'HT',
+        '340':'HN','344':'HK','348':'HU','352':'IS','356':'IN','360':'ID','364':'IR','368':'IQ',
+        '372':'IE','376':'IL','380':'IT','384':'CI','388':'JM','392':'JP','400':'JO','398':'KZ',
+        '404':'KE','410':'KR','414':'KW','418':'LA','422':'LB','426':'LS','430':'LR','434':'LY',
+        '440':'LT','442':'LU','450':'MG','454':'MW','458':'MY','466':'ML','478':'MR','484':'MX',
+        '496':'MN','504':'MA','508':'MZ','516':'NA','524':'NP','528':'NL','540':'NC','554':'NZ',
+        '558':'NI','562':'NE','566':'NG','578':'NO','512':'OM','586':'PK','591':'PA','598':'PG',
+        '600':'PY','604':'PE','608':'PH','616':'PL','620':'PT','630':'PR','634':'QA','642':'RO',
+        '643':'RU','646':'RW','682':'SA','686':'SN','688':'RS','694':'SL','702':'SG','703':'SK',
+        '704':'VN','705':'SI','706':'SO','710':'ZA','716':'ZW','724':'ES','736':'SD','740':'SR',
+        '752':'SE','756':'CH','760':'SY','762':'TJ','764':'TH','768':'TG','780':'TT','788':'TN',
+        '792':'TR','795':'TM','800':'UG','804':'UA','784':'AE','826':'GB','834':'TZ','840':'US',
+        '858':'UY','860':'UZ','862':'VE','887':'YE','894':'ZM','158':'TW'
+      };
+
+      const ISO_TO_GEO = {
+        'AF':'Afghanistan','AL':'Albania','DZ':'Algeria','AO':'Angola','AR':'Argentina',
+        'AU':'Australia','AT':'Austria','BD':'Bangladesh','BE':'Belgium','BT':'Bhutan',
+        'BO':'Bolivia','BA':'Bosnia and Herzegovina','BW':'Botswana','BR':'Brazil','BG':'Bulgaria',
+        'MM':'Myanmar','BI':'Burundi','KH':'Cambodia','CM':'Cameroon','CA':'Canada',
+        'CF':'Central African Republic','LK':'Sri Lanka','TD':'Chad','CL':'Chile','CN':'China',
+        'CO':'Colombia','CG':'Republic of Congo','CD':'Democratic Republic of the Congo',
+        'CR':'Costa Rica','HR':'Croatia','CU':'Cuba','CY':'Cyprus','CZ':'Czech Republic',
+        'BJ':'Benin','DK':'Denmark','DO':'Dominican Republic','EC':'Ecuador','EG':'Egypt',
+        'SV':'El Salvador','GQ':'Equatorial Guinea','ER':'Eritrea','EE':'Estonia','ET':'Ethiopia',
+        'FJ':'Fiji','FI':'Finland','FR':'France','GA':'Gabon','GM':'Gambia','GE':'Georgia',
+        'DE':'Germany','GH':'Ghana','GR':'Greece','GT':'Guatemala','GN':'Guinea','GY':'Guyana',
+        'HT':'Haiti','HN':'Honduras','HK':'Hong Kong','HU':'Hungary','IS':'Iceland','IN':'India',
+        'ID':'Indonesia','IR':'Iran','IQ':'Iraq','IE':'Ireland','IL':'Israel','IT':'Italy',
+        'CI':'Ivory Coast','JM':'Jamaica','JP':'Japan','JO':'Jordan','KZ':'Kazakhstan',
+        'KE':'Kenya','KR':'South Korea','KW':'Kuwait','LA':'Laos','LB':'Lebanon','LS':'Lesotho',
+        'LR':'Liberia','LY':'Libya','LT':'Lithuania','LU':'Luxembourg','MG':'Madagascar',
+        'MW':'Malawi','MY':'Malaysia','ML':'Mali','MR':'Mauritania','MX':'Mexico','MN':'Mongolia',
+        'MA':'Morocco','MZ':'Mozambique','NA':'Namibia','NP':'Nepal','NL':'Netherlands',
+        'NC':'New Caledonia','NZ':'New Zealand','NI':'Nicaragua','NE':'Niger','NG':'Nigeria',
+        'NO':'Norway','OM':'Oman','PK':'Pakistan','PA':'Panama','PG':'Papua New Guinea',
+        'PY':'Paraguay','PE':'Peru','PH':'Philippines','PL':'Poland','PT':'Portugal',
+        'PR':'Puerto Rico','QA':'Qatar','RO':'Romania','RU':'Russia','RW':'Rwanda',
+        'SA':'Saudi Arabia','SN':'Senegal','RS':'Serbia','SL':'Sierra Leone','SG':'Singapore',
+        'SK':'Slovakia','VN':'Vietnam','SI':'Slovenia','SO':'Somalia','ZA':'South Africa',
+        'ZW':'Zimbabwe','ES':'Spain','SD':'Sudan','SR':'Suriname','SE':'Sweden','CH':'Switzerland',
+        'SY':'Syria','TJ':'Tajikistan','TH':'Thailand','TG':'Togo','TT':'Trinidad and Tobago',
+        'TN':'Tunisia','TR':'Turkey','TM':'Turkmenistan','UG':'Uganda','UA':'Ukraine',
+        'AE':'United Arab Emirates','GB':'United Kingdom','TZ':'Tanzania','US':'United States',
+        'UY':'Uruguay','UZ':'Uzbekistan','VE':'Venezuela','YE':'Yemen','ZM':'Zambia','TW':'Taiwan'
+      };
+
+      const geoDataIndex = {};
+      const dataGeoSet = new Set();
+
+      function buildGeoIndex() {
+        const tc  = DASHBOARD_DATA.trade_corridors || {};
+        const geos = tc.geos || [];
+        const byGeo = tc.by_geo || {};
+        const exim = DASHBOARD_DATA.trade_exim_by_geo || {};
+        const wealth = DASHBOARD_DATA.wealth_indicators_by_geo || {};
+        const age = DASHBOARD_DATA.wealth_age_structure_by_geo || {};
+        const disp = (DASHBOARD_DATA.wealth_disposable_latest || {}).rows || {};
+
+        const allGeos = new Set([...geos, ...Object.keys(exim), ...Object.keys(wealth), ...Object.keys(age), ...Object.keys(disp)]);
+        allGeos.forEach(g => {
+          if (g === 'Global') return;
+          geoDataIndex[g] = { trade: byGeo[g] || null, exim: exim[g] || null, wealth: wealth[g] || null, age: age[g] || null, disp: disp[g] || null };
+          dataGeoSet.add(g);
+        });
+        geoDataIndex['Global'] = { trade: byGeo['Global'] || null, exim: exim['Global'] || null, wealth: wealth['Global'] || null, age: age['Global'] || null, disp: disp['Global'] || null };
+      }
+
+      function resolveGeo(isoAlpha2) {
+        if (!isoAlpha2) return null;
+        const fullName = ISO_TO_GEO[isoAlpha2];
+        if (fullName && geoDataIndex[fullName]) return fullName;
+        if (geoDataIndex[isoAlpha2]) return isoAlpha2;
+        return fullName || isoAlpha2;
+      }
+
+      function geoHasData(geoName) { return dataGeoSet.has(geoName); }
+
+      const mapState = {
+        world: null,
+        centroids: {},
+        points: [],        // per-country {geo, export_usd, import_usd, balance_usd, year}
+        selectedIso: null,
+        selectedGeo: null,
+        year: null,
+        flowTopN: 5,       // default: show top 5 corridor arrows
+      };
+
+      /* ---- map: build reverse lookup (full name -> ISO-2) ---- */
+      const GEO_TO_ISO = {};
+      Object.entries(ISO_TO_GEO).forEach(([iso, name]) => { GEO_TO_ISO[name] = iso; });
+
+      /* ---- map: centroid lookup with fallback (try key, then ISO, then full name) ---- */
+      function mapCentroid(key) {
+        if (!key) return null;
+        return mapState.centroids[key]
+          || mapState.centroids[GEO_TO_ISO[key]]
+          || mapState.centroids[ISO_TO_GEO[key]]
+          || null;
+      }
+
+      /* ---- map: render corridor flow arrows ---- */
+      function renderFlows(svg, projection) {
+        const tc  = (DASHBOARD_DATA.trade_corridors || {});
+        const gl  = ((tc.by_geo || {}).Global) || {};
+        const allCorridors = (gl.value_usd_top || []).slice();
+        if (!allCorridors.length) return;
+
+        // Sort by value_usd descending and slice by flowTopN
+        allCorridors.sort((a, b) => (b.value_usd || 0) - (a.value_usd || 0));
+        const limited = mapState.flowTopN === 'all'
+          ? allCorridors
+          : allCorridors.slice(0, mapState.flowTopN);
+
+        // If a country is selected, filter to corridors involving that country
+        const sel = mapState.selectedGeo;
+        const visible = sel
+          ? limited.filter(c => c.origin === sel || c.dest === sel
+              || (ISO_TO_GEO[c.origin] || '') === sel || (ISO_TO_GEO[c.dest] || '') === sel
+              || (GEO_TO_ISO[c.origin] || '') === (mapState.selectedIso || '')
+              || (GEO_TO_ISO[c.dest] || '') === (mapState.selectedIso || ''))
+          : limited;
+
+        if (!visible.length) return;
+
+        const maxFlow = d3.max(allCorridors, c => c.value_usd) || 1;
+        const strokeScale = d3.scaleLinear().domain([0, maxFlow]).range([1.5, 8]);
+
+        // SVG defs: arrow marker + per-arc gradients
+        let defs = svg.select('defs');
+        if (defs.empty()) defs = svg.append('defs');
+        defs.append('marker')
+          .attr('id', 'arrowHead')
+          .attr('viewBox', '0 0 10 10')
+          .attr('refX', 10).attr('refY', 5)
+          .attr('markerWidth', 5).attr('markerHeight', 5)
+          .attr('orient', 'auto')
+          .append('path')
+            .attr('d', 'M0,0 L10,5 L0,10 Z')
+            .attr('fill', 'rgba(59,130,246,.70)');
+
+        const arcG  = svg.append('g').attr('class', 'flow-arcs');
+        const lblG  = svg.append('g').attr('class', 'flow-labels');
+
+        visible.forEach((c, i) => {
+          const oC = mapCentroid(c.origin);
+          const dC = mapCentroid(c.dest);
+          if (!oC || !dC) return;
+
+          const p1 = projection([oC.lon, oC.lat]);
+          const p2 = projection([dC.lon, dC.lat]);
+          if (!p1 || !p2) return;
+
+          const [x1, y1] = p1;
+          const [x2, y2] = p2;
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const dr = Math.sqrt(dx * dx + dy * dy);
+
+          // per-arc gradient (green origin -> blue dest)
+          const gid = `fg${i}`;
+          const grad = defs.append('linearGradient')
+            .attr('id', gid)
+            .attr('gradientUnits', 'userSpaceOnUse')
+            .attr('x1', x1).attr('y1', y1)
+            .attr('x2', x2).attr('y2', y2);
+          grad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(34,197,94,.70)');
+          grad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(59,130,246,.70)');
+
+          arcG.append('path')
+            .attr('class', 'flow-arc')
+            .attr('d', `M${x1},${y1} A${dr},${dr} 0 0,1 ${x2},${y2}`)
+            .attr('stroke', `url(#${gid})`)
+            .attr('stroke-width', strokeScale(c.value_usd))
+            .attr('marker-end', 'url(#arrowHead)')
+            .attr('opacity', 0.65)
+            .datum(c)
+            .on('mouseenter', function(ev, datum) {
+              arcG.selectAll('.flow-arc').attr('opacity', 0.12);
+              d3.select(this).attr('opacity', 1);
+              const oName = ISO_TO_GEO[datum.origin] || datum.origin;
+              const dName = ISO_TO_GEO[datum.dest] || datum.dest;
+              document.getElementById('hudLine').textContent =
+                `${oName} \u2192 ${dName} \u00b7 $${fmtUSD(datum.value_usd)} \u00b7 rank #${datum.rank || '?'}`;
+            })
+            .on('mouseleave', function() {
+              arcG.selectAll('.flow-arc').attr('opacity', 0.65);
+              document.getElementById('hudLine').textContent = `${mapState.points.length} economies`;
+            });
+
+          // label at arc midpoint (offset perpendicular to chord)
+          const mx = (x1 + x2) / 2;
+          const my = (y1 + y2) / 2;
+          const chordLen = Math.sqrt(dx * dx + dy * dy) || 1;
+          const off = chordLen * 0.12;
+          const nx = -dy / chordLen;
+          const ny =  dx / chordLen;
+
+          lblG.append('text')
+            .attr('class', 'flow-label')
+            .attr('x', mx + nx * off)
+            .attr('y', my + ny * off)
+            .attr('text-anchor', 'middle')
+            .attr('dy', -4)
+            .text(`${c.origin}\u2192${c.dest} $${fmtUSD(c.value_usd)}`);
+        });
+      }
+
+      /* ---- map: main render (simplified: has-data / no-data / selected) ---- */
+      function renderMap() {
+        if (!mapState.world) return;
+        const svg = d3.select('#mapSvg');
+        svg.selectAll('*').remove();
+
+        const { width, height } = svg.node().getBoundingClientRect();
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+        const projection = d3.geoNaturalEarth1()
+          .translate([width / 2, height / 2])
+          .scale(Math.min(width, height) * 0.33);
+
+        const path = d3.geoPath(projection);
+        const land = topojson.feature(mapState.world, mapState.world.objects.countries);
+
+        // graticule
+        svg.append('path').attr('class', 'graticule').attr('d', path(d3.geoGraticule10()));
+
+        // Build a set of geos that have exim data
+        const eximGeoSet = new Set(mapState.points.map(p => p.geo));
+
+        const sel = mapState.selectedIso;
+        const selGeo = mapState.selectedGeo;
+
+        // land paths
+        svg.append('g')
+          .selectAll('path')
+          .data(land.features)
+          .join('path')
+          .attr('class', d => {
+            const iso = ISO_NUM[String(d.id)];
+            const geo = iso ? resolveGeo(iso) : null;
+            const hasData = geo && (geoHasData(geo) || eximGeoSet.has(geo));
+            if (sel && iso === sel) return 'land highlighted';
+            if (hasData) return 'land has-data';
+            return 'land dimmed';
+          })
+          .attr('d', path)
+          .on('click', function(ev, d) {
+            ev.stopPropagation();
+            const iso = ISO_NUM[String(d.id)];
+            if (!iso) return;
+            const geo = resolveGeo(iso);
+            if (mapState.selectedIso === iso) {
+              mapState.selectedIso = null;
+              mapState.selectedGeo = null;
+              renderMap();
+              closeDrawer();
+              return;
+            }
+            mapState.selectedIso = iso;
+            mapState.selectedGeo = geo;
+            renderMap();
+            openDrawer(geo, iso);
+          })
+          .on('mouseenter', function(ev, d) {
+            const iso = ISO_NUM[String(d.id)];
+            if (!iso) return;
+            const geo = resolveGeo(iso);
+            document.getElementById('hudLine').textContent = `${geo || iso} ${geoHasData(geo) || eximGeoSet.has(geo) ? '\u00b7 has data' : '\u00b7 no data'}`;
+          })
+          .on('mouseleave', function() {
+            document.getElementById('hudLine').textContent = `${mapState.points.length} economies`;
+          });
+
+        // Click SVG background to deselect
+        svg.on('click', function(ev) {
+          if (ev.target === svg.node()) {
+            if (mapState.selectedIso) {
+              mapState.selectedIso = null;
+              mapState.selectedGeo = null;
+              renderMap();
+              closeDrawer();
+            }
+          }
+        });
+
+        // HUD
+        document.getElementById('hudLine').textContent = `${mapState.points.length} economies`;
+
+        // Render corridor flow arrows on top of the map
+        renderFlows(svg, projection);
+
+        // Render special markers for small territories (too small to click on map)
+        renderSmallGeoMarkers(svg, projection);
+      }
+
+      /* ---- map: render clickable markers for small territories ---- */
+      function renderSmallGeoMarkers(svg, projection) {
+        const smallGeos = [
+          { geo: 'Hong Kong',  iso: 'HK', lat: 22.32, lon: 114.17 },
+          { geo: 'Singapore',  iso: 'SG', lat:  1.35, lon: 103.82 },
+          { geo: 'Taiwan',     iso: 'TW', lat: 23.70, lon: 120.96 },
+        ];
+
+        const sel = mapState.selectedIso;
+        const markerG = svg.append('g').attr('class', 'small-geo-markers');
+
+        smallGeos.forEach(sg => {
+          const hasData = geoHasData(sg.geo);
+          const pt = projection([sg.lon, sg.lat]);
+          if (!pt) return;
+          const [x, y] = pt;
+          const isSelected = sel === sg.iso;
+
+          const g = markerG.append('g')
+            .attr('transform', `translate(${x},${y})`)
+            .style('cursor', 'pointer');
+
+          // Outer pulse ring for selected state
+          if (isSelected) {
+            g.append('circle')
+              .attr('r', 10)
+              .attr('fill', 'none')
+              .attr('stroke', 'rgba(37,99,235,.50)')
+              .attr('stroke-width', 1.5)
+              .attr('opacity', 0.6);
+          }
+
+          // Main dot
+          g.append('circle')
+            .attr('r', isSelected ? 5 : (hasData ? 4 : 3))
+            .attr('fill', isSelected ? 'rgba(37,99,235,.85)'
+                        : hasData  ? 'rgba(96,165,250,.75)'
+                                   : 'rgba(148,163,184,.50)')
+            .attr('stroke', isSelected ? 'rgba(37,99,235,1)'
+                          : hasData  ? 'rgba(59,130,246,.90)'
+                                     : 'rgba(148,163,184,.70)')
+            .attr('stroke-width', isSelected ? 1.5 : 1);
+
+          // Label
+          g.append('text')
+            .attr('x', 7)
+            .attr('y', 3)
+            .attr('font-size', '8px')
+            .attr('font-family', 'system-ui, sans-serif')
+            .attr('font-weight', isSelected ? '700' : '500')
+            .attr('fill', isSelected ? 'rgba(37,99,235,1)'
+                        : hasData  ? 'rgba(51,65,85,.85)'
+                                   : 'rgba(148,163,184,.70)')
+            .text(sg.geo);
+
+          // Click handler
+          g.on('click', function(ev) {
+            ev.stopPropagation();
+            if (mapState.selectedIso === sg.iso) {
+              mapState.selectedIso = null;
+              mapState.selectedGeo = null;
+              renderMap();
+              closeDrawer();
+              return;
+            }
+            mapState.selectedIso = sg.iso;
+            mapState.selectedGeo = sg.geo;
+            renderMap();
+            openDrawer(sg.geo, sg.iso);
+          });
+
+          // Hover handler
+          g.on('mouseenter', function() {
+            document.getElementById('hudLine').textContent = `${sg.geo} · ${hasData ? 'has data' : 'no data'}`;
+          }).on('mouseleave', function() {
+            document.getElementById('hudLine').textContent = `${mapState.points.length} economies`;
+          });
+        });
+      }
+
+      /* ---- map: init (load topology + centroids + exim data) ---- */
+      function initMap() {
+        buildGeoIndex();
+
+        // Load topology, centroids, and exim data in parallel
+        Promise.all([
+          d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'),
+          fetch(`${BASE}/static/country_centroids.json`).then(r => r.json()),
+          fetch(`${BASE}/api/trade/exim-latest-all`).then(r => r.json()),
+        ]).then(([world, centroids, eximData]) => {
+          mapState.world = world;
+          mapState.centroids = centroids;
+          mapState.points = (eximData.rows || []).map(x => ({
+            geo: x.geo,
+            export_usd: x.export_usd,
+            import_usd: x.import_usd,
+            balance_usd: x.balance_usd,
+            year: x.year,
+          }));
+          mapState.year = eximData.year || null;
+          renderMap();
+          window.addEventListener('resize', () => renderMap());
+        }).catch(err => {
+          console.error('Map init failed:', err);
+          document.getElementById('hudLine').textContent = 'Failed to load map data. Check console.';
+        });
+      }
+
+      function fmtUSD(n) {
+        if (n == null) return "—";
+        const abs = Math.abs(n);
+        if (abs >= 1e12) return (n/1e12).toFixed(2) + "T";
+        if (abs >= 1e9) return (n/1e9).toFixed(2) + "B";
+        if (abs >= 1e6) return (n/1e6).toFixed(2) + "M";
+        return String(n);
+      }
+
+      function fmtKG(n) {
+        if (n == null) return "—";
+        const abs = Math.abs(n);
+        if (abs >= 1e12) return (n/1e12).toFixed(2) + "T kg";
+        if (abs >= 1e9) return (n/1e9).toFixed(2) + "B kg";
+        if (abs >= 1e6) return (n/1e6).toFixed(2) + "M kg";
+        return n + " kg";
+      }
+
+      function corridorBubbles(origin, dest, valueText, theme) {
+        // theme: { bg, ring, text }
+        const circle = (innerHtml) => `
+          <span class="inline-flex items-center justify-center rounded-full ${theme.bg} ${theme.ring} ${theme.text} shadow-sm"
+                style="width: 64px; height: 64px;">
+            <span class="text-center leading-tight">${innerHtml}</span>
+          </span>`;
+
+        const routeHtml = `
+          <span class="block text-xs font-semibold">${origin}</span>
+          <span class="block text-[10px] opacity-90">→</span>
+          <span class="block text-xs font-semibold">${dest}</span>`;
+
+        const valueHtml = `<span class="block text-[11px] font-semibold">${valueText}</span>`;
+
+        return `<div class="flex items-center gap-3">${circle(routeHtml)}${circle(valueHtml)}</div>`;
+      }
+
+      function valueBubble(text, theme, sizePx = 72) {
+        // theme: { bg, ring, text }
+        return `
+          <span class="inline-flex items-center justify-center rounded-full ${theme.bg} ${theme.ring} shadow-sm"
+                style="width:${sizePx}px;height:${sizePx}px;">
+            <span class="text-center leading-tight text-lg font-bold text-blue-900">${text}</span>
+          </span>`;
+      }
+
+      function _fmtSourceUpdated(iso) {
+        if (!iso) return '—';
+        try {
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return String(iso);
+          return d.toISOString().replace('T',' ').replace('.000Z',' UTC');
+        } catch {
+          return String(iso);
+        }
+      }
+
+      function _getInsight(card, tab, scope) {
+        const m = (DASHBOARD_DATA.insights || {});
+        return (((m[card] || {})[tab] || {})[scope] || null);
+      }
+
+      // --- v3 executive helpers ---
+      function _safeNum(x) {
+        const n = Number(x);
+        return Number.isFinite(n) ? n : null;
+      }
+
+      function _lastTwoPoints(series, field) {
+        const s = (series || []).filter(r => r && r[field] != null);
+        if (s.length < 2) return [null, null];
+        const prev = _safeNum(s[s.length - 2][field]);
+        const last = _safeNum(s[s.length - 1][field]);
+        return [prev, last];
+      }
+
+      function _yoyPct(series, field) {
+        const [prev, last] = _lastTwoPoints(series, field);
+        if (prev == null || last == null || prev === 0) return null;
+        return ((last - prev) / Math.abs(prev)) * 100.0;
+      }
+
+      function _fmtPct(p) {
+        if (p == null) return '—';
+        const sign = p >= 0 ? '+' : '−';
+        return sign + Math.abs(p).toFixed(1) + '%';
+      }
+
+      function _pill(label, value, tone) {
+        // tone: 'blue'|'emerald'|'fuchsia'|'amber'|'slate'
+        const tones = {
+          blue: 'border-blue-200 bg-blue-50 text-blue-800',
+          emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+          fuchsia: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800',
+          amber: 'border-amber-200 bg-amber-50 text-amber-800',
+          slate: 'border-slate-200 bg-slate-50 text-slate-700',
+        };
+        const cls = tones[tone] || tones.slate;
+        return `
+          <div class="rounded-xl border ${cls} px-3 py-2">
+            <div class="text-[10px] opacity-80">${label}</div>
+            <div class="text-lg font-bold text-blue-900 mt-0.5">${value}</div>
+          </div>`;
+      }
+
+      function _setObsRec(containerId, obs, rec) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        el.innerHTML = `
+          <div><span class="text-slate-500 font-mono text-[11px]">Observations:</span> <span class="text-slate-700">${obs || '—'}</span></div>
+          <div class="mt-1"><span class="text-slate-500 font-mono text-[11px]">Recommendations:</span> <span class="text-slate-700">${rec || '—'}</span></div>`;
+      }
+
+      function toggleSection(el) {
+        el.classList.toggle('collapsed');
+        const content = el.nextElementSibling;
+        if (content) content.classList.toggle('collapsed');
+      }
+
+      // Executive summary: management-friendly narrative (single block)
+      const EXEC_SUMMARY = { trade: null, wealth: null, finance: null };
+
+      function _renderExecSummary() {
+        const el = document.getElementById('exec_overall_commentary');
+        if (!el) return;
+
+        const t = EXEC_SUMMARY.trade;
+        const w = EXEC_SUMMARY.wealth;
+        const f = EXEC_SUMMARY.finance;
+
+        if (!t && !w && !f) { el.innerHTML = '—'; return; }
+
+        const tradeSentence = t
+          ? `On the <strong class="text-slate-700">trade</strong> front, ${t.direction} with exports at <span class="text-blue-900 font-bold text-lg">${t.exportYoY}</span> and imports at <span class="text-blue-900 font-bold text-lg">${t.importYoY}</span> year-over-year; shipping freight sits at <span class="text-blue-900 font-bold text-lg">${t.wci}</span>.`
+          : '';
+
+        const wealthSentence = w
+          ? ` <strong class="text-slate-700">Wealth</strong> indicators show GDP per capita moving <span class="text-blue-900 font-bold text-lg">${w.gdpYoY}</span> YoY while household consumption is <span class="text-blue-900 font-bold text-lg">${w.consYoY}</span> YoY, with disposable income per capita at <span class="text-blue-900 font-bold text-lg">${w.dispPc}</span>.`
+          : '';
+
+        const financeSentence = f
+          ? ` In <strong class="text-slate-700">M&amp;A activity</strong>, the top 5 industries account for <span class="text-blue-900 font-bold text-lg">${f.dealCount}</span> deals worth <span class="text-blue-900 font-bold text-lg">${f.dealValue}bn</span> USD, led by ${f.topIndustry} (by value) and concentrated in ${f.topCountry} (by country).`
+          : '';
+
+        const watchItems = [];
+        if (t && t.wciValue != null) watchItems.push('freight-cost pressure on margins');
+        if (w && w.gdpYoYRaw != null && w.gdpYoYRaw < 0) watchItems.push('GDP contraction eroding demand');
+        if (w && w.consYoYRaw != null && w.consYoYRaw < 0) watchItems.push('weakening consumer spending');
+        if (f && f.dealCount) watchItems.push('sector rotation in deal flow');
+
+        const watchSentence = watchItems.length
+          ? ` <strong class="text-amber-600">Key risks to monitor:</strong> ${watchItems.join('; ')}.`
+          : '';
+
+        el.innerHTML = tradeSentence + wealthSentence + financeSentence + watchSentence;
+      }
+
+      function _setExecSlice(key, data) {
+        EXEC_SUMMARY[key] = data || null;
+        _renderExecSummary();
+      }
+
+      function _renderExecMetrics() {
+        const panel = document.getElementById('exec_metrics_panel');
+        if (!panel) return;
+        const pills = [];
+        const t = EXEC_SUMMARY.trade;
+        const w = EXEC_SUMMARY.wealth;
+        const f = EXEC_SUMMARY.finance;
+        if (t) {
+          pills.push(_pill('Export YoY', t.exportYoY, 'blue'));
+          pills.push(_pill('Import YoY', t.importYoY, 'emerald'));
+          pills.push(_pill('Freight (WCI)', t.wci, 'fuchsia'));
+        }
+        if (w) {
+          pills.push(_pill('GDP pc YoY', w.gdpYoY, 'amber'));
+          pills.push(_pill('Consumption YoY', w.consYoY, 'emerald'));
+          pills.push(_pill('Disposable pc', w.dispPc, 'blue'));
+        }
+        if (f) {
+          pills.push(_pill('M&A Deals (top 5)', f.dealCount, 'blue'));
+          pills.push(_pill('M&A Value (top 5)', f.dealValue ? f.dealValue + 'bn' : '—', 'fuchsia'));
+        }
+        panel.innerHTML = pills.join('');
+      }
+
+      (function initMetricsToggle() {
+        document.addEventListener('DOMContentLoaded', () => {
+          const btn = document.getElementById('exec_metrics_toggle');
+          const panel = document.getElementById('exec_metrics_panel');
+          const arrow = document.getElementById('exec_metrics_arrow');
+          if (!btn || !panel) return;
+          btn.addEventListener('click', () => {
+            const open = !panel.classList.contains('hidden');
+            panel.classList.toggle('hidden');
+            if (arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+          });
+        });
+      })();
+
+      function setTradeTab(active) {
+        document.querySelectorAll('.trade-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('trade_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.trade-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-white');
+            b.classList.add('bg-slate-800', 'text-white');
+          } else {
+            b.classList.remove('bg-slate-800', 'text-white');
+            b.classList.add('bg-white');
+          }
+        });
+      }
+
+      function fmtSignedUSD(n) {
+        if (n == null) return '—';
+        const sign = n >= 0 ? '+' : '−';
+        return sign + '$' + fmtUSD(Math.abs(n));
+      }
+
+      let TRADE_DATA = null;
+      
+      let EXPORT_TOP5_CHART = null;
+      let IMPORT_TOP5_CHART = null;
+      let BAL_CHART = null;
+      let CORR_VAL_CHART = null;
+      let CORR_VOL_CHART = null;
+
+      async function loadEximSeries(geo) {
+        const all = DASHBOARD_DATA.trade_exim_by_geo || {};
+        return all[geo] || { source: 'N/A', frequency: 'annual', date: '', series: [] };
+      }
+
+      function toBillions(n) {
+        if (n == null) return null;
+        return n / 1e9;
+      }
+
+      /* ---- Trade: build TOP 5 countries ranking for export or import ---- */
+      function buildTradeTop5(field) {
+        const allExim = DASHBOARD_DATA.trade_exim_by_geo || {};
+        const entries = [];
+        Object.entries(allExim).forEach(([geo, payload]) => {
+          if (geo === 'Global') return;
+          const series = payload.series || [];
+          if (!series.length) return;
+          const latest = series[series.length - 1];
+          if (latest && latest[field] != null) {
+            entries.push({ geo, value: latest[field], period: latest.period, source: payload.source, frequency: payload.frequency, date: payload.date });
+          }
+        });
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 5);
+      }
+
+      function upsertTradeTop5Chart(canvasId, rows, color, label) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+        const labels = rows.map(r => r.geo);
+        const values = rows.map(r => toBillions(r.value));
+
+        const data = {
+          labels,
+          datasets: [{
+            label,
+            data: values,
+            backgroundColor: color,
+            borderRadius: 4,
+          }]
+        };
+
+        const opts = {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (c) => `${c.raw == null ? '—' : c.raw.toFixed(1)} bn USD` } }
+          },
+          scales: {
+            x: { ticks: { color: '#64748b', callback: (v) => v + ' bn' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+            y: { ticks: { color: '#334155', font: { weight: 'bold' } }, grid: { display: false } },
+          }
+        };
+
+        return new Chart(ctx, { type: 'bar', data, options: opts });
+      }
+
+      function renderTradeTop5() {
+        if (EXPORT_TOP5_CHART) EXPORT_TOP5_CHART.destroy();
+        if (IMPORT_TOP5_CHART) IMPORT_TOP5_CHART.destroy();
+
+        const exportRows = buildTradeTop5('export_usd');
+        const importRows = buildTradeTop5('import_usd');
+
+        EXPORT_TOP5_CHART = upsertTradeTop5Chart('trade_export_top5_chart', exportRows, 'rgba(96,165,250,0.55)', 'Export (USD, bn)');
+        IMPORT_TOP5_CHART = upsertTradeTop5Chart('trade_import_top5_chart', importRows, 'rgba(52,211,153,0.55)', 'Import (USD, bn)');
+
+        // Meta
+        const eMeta = document.getElementById('trade_export_top5_meta');
+        if (eMeta && exportRows.length) eMeta.textContent = `Source: ${exportRows[0].source} · Period: ${exportRows[0].period}`;
+        const iMeta = document.getElementById('trade_import_top5_meta');
+        if (iMeta && importRows.length) iMeta.textContent = `Source: ${importRows[0].source} · Period: ${importRows[0].period}`;
+
+        // Commentary
+        if (exportRows.length) {
+          _setObsRec('trade_export_commentary',
+            `Top exporter: ${exportRows[0].geo} at $${(exportRows[0].value/1e9).toFixed(1)}B.`,
+            `Monitor export leaders for shifts in global supply chains and trade policy impacts.`
+          );
+        }
+        if (importRows.length) {
+          _setObsRec('trade_import_commentary',
+            `Top importer: ${importRows[0].geo} at $${(importRows[0].value/1e9).toFixed(1)}B.`,
+            `Track import leaders to gauge demand shifts; rising imports often signal economic expansion or supply dependency.`
+          );
+        }
+      }
+
+      function upsertBalanceChart(payload) {
+        const ctx = document.getElementById('trade_balance_chart');
+        if (!ctx) return;
+        const labels = (payload.series || []).map(r => r.period);
+        const bal = (payload.series || []).map(r => toBillions(r.balance_usd));
+
+        const data = {
+          labels,
+          datasets: [
+            { label: 'Balance (USD, bn)', data: bal, borderColor: '#f472b6', backgroundColor: 'rgba(244,114,182,0.15)', tension: 0.25 },
+          ]
+        };
+
+        const opts = {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: '#475569' } },
+            tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.raw == null ? '—' : c.raw.toFixed(1)}` } }
+          },
+          scales: {
+            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+            y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+          }
+        };
+
+        if (BAL_CHART) BAL_CHART.destroy();
+        BAL_CHART = new Chart(ctx, { type: 'line', data, options: opts });
+
+        const meta = document.getElementById('trade_balance_chart_meta');
+        if (meta) meta.textContent = `Source: ${payload.source} · Frequency: ${payload.frequency} · Period: ${payload.date}`;
+      }
+
+      async function refreshChartsForGeo(geo) {
+        try {
+          const ex = await loadEximSeries(geo);
+          upsertBalanceChart(ex);
+
+          // Analysis-style commentary (English) based on last two points
+          const s = (ex.series || []).filter(r => r.export_usd != null && r.import_usd != null);
+          if (s.length >= 2) {
+            const a = s[s.length - 2];
+            const b = s[s.length - 1];
+            const db = ((b.balance_usd - a.balance_usd) / (Math.abs(a.balance_usd) || 1)) * 100.0;
+            _setObsRec(
+              'trade_balance_commentary',
+              `Balance moved to ${fmtSignedUSD(b.balance_usd)} in ${b.period} (vs ${fmtSignedUSD(a.balance_usd)} in ${a.period}).`,
+              `Large inflections in balance tend to lead policy/logistics responses; monitor corridors and freight costs.`
+            );
+          } else {
+            _setObsRec('trade_balance_commentary', 'Not enough history to compute YoY yet.', 'Wait for one more point before drawing trend conclusions.');
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function renderTrade() {
+        if (!TRADE_DATA) return;
+        const geo = 'Global';
+        const d = (TRADE_DATA.by_geo || {})[geo] || {};
+
+        // Insights (from DB)
+        const iCorr = _getInsight('trade_flow','corridors','Global');
+        document.getElementById('trade_corridors_insight_text').textContent = (iCorr && iCorr.content) || '—';
+        document.getElementById('trade_corridors_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCorr && iCorr.source_updated_at);
+
+        const iWci = _getInsight('trade_flow','wci','Global');
+        document.getElementById('trade_wci_insight_text').textContent = (iWci && iWci.content) || '—';
+        document.getElementById('trade_wci_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iWci && iWci.source_updated_at);
+
+        const iPw = _getInsight('trade_flow','portwatch','Global');
+        document.getElementById('trade_portwatch_insight_text').textContent = (iPw && iPw.content) || '—';
+        document.getElementById('trade_portwatch_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iPw && iPw.source_updated_at);
+
+        const iEx = _getInsight('trade_flow','exim', geo);
+        document.getElementById('trade_exim_insight_text').textContent = (iEx && iEx.content) || '—';
+        document.getElementById('trade_exim_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iEx && iEx.source_updated_at);
+
+        // Also populate import insight (may share source with exim)
+        const elImInsight = document.getElementById('trade_import_insight_text');
+        if (elImInsight) elImInsight.textContent = (iEx && iEx.content) || '—';
+        const elImSrc = document.getElementById('trade_import_source_updated');
+        if (elImSrc) elImSrc.textContent = 'Source updated: ' + _fmtSourceUpdated(iEx && iEx.source_updated_at);
+
+        const iBal = _getInsight('trade_flow','balance', geo);
+        document.getElementById('trade_balance_insight_text').textContent = (iBal && iBal.content) || '—';
+        document.getElementById('trade_balance_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iBal && iBal.source_updated_at);
+
+        // Corridors ranking (Top 5)
+        const topN = 5;
+        const vRows = (d.value_usd_top || []).slice(0, topN).map(r => ({
+          origin: r.origin,
+          dest: r.dest,
+          value_bil: r.value_usd != null ? (r.value_usd / 1e9) : null,
+        })).filter(r => r.value_bil != null);
+        const volRows = (d.volume_top || []).slice(0, topN).map(r => ({
+          origin: r.origin,
+          dest: r.dest,
+          volume_bilkg: r.volume_kg != null ? (r.volume_kg / 1e9) : null,
+        })).filter(r => r.volume_bilkg != null);
+
+        if (CORR_VAL_CHART) CORR_VAL_CHART.destroy();
+        if (CORR_VOL_CHART) CORR_VOL_CHART.destroy();
+        CORR_VAL_CHART = upsertCorridorBar('trade_corridors_value_chart', vRows, 'value_bil', 'rgba(96,165,250,0.55)', ' bn USD');
+        CORR_VOL_CHART = upsertCorridorBar('trade_corridors_volume_chart', volRows, 'volume_bilkg', 'rgba(52,211,153,0.55)', ' bn kg');
+
+        // If fewer than Top 5 are available, reflect it in the label.
+        const valN = vRows.length || 0;
+        const volN = volRows.length || 0;
+        const elVal = document.getElementById('trade_corridors_value_topn');
+        const elVol = document.getElementById('trade_corridors_volume_topn');
+        if (elVal) elVal.textContent = String(Math.min(topN, valN || topN));
+        if (elVol) elVol.textContent = String(Math.min(topN, volN || topN));
+
+        document.getElementById('trade_balance').textContent = d.trade_balance_usd != null ? fmtSignedUSD(d.trade_balance_usd) : '—';
+
+        // --- KPIs + observations/recommendations ---
+        const bal = d.trade_balance_usd;
+        const geoExim = (DASHBOARD_DATA.trade_exim_by_geo || {})[geo] || { series: [], source: 'N/A', frequency: 'annual', date: '' };
+        const yoyEx = _yoyPct(geoExim.series, 'export_usd');
+        const yoyIm = _yoyPct(geoExim.series, 'import_usd');
+        const yoyBal = _yoyPct(geoExim.series, 'balance_usd');
+
+        const wci = TRADE_DATA.wci || {};
+        const wciLine = wci.value_usd_per_40ft != null ? `$${wci.value_usd_per_40ft}/40ft` : '—';
+
+        // KPI strip (at-a-glance)
+        const kpi = document.getElementById('trade_kpi');
+        if (kpi) {
+          kpi.innerHTML = [
+            _pill(`Export (${geo}) YoY`, _fmtPct(yoyEx), 'blue'),
+            _pill(`Import (${geo}) YoY`, _fmtPct(yoyIm), 'emerald'),
+            _pill(`Balance (${geo}) YoY`, _fmtPct(yoyBal), (yoyBal != null && yoyBal >= 0) ? 'amber' : 'fuchsia'),
+            _pill('Freight (WCI)', wciLine, 'fuchsia'),
+          ].join('');
+        }
+
+        // Corridors (fact vs recommendation)
+        const corrObs = (vRows.length || volRows.length)
+          ? `Top corridors available (value & volume may diverge).`
+          : `Corridor rankings not available yet.`;
+        const corrRec = (vRows.length || volRows.length)
+          ? `Watch for changes in leaders to detect reroutes or mix shifts; validate with WCI and PortWatch.`
+          : `Treat corridor signal as low-confidence until snapshots are populated.`;
+        _setObsRec('trade_corridors_commentary', corrObs, corrRec);
+
+        // Balance
+        const balObs = (bal != null)
+          ? `${geo} is currently a ${bal >= 0 ? 'net exporter' : 'net importer'} (balance: ${fmtSignedUSD(bal)}).`
+          : `Balance not available yet.`;
+        const balRec = (bal != null)
+          ? `Use balance direction to stress-test exposure (FX, demand, supply-chain); focus on large YoY inflections.`
+          : `Treat balance signal as pending until series is available.`;
+        _setObsRec('trade_balance_commentary', balObs, balRec);
+
+        // Render TOP 5 export/import charts
+        renderTradeTop5();
+
+        // WCI
+        document.getElementById('trade_wci').innerHTML = wci.value_usd_per_40ft != null
+          ? valueBubble(`${wciLine}`, { bg: 'bg-fuchsia-100', ring: 'ring-2 ring-fuchsia-300', text: 'text-fuchsia-800' }, 76)
+          : '—';
+        const wciObs = (wci.value_usd_per_40ft != null)
+          ? `WCI at ${wciLine} (${wci.period || 'latest'}).`
+          : `WCI not available yet.`;
+        const wciRec = `If freight costs remain elevated, expect margin compression and inventory timing effects; watch 4–8 week lagged impact.`;
+        _setObsRec('trade_wci_commentary', wciObs, wciRec);
+
+        // PortWatch
+        const pw = TRADE_DATA.portwatch || {};
+        document.getElementById('trade_portwatch').textContent = pw.commentary || '—';
+        const pwObs = pw.commentary ? `PortWatch signal: ${pw.commentary}` : `PortWatch not available yet.`;
+        const pwRec = `Use ports to confirm whether changes are demand-led vs capacity-led; reconcile with corridor shifts.`;
+        _setObsRec('trade_portwatch_commentary', pwObs, pwRec);
+
+        // Update executive summary (trade slice) — structured data for v4 narrative
+        const tradeDirection = (yoyEx == null && yoyIm == null)
+          ? 'data is still building history'
+          : (yoyEx != null && yoyEx >= 0 ? 'flows are expanding' : 'flows are contracting');
+        _setExecSlice('trade', {
+          direction: tradeDirection,
+          exportYoY: _fmtPct(yoyEx),
+          importYoY: _fmtPct(yoyIm),
+          wci: wciLine,
+          wciValue: wci.value_usd_per_40ft,
+        });
+        _renderExecMetrics();
+
+        document.getElementById('trade_period').textContent = `Period: ${d.period || '—'} · WCI: ${wci.period || '—'} · PortWatch: ${pw.period || '—'}`;
+        document.getElementById('trade_source').textContent = `Source: ${TRADE_DATA.source} · Updated: ${TRADE_DATA.updated_at}`;
+      }
+
+      async function loadTrade() {
+        const data = DASHBOARD_DATA.trade_corridors || {};
+        TRADE_DATA = data;
+
+        document.querySelectorAll('.trade-tab').forEach(b => {
+          b.addEventListener('click', () => setTradeTab(b.dataset.tab));
+        });
+        setTradeTab('corridors');
+
+        renderTrade();
+        refreshChartsForGeo('Global');
+      }
+
+      function setWealthTab(active) {
+        document.querySelectorAll('.wealth-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('wealth_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.wealth-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-white');
+            b.classList.add('bg-slate-800', 'text-white');
+          } else {
+            b.classList.remove('bg-slate-800', 'text-white');
+            b.classList.add('bg-white');
+          }
+        });
+      }
+
+      let WEALTH_GDP_CHART = null;
+      let WEALTH_DISP_PC_CHART = null;
+      let WEALTH_DISP_HH_CHART = null;
+      let WEALTH_CONS_CHART = null;
+      let WEALTH_AGE_CHART = null;
+
+      /* ---- wealth: build TOP 5 helpers ---- */
+      function buildWealthTop5(field) {
+        const all = DASHBOARD_DATA.wealth_indicators_by_geo || {};
+        const entries = [];
+        Object.keys(all).forEach(geo => {
+          if (geo === 'Global') return;
+          const series = (all[geo].series || []).filter(r => r[field] != null);
+          if (!series.length) return;
+          const latest = series[series.length - 1];
+          if (latest && latest[field] != null) {
+            entries.push({ geo, value: latest[field], source: all[geo].source, frequency: all[geo].frequency, date: all[geo].date });
+          }
+        });
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 5);
+      }
+
+      function buildDispTop5(field) {
+        const disp = DASHBOARD_DATA.wealth_disposable_latest || { rows: {} };
+        const entries = [];
+        Object.keys(disp.rows || {}).forEach(geo => {
+          const row = disp.rows[geo];
+          if (row && row[field] != null) {
+            entries.push({ geo, value: row[field], source: disp.source, link: disp.link });
+          }
+        });
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 5);
+      }
+
+      function buildAgeTop5() {
+        const all = DASHBOARD_DATA.wealth_age_structure_by_geo || {};
+        const entries = [];
+        Object.keys(all).forEach(geo => {
+          if (geo === 'Global') return;
+          const rows = all[geo].rows || [];
+          // working-age is typically the second bucket (15-64)
+          const working = rows.find(r => /15|work/i.test(r.label));
+          if (working && working.pct != null) {
+            entries.push({ geo, value: working.pct, source: all[geo].source, frequency: all[geo].frequency, period: all[geo].period });
+          }
+        });
+        entries.sort((a, b) => b.value - a.value);
+        return entries.slice(0, 5);
+      }
+
+      function upsertWealthTop5Chart(chartVar, canvasId, rows, color, label, fmtCb) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+        const labels = rows.map(r => r.geo);
+        const values = rows.map(r => fmtCb ? fmtCb(r.value) : r.value);
+
+        const data = {
+          labels,
+          datasets: [{
+            label,
+            data: values,
+            backgroundColor: color,
+            borderRadius: 4,
+          }]
+        };
+
+        const opts = {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (tip) => `${tip.formattedValue}`
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+            y: { ticks: { color: '#334155', font: { weight: '600' } }, grid: { display: false } },
+          }
+        };
+
+        if (chartVar) chartVar.destroy();
+        return new Chart(ctx, { type: 'bar', data, options: opts });
+      }
+
+      async function renderWealth() {
+        // --- GDP per capita TOP 5 ---
+        const gdpRows = buildWealthTop5('gdp_per_capita_usd');
+        WEALTH_GDP_CHART = upsertWealthTop5Chart(WEALTH_GDP_CHART, 'wealth_gdp_pc_chart', gdpRows, 'rgba(251,191,36,0.55)', 'GDP per capita (US$)', v => Math.round(v));
+        const gdpMeta = document.getElementById('wealth_gdp_pc_meta');
+        if (gdpMeta && gdpRows.length) gdpMeta.textContent = `Source: ${gdpRows[0].source} · Frequency: ${gdpRows[0].frequency} · Period: ${gdpRows[0].date}`;
+        _setObsRec('wealth_gdp_pc_commentary',
+          gdpRows.length ? `Top 5 countries by GDP per capita: ${gdpRows.map(r => r.geo).join(', ')}.` : 'No GDP per capita data available.',
+          gdpRows.length ? `Compare leaders for demand-capacity benchmarking.` : 'Treat as pending until data is populated.'
+        );
+
+        const iGdp = _getInsight('wealth','gdp_pc','Global');
+        document.getElementById('wealth_gdp_pc_insight_text').textContent = (iGdp && iGdp.content) || '—';
+        document.getElementById('wealth_gdp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iGdp && iGdp.source_updated_at);
+
+        // --- Disposable per capita TOP 5 ---
+        const dispPcRows = buildDispTop5('per_capita_usd');
+        WEALTH_DISP_PC_CHART = upsertWealthTop5Chart(WEALTH_DISP_PC_CHART, 'wealth_disp_pc_chart', dispPcRows, 'rgba(96,165,250,0.55)', 'Disposable income per capita (US$)', v => Math.round(v));
+        const dispPcMeta = document.getElementById('wealth_disp_pc_meta');
+        if (dispPcMeta && dispPcRows.length) dispPcMeta.textContent = `Source: ${dispPcRows[0].source} · Latest point · Link: ${dispPcRows[0].link || '—'}`;
+        _setObsRec('wealth_disp_pc_commentary',
+          dispPcRows.length ? `Top 5 countries by disposable income (per capita): ${dispPcRows.map(r => r.geo).join(', ')}.` : 'No disposable income (per capita) data available.',
+          dispPcRows.length ? `Use as a quick affordability proxy across countries.` : 'Treat as pending until data is populated.'
+        );
+
+        const iDispPc = _getInsight('wealth','disp_pc','Global');
+        document.getElementById('wealth_disp_pc_insight_text').textContent = (iDispPc && iDispPc.content) || '—';
+        document.getElementById('wealth_disp_pc_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispPc && iDispPc.source_updated_at);
+
+        // --- Disposable per household TOP 5 ---
+        const dispHhRows = buildDispTop5('per_household_usd');
+        WEALTH_DISP_HH_CHART = upsertWealthTop5Chart(WEALTH_DISP_HH_CHART, 'wealth_disp_hh_chart', dispHhRows, 'rgba(96,165,250,0.55)', 'Disposable income per household (US$)', v => Math.round(v));
+        const dispHhMeta = document.getElementById('wealth_disp_hh_meta');
+        if (dispHhMeta && dispHhRows.length) dispHhMeta.textContent = `Source: ${dispHhRows[0].source} · Latest point · Link: ${dispHhRows[0].link || '—'}`;
+        _setObsRec('wealth_disp_hh_commentary',
+          dispHhRows.length ? `Top 5 countries by disposable income (per household): ${dispHhRows.map(r => r.geo).join(', ')}.` : 'No disposable income (per household) data available.',
+          dispHhRows.length ? `Track as a household-level buffer across countries.` : 'Treat as pending until data is populated.'
+        );
+
+        const iDispHh = _getInsight('wealth','disp_hh','Global');
+        document.getElementById('wealth_disp_hh_insight_text').textContent = (iDispHh && iDispHh.content) || '—';
+        document.getElementById('wealth_disp_hh_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iDispHh && iDispHh.source_updated_at);
+
+        // --- Consumption expenditure TOP 5 ---
+        const consRows = buildWealthTop5('consumption_expenditure_usd');
+        WEALTH_CONS_CHART = upsertWealthTop5Chart(WEALTH_CONS_CHART, 'wealth_cons_chart', consRows, 'rgba(52,211,153,0.55)', 'Consumption (US$, bn)', v => +(v / 1e9).toFixed(1));
+        const consMeta = document.getElementById('wealth_cons_meta');
+        if (consMeta && consRows.length) consMeta.textContent = `Source: ${consRows[0].source} · Frequency: ${consRows[0].frequency} · Period: ${consRows[0].date}`;
+        _setObsRec('wealth_cons_commentary',
+          consRows.length ? `Top 5 countries by consumption expenditure: ${consRows.map(r => r.geo).join(', ')}.` : 'No consumption data available.',
+          consRows.length ? `If consumption is concentrated, watch for demand-shift ripple effects.` : 'Treat as pending until data is populated.'
+        );
+
+        const iCons = _getInsight('wealth','cons','Global');
+        document.getElementById('wealth_cons_insight_text').textContent = (iCons && iCons.content) || '—';
+        document.getElementById('wealth_cons_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iCons && iCons.source_updated_at);
+
+        // --- Age structure (working-age %) TOP 5 ---
+        const ageRows = buildAgeTop5();
+        WEALTH_AGE_CHART = upsertWealthTop5Chart(WEALTH_AGE_CHART, 'wealth_age_chart', ageRows, 'rgba(251,191,36,0.55)', 'Working-age share (%)', v => +v.toFixed(1));
+        const ageMeta = document.getElementById('wealth_age_meta');
+        if (ageMeta && ageRows.length) ageMeta.textContent = `Source: ${ageRows[0].source} · Frequency: ${ageRows[0].frequency} · Period: ${ageRows[0].period || '—'}`;
+        _setObsRec('wealth_age_commentary',
+          ageRows.length ? `Top 5 countries by working-age population share: ${ageRows.map(r => r.geo).join(', ')}.` : 'Age structure not available yet.',
+          ageRows.length ? `Higher working-age share generally supports growth; watch for aging drag across economies.` : 'Treat demographic signal as pending until snapshot is populated.'
+        );
+
+        const iAge = _getInsight('wealth','age','Global');
+        document.getElementById('wealth_age_insight_text').textContent = (iAge && iAge.content) || '—';
+        document.getElementById('wealth_age_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iAge && iAge.source_updated_at);
+
+        // --- KPI strip ---
+        const globalInd = (DASHBOARD_DATA.wealth_indicators_by_geo || {})['Global'] || { series: [] };
+        const yoyGdp = _yoyPct(globalInd.series || [], 'gdp_per_capita_usd');
+        const yoyCons = _yoyPct(globalInd.series || [], 'consumption_expenditure_usd');
+        const kpi = document.getElementById('wealth_kpi');
+        if (kpi) {
+          const topDispPc = dispPcRows.length ? `$${Math.round(dispPcRows[0].value).toLocaleString()}` : '—';
+          kpi.innerHTML = [
+            _pill('GDP pc (Global) YoY', _fmtPct(yoyGdp), 'amber'),
+            _pill('Consumption (Global) YoY', _fmtPct(yoyCons), 'emerald'),
+            _pill(`Top Disp. pc (${dispPcRows.length ? dispPcRows[0].geo : '—'})`, topDispPc, 'blue'),
+          ].join('');
+        }
+
+        // --- Executive summary ---
+        const topDispPcVal = dispPcRows.length ? `$${Math.round(dispPcRows[0].value).toLocaleString()}` : '—';
+        _setExecSlice('wealth', {
+          gdpYoY: _fmtPct(yoyGdp),
+          gdpYoYRaw: yoyGdp,
+          consYoY: _fmtPct(yoyCons),
+          consYoYRaw: yoyCons,
+          dispPc: topDispPcVal,
+        });
+        _renderExecMetrics();
+      }
+
+      async function loadWealth() {
+        document.querySelectorAll('.wealth-tab').forEach(b => b.addEventListener('click', () => setWealthTab(b.dataset.tab)));
+        setWealthTab('gdp_pc');
+        renderWealth();
+      }
+
+      function setFinTab(active) {
+        document.querySelectorAll('.fin-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById('fin_panel_' + active);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.fin-tab').forEach(b => {
+          if (b.dataset.tab === active) {
+            b.classList.remove('bg-white');
+            b.classList.add('bg-slate-800', 'text-white');
+          } else {
+            b.classList.remove('bg-slate-800', 'text-white');
+            b.classList.add('bg-white');
+          }
+        });
+      }
+
+      function setFinChartType(kind) {
+        FIN_CHART_TYPE = (kind === 'bar') ? 'bar' : 'ring';
+        document.querySelectorAll('.fin-chart').forEach(b => {
+          if (b.dataset.chart === FIN_CHART_TYPE) {
+            b.classList.remove('bg-white');
+            b.classList.add('bg-slate-800', 'text-white');
+          } else {
+            b.classList.remove('bg-slate-800', 'text-white');
+            b.classList.add('bg-white');
+          }
+        });
+      }
+
+      function upsertFinChart(kind, id, label, labels, values, color) {
+        if (kind === 'bar') {
+          return upsertBar(id, label, labels, values, color);
+        }
+        return upsertRing(id, label, labels, values);
+      }
+
+      let FIN_IND_DEALS = null;
+      let FIN_IND_VALUE = null;
+      let FIN_CTY_DEALS = null;
+      let FIN_CTY_VALUE = null;
+      let FIN_CHART_TYPE = 'bar';
+
+      async function loadFinIndustry() {
+        return DASHBOARD_DATA.finance_ma_industry || { rows: [], source: 'N/A', link: '' };
+      }
+
+      async function loadFinCountry() {
+        return DASHBOARD_DATA.finance_ma_country || { rows: [], source: 'N/A', link: '' };
+      }
+
+      function _wrapLabel(s, maxLineLen=18, maxLines=3) {
+        if (!s) return s;
+        const words = String(s).split(/\s+/).filter(Boolean);
+        if (!words.length) return s;
+
+        const lines = [];
+        let cur = '';
+        for (const w of words) {
+          const next = cur ? (cur + ' ' + w) : w;
+          if (next.length <= maxLineLen) {
+            cur = next;
+          } else {
+            if (cur) lines.push(cur);
+            cur = w;
+          }
+          if (lines.length >= maxLines) break;
+        }
+        if (lines.length < maxLines && cur) lines.push(cur);
+
+        // If still too long, ellipsis the last line.
+        const joined = lines.join(' ');
+        if (joined.length < String(s).length) {
+          const last = lines[lines.length - 1];
+          lines[lines.length - 1] = last.length > maxLineLen - 1 ? (last.slice(0, maxLineLen - 1) + '…') : (last + '…');
+        }
+
+        return lines;
+      }
+
+      function barOpts() {
+        return {
+          responsive: true,
+          maintainAspectRatio: true,
+          indexAxis: 'y',
+          layout: { padding: { left: 10, right: 10, top: 6, bottom: 6 } },
+          plugins: {
+            legend: { labels: { color: '#475569' } },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const it = items && items[0];
+                  return it ? String(it.label) : '';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+            y: {
+              ticks: {
+                color: '#64748b',
+                callback: function(value) {
+                  const lbl = this.getLabelForValue(value);
+                  return _wrapLabel(lbl, 18, 3);
+                }
+              },
+              grid: { color: 'rgba(226,232,240,0.8)' }
+            },
+          }
+        };
+      }
+
+      function upsertBar(id, label, labels, values, color) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return null;
+        return new Chart(ctx, {
+          type: 'bar',
+          data: { labels, datasets: [{ label, data: values, backgroundColor: color, barThickness: 10 }] },
+          options: barOpts(),
+        });
+      }
+
+      function corridorsBarOpts(xTickSuffix) {
+        return {
+          responsive: true,
+          maintainAspectRatio: true,
+          indexAxis: 'y',
+          layout: { padding: { left: 10, right: 10, top: 6, bottom: 6 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const it = items && items[0];
+                  return it ? String(it.label) : '';
+                },
+                label: (ctx) => {
+                  const v = Number(ctx.parsed && ctx.parsed.x != null ? ctx.parsed.x : ctx.parsed);
+                  return `${v.toLocaleString()}${xTickSuffix || ''}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(226,232,240,0.8)' } },
+            y: {
+              ticks: {
+                color: '#64748b',
+                callback: function(value) {
+                  const lbl = this.getLabelForValue(value);
+                  return _wrapLabel(lbl, 20, 2);
+                }
+              },
+              grid: { color: 'rgba(226,232,240,0.8)' }
+            },
+          }
+        };
+      }
+
+      function upsertCorridorBar(id, rows, valueKey, color, xTickSuffix) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return null;
+        const labels = (rows || []).map(r => `${r.origin} → ${r.dest}`);
+        const vals = (rows || []).map(r => r[valueKey]);
+        return new Chart(ctx, {
+          type: 'bar',
+          data: { labels, datasets: [{ data: vals, backgroundColor: color, barThickness: 10 }] },
+          options: corridorsBarOpts(xTickSuffix),
+        });
+      }
+
+      function ringOpts() {
+        return {
+          responsive: true,
+          maintainAspectRatio: true,
+          cutout: '62%',
+          plugins: {
+            legend: {
+              position: 'right',
+               labels: { color: '#475569', boxWidth: 10, boxHeight: 10 }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const label = ctx.label || '';
+                  const v = Number(ctx.parsed || 0);
+                  const ds = ctx.dataset && Array.isArray(ctx.dataset.data) ? ctx.dataset.data : [];
+                  const sum = ds.reduce((a, b) => a + Number(b || 0), 0) || 0;
+                  const pct = sum ? (v / sum * 100) : 0;
+                  const pv = pct ? `${pct.toFixed(1)}%` : '0%';
+                  return `${label}: ${v.toLocaleString()} (${pv})`;
+                }
+              }
+            }
+          }
+        };
+      }
+
+      function upsertRing(id, label, labels, values) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return null;
+        const palette = [
+          '#60a5fa', '#34d399', '#fbbf24', '#fb7185', '#a78bfa',
+          '#22d3ee', '#f472b6', '#fb923c', '#94a3b8', '#4ade80'
+        ];
+        const colors = labels.map((_, i) => palette[i % palette.length]);
+        return new Chart(ctx, {
+          type: 'doughnut',
+           data: { labels, datasets: [{ label, data: values, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 2 }] },
+          options: ringOpts(),
+        });
+      }
+
+      async function loadFinance() {
+        document.querySelectorAll('.fin-tab').forEach(b => b.addEventListener('click', () => setFinTab(b.dataset.tab)));
+        document.querySelectorAll('.fin-chart').forEach(b => b.addEventListener('click', () => { setFinChartType(b.dataset.chart); loadFinance(); }));
+        setFinTab('industry');
+        setFinChartType(FIN_CHART_TYPE);
+
+        // Keep a few aggregates for the executive summary (shared across tabs)
+        let finTop10Deals = 0;
+        let finTop10ValueBnUsd = 0;
+
+        // Industry
+        const ind = await loadFinIndustry();
+        const indRows = (ind.rows || []).slice(0, 5);
+        const indLabels = indRows.map(r => r.industry);
+        const indDeals = indRows.map(r => r.deals);
+        const indVal = indRows.map(r => r.value_usd_bil);
+        if (FIN_IND_DEALS) FIN_IND_DEALS.destroy();
+        if (FIN_IND_VALUE) FIN_IND_VALUE.destroy();
+        FIN_IND_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_deals', 'Deals (count)', indLabels, indDeals, 'rgba(96,165,250,0.55)');
+        FIN_IND_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_industry_value', 'Transaction value (USD, bn)', indLabels, indVal, 'rgba(244,114,182,0.55)');
+        document.getElementById('fin_industry_meta').innerHTML = `Source: ${ind.source} · Unit: ${ind.unit}${ind.currency}<br>Link: <a class="underline hover:text-fuchsia-600" href="${ind.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
+
+        finTop10Deals = indRows.reduce((a, r) => a + Number(r.deals || 0), 0);
+        finTop10ValueBnUsd = indRows.reduce((a, r) => a + Number(r.value_usd_bil || 0), 0);
+        const topIndByVal = indRows.slice().sort((a,b) => Number(b.value_usd_bil||0) - Number(a.value_usd_bil||0))[0];
+
+        // KPI strip (finance) — rendered after both industry & country are loaded
+
+        _setObsRec(
+          'fin_industry_commentary',
+          `Top industries concentrated: ${topIndByVal ? (topIndByVal.industry + ' leads by value') : 'leaders pending'}.`,
+          `If concentration rises, cycle risk increases; watch whether deal value shifts to defensive sectors as rates tighten.`
+        );
+
+        const iFinInd = _getInsight('finance','industry','Global');
+        document.getElementById('fin_industry_insight_text').textContent = (iFinInd && iFinInd.content) || '—';
+        document.getElementById('fin_industry_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinInd && iFinInd.source_updated_at);
+
+        // Country
+        const cty = await loadFinCountry();
+        const ctyRows = (cty.rows || []).slice(0, 5);
+        const ctyLabels = ctyRows.map(r => r.country);
+        const ctyDeals = ctyRows.map(r => r.deals);
+        const ctyVal = ctyRows.map(r => r.value_bil);
+        const ccy = (ctyRows[0] && ctyRows[0].currency) ? ctyRows[0].currency : '';
+        if (FIN_CTY_DEALS) FIN_CTY_DEALS.destroy();
+        if (FIN_CTY_VALUE) FIN_CTY_VALUE.destroy();
+        FIN_CTY_DEALS = upsertFinChart(FIN_CHART_TYPE, 'fin_country_deals', 'Deals (count)', ctyLabels, ctyDeals, 'rgba(52,211,153,0.55)');
+        FIN_CTY_VALUE = upsertFinChart(FIN_CHART_TYPE, 'fin_country_value', `Transaction value (${ccy}, bn)`, ctyLabels, ctyVal, 'rgba(251,146,60,0.55)');
+        document.getElementById('fin_country_meta').innerHTML = `Source: ${cty.source}<br>Link: <a class="underline hover:text-fuchsia-600" href="${cty.link}" target="_blank" rel="noopener noreferrer">IMAA</a>`;
+
+        const topCtyByVal = ctyRows.slice().sort((a,b) => Number(b.value_bil||0) - Number(a.value_bil||0))[0];
+
+        // KPI strip (finance)
+        const _normCountry = (s) => String(s || '').trim().toLowerCase();
+        const BRICS = new Set(['brazil','russia','india','china','south africa']);
+        const topCtyLabel = topCtyByVal
+          ? (BRICS.has(_normCountry(topCtyByVal.country)) ? 'BRICS' : topCtyByVal.country)
+          : '—';
+
+        const fk = document.getElementById('fin_kpi');
+        if (fk) {
+          fk.innerHTML = [
+            _pill('Deal count (top 5)', finTop10Deals.toLocaleString(), 'blue'),
+            _pill('Deal value (top 5, bn USD)', finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : '—', 'fuchsia'),
+            _pill('Top industry by value', topIndByVal ? topIndByVal.industry : '—', 'amber'),
+            _pill('Top country by value', topCtyLabel, 'emerald'),
+          ].join('');
+        }
+
+        _setObsRec(
+          'fin_country_commentary',
+          `Top country by value: ${topCtyByVal ? (topCtyByVal.country + ' (' + (topCtyByVal.currency || '') + ')') : '—'}.`,
+          `Cross-country shifts can signal regulatory/risk repricing; normalize currencies when comparing levels.`
+        );
+
+        // Update executive summary (finance slice) — structured data for v4 narrative
+        _setExecSlice('finance', {
+          dealCount: finTop10Deals.toLocaleString(),
+          dealValue: finTop10ValueBnUsd ? finTop10ValueBnUsd.toFixed(1) : null,
+          topIndustry: topIndByVal ? topIndByVal.industry : '—',
+          topCountry: topCtyLabel,
+        });
+        _renderExecMetrics();
+
+        const iFinCty = _getInsight('finance','country','Global');
+        document.getElementById('fin_country_insight_text').textContent = (iFinCty && iFinCty.content) || '—';
+        document.getElementById('fin_country_source_updated').textContent = 'Source updated: ' + _fmtSourceUpdated(iFinCty && iFinCty.source_updated_at);
+      }
+
+      const drawerCharts = {};
+
+      function destroyDrawerCharts() {
+        Object.keys(drawerCharts).forEach(k => {
+          if (drawerCharts[k]) { drawerCharts[k].destroy(); drawerCharts[k] = null; }
+        });
+      }
+
+      function openDrawer(geoName, isoCode) {
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('drawerOverlay');
+        drawer.classList.add('open');
+        overlay.classList.add('open');
+        document.getElementById('drawer_geo_name').textContent = geoName || isoCode || '—';
+        document.getElementById('drawer_geo_sub').textContent = isoCode ? `ISO: ${isoCode}` : '';
+        renderDrawerContent(geoName);
+      }
+
+      function closeDrawer() {
+        document.getElementById('drawer').classList.remove('open');
+        document.getElementById('drawerOverlay').classList.remove('open');
+        destroyDrawerCharts();
+      }
+
+      function renderDrawerContent(geoName) {
+        const body = document.getElementById('drawerBody');
+        destroyDrawerCharts();
+
+        const data = geoDataIndex[geoName];
+        if (!data || (!data.trade && !data.exim && !data.wealth && !data.age && !data.disp)) {
+          body.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-16 text-center">
+              <div class="text-4xl mb-4 opacity-30">🌐</div>
+              <div class="text-slate-500 text-sm">No data available for <span class="text-slate-800 font-semibold">${geoName}</span></div>
+              <div class="text-slate-400 text-xs mt-2">This economy is not yet tracked in our scheduled data snapshots.</div>
+            </div>`;
+          return;
+        }
+
+        let html = '';
+
+        const trade = data.trade;
+        const exim = data.exim;
+        if (trade || exim) {
+          html += `<div class="dsec"><div class="dsec-title">Trade Overview</div>`;
+          if (trade) {
+            const exp = _safeNum(trade.export_usd);
+            const imp = _safeNum(trade.import_usd);
+            const bal = _safeNum(trade.trade_balance_usd);
+            html += `
+              <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                  <div class="text-[10px] text-slate-400">Export</div>
+                  <div class="text-sm font-semibold text-blue-700">${exp != null ? '$' + fmtUSD(exp) : '—'}</div>
+                </div>
+                <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                  <div class="text-[10px] text-slate-400">Import</div>
+                  <div class="text-sm font-semibold text-emerald-700">${imp != null ? '$' + fmtUSD(imp) : '—'}</div>
+                </div>
+                <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                  <div class="text-[10px] text-slate-400">Balance</div>
+                  <div class="text-sm font-semibold ${bal != null && bal >= 0 ? 'text-amber-600' : 'text-pink-600'}">${bal != null ? fmtSignedUSD(bal) : '—'}</div>
+                </div>
+              </div>`;
+          }
+          if (exim && exim.series && exim.series.length > 0) {
+            html += `<canvas id="drawer_exim_chart" height="160" class="mt-2"></canvas>
+                     <div class="text-[10px] text-slate-400 font-mono mt-1">Source: ${exim.source || 'N/A'} · ${exim.frequency || ''}</div>`;
+          }
+          html += `</div>`;
+        }
+
+        if (trade && trade.value_usd_top && trade.value_usd_top.length > 0) {
+          const corridors = trade.value_usd_top.slice(0, 5);
+          html += `<div class="dsec"><div class="dsec-title">Top Corridors (Value)</div><div class="space-y-1.5">`;
+          corridors.forEach(c => {
+            html += `<div class="flex items-center justify-between text-xs">
+              <span class="text-slate-700">${c.origin} → ${c.dest}</span>
+              <span class="text-slate-500 font-mono">$${fmtUSD(c.value_usd)}</span>
+            </div>`;
+          });
+          html += `</div></div>`;
+        }
+
+        const wealth = data.wealth;
+        if (wealth && wealth.series && wealth.series.length > 0) {
+          const s = wealth.series;
+          const lastGdp = s.filter(r => r.gdp_per_capita_usd != null);
+          const lastCons = s.filter(r => r.consumption_expenditure_usd != null);
+          const gdpVal = lastGdp.length ? lastGdp[lastGdp.length - 1].gdp_per_capita_usd : null;
+          const consVal = lastCons.length ? lastCons[lastCons.length - 1].consumption_expenditure_usd : null;
+          const yoyGdp = _yoyPct(s, 'gdp_per_capita_usd');
+          const yoyCons = _yoyPct(s, 'consumption_expenditure_usd');
+
+          html += `<div class="dsec"><div class="dsec-title">Wealth Indicators</div>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                <div class="text-[10px] text-slate-400">GDP per capita</div>
+                <div class="text-sm font-semibold text-amber-600">${gdpVal != null ? '$' + Math.round(gdpVal).toLocaleString() : '—'}</div>
+                <div class="text-[10px] text-slate-400">${_fmtPct(yoyGdp)} YoY</div>
+              </div>
+              <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                <div class="text-[10px] text-slate-400">Consumption</div>
+                <div class="text-sm font-semibold text-emerald-600">${consVal != null ? '$' + fmtUSD(consVal) : '—'}</div>
+                <div class="text-[10px] text-slate-400">${_fmtPct(yoyCons)} YoY</div>
+              </div>
+            </div>
+            <canvas id="drawer_wealth_chart" height="140"></canvas>
+            <div class="text-[10px] text-slate-400 font-mono mt-1">Source: ${wealth.source || 'N/A'} · ${wealth.frequency || ''}</div>
+          </div>`;
+        }
+
+        const disp = data.disp;
+        if (disp) {
+          const pc = disp.per_capita_usd != null ? '$' + Math.round(disp.per_capita_usd).toLocaleString() : '—';
+          const hh = disp.per_household_usd != null ? '$' + Math.round(disp.per_household_usd).toLocaleString() : '—';
+          html += `<div class="dsec"><div class="dsec-title">Disposable Income (Latest)</div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                <div class="text-[10px] text-slate-400">Per capita</div>
+                <div class="text-sm font-semibold text-blue-700">${pc}</div>
+              </div>
+              <div class="rounded-lg bg-white border border-slate-200 px-2 py-2">
+                <div class="text-[10px] text-slate-400">Per household</div>
+                <div class="text-sm font-semibold text-blue-700">${hh}</div>
+              </div>
+            </div>
+          </div>`;
+        }
+
+        const age = data.age;
+        if (age && age.rows && age.rows.length > 0) {
+          html += `<div class="dsec"><div class="dsec-title">Age Structure</div>
+            <canvas id="drawer_age_chart" height="160"></canvas>
+            <div class="text-[10px] text-slate-400 font-mono mt-1">Source: ${age.source || 'N/A'} · ${age.period || ''}</div>
+          </div>`;
+        }
+
+        const insightTrade = _getInsight('trade_flow', 'corridors', geoName);
+        const insightWealth = _getInsight('wealth', 'gdp_pc', geoName);
+        if (insightTrade || insightWealth) {
+          html += `<div class="dsec"><div class="dsec-title">Insights</div>`;
+          if (insightTrade && insightTrade.content) {
+            html += `<div class="text-xs text-slate-600 mb-2 leading-relaxed">${insightTrade.content}</div>
+              <div class="text-[10px] text-slate-400 font-mono mb-3">Source updated: ${_fmtSourceUpdated(insightTrade.source_updated_at)}</div>`;
+          }
+          if (insightWealth && insightWealth.content) {
+            html += `<div class="text-xs text-slate-600 leading-relaxed">${insightWealth.content}</div>
+              <div class="text-[10px] text-slate-400 font-mono">Source updated: ${_fmtSourceUpdated(insightWealth.source_updated_at)}</div>`;
+          }
+          html += `</div>`;
+        }
+
+        body.innerHTML = html;
+        requestAnimationFrame(() => renderDrawerCharts(geoName));
+      }
+
+      const drawerChartDefaults = {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#475569', boxWidth: 8, font: { size: 10 } }, position: 'bottom' },
+        },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(226,232,240,0.8)' } },
+          y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(226,232,240,0.8)' } },
+        },
+      };
+
+      function renderDrawerCharts(geoName) {
+        const data = geoDataIndex[geoName];
+        if (!data) return;
+
+        const eximCtx = document.getElementById('drawer_exim_chart');
+        if (eximCtx && data.exim && data.exim.series) {
+          const series = data.exim.series;
+          const labels = series.map(r => r.period);
+          const exp = series.map(r => r.export_usd != null ? r.export_usd / 1e9 : null);
+          const imp = series.map(r => r.import_usd != null ? r.import_usd / 1e9 : null);
+
+          drawerCharts.exim = new Chart(eximCtx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                { label: 'Export (bn)', data: exp, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+                { label: 'Import (bn)', data: imp, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+              ],
+            },
+            options: { ...drawerChartDefaults, plugins: { ...drawerChartDefaults.plugins, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw != null ? c.raw.toFixed(1) : '—'}` } } } },
+          });
+        }
+
+        const wealthCtx = document.getElementById('drawer_wealth_chart');
+        if (wealthCtx && data.wealth && data.wealth.series) {
+          const series = data.wealth.series;
+          const labels = series.map(r => r.period);
+          const gdp = series.map(r => r.gdp_per_capita_usd != null ? r.gdp_per_capita_usd : null);
+
+          drawerCharts.wealth = new Chart(wealthCtx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                { label: 'GDP pc (US$)', data: gdp, borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,0.08)', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+              ],
+            },
+            options: {
+              ...drawerChartDefaults,
+              plugins: {
+                ...drawerChartDefaults.plugins,
+                tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw != null ? '$' + Math.round(c.raw).toLocaleString() : '—'}` } },
+              },
+              scales: {
+                ...drawerChartDefaults.scales,
+                y: { ...drawerChartDefaults.scales.y, ticks: { ...drawerChartDefaults.scales.y.ticks, callback: v => '$' + Number(v).toLocaleString() } },
+              },
+            },
+          });
+        }
+
+        const ageCtx = document.getElementById('drawer_age_chart');
+        if (ageCtx && data.age && data.age.rows && data.age.rows.length > 0) {
+          const labels = data.age.rows.map(r => r.label);
+          const vals = data.age.rows.map(r => r.pct);
+
+          drawerCharts.age = new Chart(ageCtx, {
+            type: 'doughnut',
+            data: {
+              labels,
+              datasets: [{
+                data: vals,
+                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'],
+                borderColor: '#ffffff',
+                borderWidth: 2,
+              }],
+            },
+            options: {
+              responsive: true,
+              cutout: '58%',
+              plugins: {
+                legend: { position: 'right', labels: { color: '#475569', boxWidth: 10, font: { size: 10 } } },
+                tooltip: { callbacks: { label: c => `${c.label}: ${Number(c.parsed).toFixed(1)}%` } },
+              },
+            },
+          });
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+        document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+
+        // Flow corridor top-N button controls
+        document.querySelectorAll('.flow-topn-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const val = btn.getAttribute('data-topn');
+            mapState.flowTopN = val === 'all' ? 'all' : parseInt(val);
+            document.querySelectorAll('.flow-topn-btn').forEach(b => {
+              if (b === btn) {
+                b.classList.add('active');
+                b.classList.remove('bg-white', 'text-slate-600', 'hover:bg-slate-100');
+              } else {
+                b.classList.remove('active');
+                b.classList.add('bg-white', 'text-slate-600', 'hover:bg-slate-100');
+              }
+            });
+            mapState.selectedIso = null;
+            mapState.selectedGeo = null;
+            closeDrawer();
+            renderMap();
+          });
+        });
+      });
+
+      initMap();
+      Promise.allSettled([loadTrade(), loadWealth(), loadFinance()]).catch(() => {});
+    </script>
+
+    <section id="about" class="mt-6 card rounded-3xl p-6">
+      <h3 class="text-lg font-bold">Notes</h3>
+      <ul class="mt-3 text-sm text-slate-500 space-y-2 list-disc pl-5">
+        <li>All definitions should be explicit and source-linked (WTO/UN Comtrade/IMF/World Bank where applicable).</li>
+        <li>Methodology will distinguish <span class="text-slate-800 font-medium">value</span>, <span class="text-slate-800 font-medium">volume</span>, and <span class="text-slate-800 font-medium">shipping capacity</span> to avoid ambiguity.</li>
+      </ul>
+    </section>
+
+    <footer class="mt-8 text-xs text-slate-400">
+      Global Trade Analysis · GTA · {{ now }}
+    </footer>
+  </div>
+</body>
+</html>
