@@ -23,10 +23,17 @@
         </p>
       </div>
       <div class="text-xs text-slate-500 font-mono text-right">
+        {% if user %}
+        <span class="text-emerald-400">{{ user.display_label }}</span><br>
+        {% endif %}
         {{ now }}<br>
         <a class="underline hover:text-blue-300" href="{{ base }}/">Back to dashboard</a>
         &middot;
         <a class="underline hover:text-blue-300" href="{{ base }}/geos">Geos</a>
+        {% if user %}
+        &middot;
+        <a class="underline hover:text-blue-300" href="{{ base }}/logout">Logout</a>
+        {% endif %}
       </div>
     </header>
 

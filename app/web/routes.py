@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from app.web import widget_data
+from app.config import settings
+from app.db.models import AppUser, GeoDictionary, JobRun, UserVisitLog, WidgetInsight, WidgetSnapshot
+from app.db.session import get_db
 from app.jobs.runtime import (
     ALLOWED_GEOS,
     ALLOWED_INSIGHT_CARD_KEYS,
@@ -24,15 +28,76 @@ from app.jobs.runtime import (
     run_job_now,
     update_job_definition,
 )
-from sqlalchemy import func
-from sqlalchemy.orm import Session
-
-from app.config import settings
-from app.db.models import GeoDictionary, JobRun, UserVisitLog, WidgetInsight, WidgetSnapshot
-from app.db.session import get_db
+from app.web import widget_data
+from app.web.auth import create_session_token, decode_session_token, get_password_hash, verify_password
+from app.web.schemas import UserInSession
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/web/templates")
+
+SESSION_COOKIE_NAME = "gta_session"
+VISIT_COOKIE_NAME = "gta_visit"
+
+
+def _get_current_user_from_request(request: Request, db: Session | None = None) -> UserInSession | None:
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if not token:
+        return None
+    data = decode_session_token(token)
+    if not data:
+        return None
+    
+    user_id = data.get("user_id")
+    if not user_id:
+        return None
+    
+    from app.db.session import SessionLocal
+    if db is None:
+        db = SessionLocal()
+        try:
+            user = db.query(AppUser).filter(AppUser.id == user_id).first()
+        finally:
+            db.close()
+    else:
+        user = db.query(AppUser).filter(AppUser.id == user_id).first()
+    
+    if not user:
+        return None
+    
+    return UserInSession(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        is_active=user.is_active,
+        is_superuser=user.is_superuser,
+    )
+
+
+def _login_redirect_url(request: Request) -> str:
+    base = settings.BASE_PATH.rstrip("/")
+    use_prefixed = bool(base) and request.url.path.startswith(f"{base}/")
+    return f"{base}/login" if use_prefixed else "/login"
+
+
+def _get_visitor_cookie_value(request: Request) -> str | None:
+    return request.cookies.get(VISIT_COOKIE_NAME)
+
+
+def _should_count_visit(request: Request) -> tuple[bool, str]:
+    """Determine if this request should count as a new visit. Returns (should_count, cookie_value)."""
+    existing_cookie = _get_visitor_cookie_value(request)
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+
+    user = _get_current_user_from_request(request)
+    if user:
+        cookie_value = f"u{user.id}_{today}"
+    else:
+        ip = _client_ip(request)
+        cookie_value = f"{ip}_{today}"
+
+    if existing_cookie == cookie_value:
+        return False, cookie_value
+    return True, cookie_value
 
 
 def _client_ip(request: Request) -> str:
@@ -155,13 +220,15 @@ def homepage(request: Request, db: Session = Depends(get_db)):
     ip = _client_ip(request)
     ua = request.headers.get("user-agent", "")[:512]
 
-    db.add(UserVisitLog(ip=ip, user_agent=ua))
-    db.commit()
+    should_count, cookie_value = _should_count_visit(request)
+    if should_count:
+        db.add(UserVisitLog(ip=ip, user_agent=ua))
+        db.commit()
 
     visited_count = db.query(func.count(UserVisitLog.id)).scalar() or 0
     dashboard_data, latest_at, is_stale = _dashboard_payload(db)
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
@@ -173,6 +240,20 @@ def homepage(request: Request, db: Session = Depends(get_db)):
             "data_is_stale": is_stale,
         },
     )
+
+    # Set visit cookie with 1 day expiration
+    if should_count:
+        expires = datetime.now(timezone.utc) + timedelta(days=1)
+        response.set_cookie(
+            key=VISIT_COOKIE_NAME,
+            value=cookie_value,
+            expires=int(expires.timestamp()),
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="lax",
+        )
+
+    return response
 
 
 @router.get("/v2", response_class=HTMLResponse)
@@ -607,6 +688,10 @@ def api_trade_exim_latest_all(top_n: int | None = None, db: Session = Depends(ge
 
 @router.get("/jobs", response_class=HTMLResponse)
 def jobs_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
+    user = _get_current_user_from_request(request, db)
+    if not user:
+        return RedirectResponse(url=_login_redirect_url(request), status_code=303)
+
     jobs = []
     rows = list_job_definitions(db)
     rows.sort(key=lambda r: (0 if r.job_id == "generate_homepage_insights" else 1, r.job_id))
@@ -642,6 +727,7 @@ def jobs_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
             "allowed_geos": get_allowed_geos(db),
             "allowed_card_keys": sorted(ALLOWED_INSIGHT_CARD_KEYS),
             "allowed_tab_keys": sorted(ALLOWED_INSIGHT_TAB_KEYS),
+            "user": user,
         },
     )
 
@@ -687,6 +773,141 @@ def jobs_head():
     return Response(status_code=200)
 
 
+@router.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, error: str = "", message: str = ""):
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "error": error,
+            "message": message,
+        },
+    )
+
+
+@router.post("/login")
+def login_submit(
+    request: Request,
+    db: Session = Depends(get_db),
+    email: str = Form(...),
+    password: str = Form(...),
+):
+    email = email.lower().strip()
+    user = db.query(AppUser).filter(AppUser.email == email).first()
+
+    if not user or not verify_password(password, user.password_hash):
+        return RedirectResponse(
+            url=f"{settings.BASE_PATH.rstrip('/')}/login?error=Invalid email or password",
+            status_code=303,
+        )
+
+    if not user.is_active:
+        return RedirectResponse(
+            url=f"{settings.BASE_PATH.rstrip('/')}/login?error=Account not activated. Please contact administrator.",
+            status_code=303,
+        )
+
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+
+    token = create_session_token(user.id)
+
+    base = settings.BASE_PATH.rstrip("/")
+    redirect_url = f"{base}/jobs" if base else "/jobs"
+
+    response = RedirectResponse(url=redirect_url, status_code=303)
+    expires = datetime.now(timezone.utc) + timedelta(days=7)
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        expires=int(expires.timestamp()),
+        httponly=True,
+        secure=False,
+        samesite="lax",
+    )
+    return response
+
+
+@router.get("/logout")
+def logout(request: Request):
+    base = settings.BASE_PATH.rstrip("/")
+    redirect_url = base or "/"
+    response = RedirectResponse(url=redirect_url, status_code=303)
+    response.delete_cookie(key=SESSION_COOKIE_NAME)
+    return response
+
+
+@router.get("/register", response_class=HTMLResponse)
+def register_page(request: Request, error: str = "", email: str = "", display_name: str = ""):
+    return templates.TemplateResponse(
+        "register.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "error": error,
+            "email": email,
+            "display_name": display_name,
+        },
+    )
+
+
+@router.post("/register")
+def register_submit(
+    request: Request,
+    db: Session = Depends(get_db),
+    email: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+    display_name: str = Form(default=""),
+):
+    email = email.lower().strip()
+    display_name = display_name.strip()
+
+    if password != password_confirm:
+        return RedirectResponse(
+            url=f"{settings.BASE_PATH.rstrip('/')}/register?error=Passwords do not match&email={email}&display_name={display_name or ''}",
+            status_code=303,
+        )
+
+    if len(password) < 8:
+        return RedirectResponse(
+            url=f"{settings.BASE_PATH.rstrip('/')}/register?error=Password must be at least 8 characters&email={email}&display_name={display_name or ''}",
+            status_code=303,
+        )
+
+    import re
+    if not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+        return RedirectResponse(
+            url=f"{settings.BASE_PATH.rstrip('/')}/register?error=Password must contain at least one letter and one number&email={email}&display_name={display_name or ''}",
+            status_code=303,
+        )
+
+    existing = db.query(AppUser).filter(AppUser.email == email).first()
+    if existing:
+        return RedirectResponse(
+            url=f"{settings.BASE_PATH.rstrip('/')}/register?error=Email already registered&email={email}&display_name={display_name or ''}",
+            status_code=303,
+        )
+
+    password_hash = get_password_hash(password)
+    user = AppUser(
+        username=email,
+        email=email,
+        password_hash=password_hash,
+        display_name=display_name or None,
+        is_active=False,
+        is_superuser=False,
+    )
+    db.add(user)
+    db.commit()
+
+    return RedirectResponse(
+        url=f"{settings.BASE_PATH.rstrip('/')}/login?message=Registration successful. Please wait for administrator activation.",
+        status_code=303,
+    )
+
+
 # --- Geo Dictionary Management ---
 
 
@@ -699,6 +920,10 @@ def _geos_redirect_url(request: Request, msg: str) -> str:
 
 @router.get("/geos", response_class=HTMLResponse)
 def geos_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
+    user = _get_current_user_from_request(request, db)
+    if not user:
+        return RedirectResponse(url=_login_redirect_url(request), status_code=303)
+
     rows = (
         db.query(GeoDictionary)
         .order_by(GeoDictionary.sort_order, GeoDictionary.geo_name)
@@ -712,6 +937,7 @@ def geos_page(request: Request, msg: str = "", db: Session = Depends(get_db)):
             "msg": msg,
             "geos": rows,
             "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            "user": user,
         },
     )
 
@@ -834,6 +1060,11 @@ def _register_base_path_aliases() -> None:
         {"path": f"{base}/geos/add", "endpoint": geos_add, "methods": ["POST"], "name": "prefixed_geos_add"},
         {"path": f"{base}/geos/update", "endpoint": geos_update, "methods": ["POST"], "name": "prefixed_geos_update"},
         {"path": f"{base}/geos/delete", "endpoint": geos_delete, "methods": ["POST"], "name": "prefixed_geos_delete"},
+        {"path": f"{base}/login", "endpoint": login_page, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_login_page"},
+        {"path": f"{base}/login", "endpoint": login_submit, "methods": ["POST"], "name": "prefixed_login_submit"},
+        {"path": f"{base}/logout", "endpoint": logout, "methods": ["GET"], "name": "prefixed_logout"},
+        {"path": f"{base}/register", "endpoint": register_page, "methods": ["GET"], "response_class": HTMLResponse, "name": "prefixed_register_page"},
+        {"path": f"{base}/register", "endpoint": register_submit, "methods": ["POST"], "name": "prefixed_register_submit"},
     ]
 
     for spec in alias_specs:

@@ -8,6 +8,49 @@
 --
 -- Keep this file as the single source of truth for schema/index creation.
 
+-- User account table for authentication
+CREATE TABLE IF NOT EXISTS public.app_user (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(320) NOT NULL,
+    email VARCHAR(320) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    display_name VARCHAR(64),
+    is_active BOOLEAN NOT NULL DEFAULT FALSE,
+    is_superuser BOOLEAN NOT NULL DEFAULT FALSE,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Constraints: username must equal email, both lowercase
+    CONSTRAINT ck_app_user_username_eq_email CHECK (username = email),
+    CONSTRAINT ck_app_user_email_lowercase CHECK (email = lower(email)),
+    CONSTRAINT ck_app_user_username_lowercase CHECK (username = lower(username)),
+    CONSTRAINT ck_app_user_email_format CHECK (
+        email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+    ),
+
+    CONSTRAINT uq_app_user_username UNIQUE (username),
+    CONSTRAINT uq_app_user_email UNIQUE (email)
+);
+
+COMMENT ON TABLE public.app_user IS 'User accounts for accessing protected pages (e.g., /jobs). Registration requires admin activation.';
+COMMENT ON COLUMN public.app_user.username IS 'Username (must be same as email).';
+COMMENT ON COLUMN public.app_user.email IS 'User email address (lowercase, unique).';
+COMMENT ON COLUMN public.app_user.password_hash IS 'BCrypt hashed password.';
+COMMENT ON COLUMN public.app_user.display_name IS 'Optional display name for UI.';
+COMMENT ON COLUMN public.app_user.is_active IS 'Whether account is activated (admin approval required).';
+COMMENT ON COLUMN public.app_user.is_superuser IS 'Whether user has admin privileges.';
+COMMENT ON COLUMN public.app_user.last_login_at IS 'Timestamp of last successful login.';
+
+CREATE INDEX IF NOT EXISTS idx_app_user_email ON public.app_user(email);
+
+-- Trigger to auto-update updated_at
+DROP TRIGGER IF EXISTS trg_app_user_updated_at ON public.app_user;
+CREATE TRIGGER trg_app_user_updated_at
+BEFORE UPDATE ON public.app_user
+FOR EACH ROW
+EXECUTE FUNCTION public.set_updated_at();
+
 CREATE TABLE IF NOT EXISTS public.user_visit_log (
     id BIGSERIAL PRIMARY KEY,
     ip VARCHAR(64) NOT NULL,
