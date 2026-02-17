@@ -345,6 +345,31 @@ def homepage_v5_2(request: Request, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/v5_3", response_class=HTMLResponse)
+@router.head("/v5_3")
+def homepage_v5_3(request: Request, db: Session = Depends(get_db)):
+    ip = _client_ip(request)
+    ua = request.headers.get("user-agent", "")[:512]
+    db.add(UserVisitLog(ip=ip, user_agent=ua))
+    db.commit()
+
+    visited_count = db.query(func.count(UserVisitLog.id)).scalar() or 0
+    dashboard_data, latest_at, is_stale = _dashboard_payload(db)
+
+    return templates.TemplateResponse(
+        "dashboard_v5_3.html",
+        {
+            "request": request,
+            "base_path": settings.BASE_PATH.rstrip("/"),
+            "visited_count": visited_count,
+            "now": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            "dashboard_data": dashboard_data,
+            "data_updated_at": _fmt_utc(latest_at),
+            "data_is_stale": is_stale,
+        },
+    )
+
+
 @router.get("/v6", response_class=HTMLResponse)
 @router.head("/v6")
 def homepage_v6(request: Request, db: Session = Depends(get_db)):
@@ -784,6 +809,7 @@ def _register_base_path_aliases() -> None:
         {"path": f"{base}/v5", "endpoint": homepage_v5, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v5"},
         {"path": f"{base}/v5_1", "endpoint": homepage_v5_1, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v5_1"},
         {"path": f"{base}/v5_2", "endpoint": homepage_v5_2, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v5_2"},
+        {"path": f"{base}/v5_3", "endpoint": homepage_v5_3, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v5_3"},
         {"path": f"{base}/v6", "endpoint": homepage_v6, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v6"},
         {"path": f"{base}/v7", "endpoint": homepage_v7, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_homepage_v7"},
         {"path": f"{base}/map/trade-flow", "endpoint": trade_flow_map, "methods": ["GET", "HEAD"], "response_class": HTMLResponse, "name": "prefixed_trade_flow_map"},

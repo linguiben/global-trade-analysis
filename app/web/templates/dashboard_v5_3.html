@@ -1066,6 +1066,19 @@
         _renderExecSummary();
       }
 
+      (function _populateExecInsight() {
+        const insight = _getInsight('executive', 'summary', 'Global');
+        if (!insight) return;
+        const textEl = document.getElementById('exec_insight_text');
+        const srcEl = document.getElementById('exec_insight_source_updated');
+        if (textEl && insight.content) {
+          textEl.innerHTML = insight.content.replace(/\n/g, '<br>');
+        }
+        if (srcEl && insight.source_updated_at) {
+          srcEl.textContent = 'Source updated: ' + _fmtSourceUpdated(insight.source_updated_at);
+        }
+      })();
+
       function _renderExecMetrics() {
         const panel = document.getElementById('exec_metrics_panel');
         if (!panel) return;

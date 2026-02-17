@@ -79,7 +79,7 @@ def get_geo_to_wdi(db: Session | None = None) -> dict[str, str]:
 # Backward-compatible module-level references (lazy, read on first access)
 ALLOWED_GEOS = _FALLBACK_GEOS
 GEO_TO_WDI = _FALLBACK_GEO_TO_WDI
-ALLOWED_INSIGHT_CARD_KEYS = {"trade_flow", "wealth", "finance"}
+ALLOWED_INSIGHT_CARD_KEYS = {"trade_flow", "wealth", "finance", "executive"}
 ALLOWED_INSIGHT_TAB_KEYS = {
     "corridors",
     "wci",
@@ -93,6 +93,7 @@ ALLOWED_INSIGHT_TAB_KEYS = {
     "disp_hh",
     "industry",
     "country",
+    "summary",
 }
 
 RUNNABLE_STATUSES = {"success", "failed", "skipped"}
@@ -1229,6 +1230,181 @@ def _run_generate_homepage_insights(db: Session, params: dict[str, Any], job_run
     return msg
 
 
+# ---------------------------------------------------------------------------
+# Executive Insight — manual-only job that synthesises ALL dashboard data
+# ---------------------------------------------------------------------------
+
+def _normalize_generate_executive_insight(raw: dict[str, Any]) -> dict[str, Any]:
+    lang = str(raw.get("lang") or "en").strip().lower() or "en"
+    return {
+        "lang": lang,
+        "force_regen": _as_bool(raw.get("force_regen"), False),
+    }
+
+
+def _run_generate_executive_insight(db: Session, params: dict[str, Any], job_run_id: int | None) -> str:
+    """Collect ALL dashboard widget data and generate a single holistic Executive Insight via LLM."""
+    lang = str((params or {}).get("lang") or "en").strip() or "en"
+    force_regen = _as_bool((params or {}).get("force_regen"), False)
+
+    card_key = "executive"
+    tab_key = "summary"
+    scope = "Global"
+
+    # Gather every snapshot the dashboard uses
+    trade = get_latest_snapshot(db, "trade_corridors", "Global")
+    trade_exim = get_latest_snapshots_by_key(db, "trade_exim_5y")
+    wealth_ind = get_latest_snapshots_by_key(db, "wealth_indicators_5y")
+    wealth_disp = get_latest_snapshot(db, "wealth_disposable_latest", "Global")
+    wealth_age = get_latest_snapshots_by_key(db, "wealth_age_structure_latest")
+    fin_ind = get_latest_snapshot(db, "finance_ma_industry", "Global")
+    fin_cty = get_latest_snapshot(db, "finance_ma_country", "Global")
+
+    snapshot_inputs: list[WidgetSnapshot] = []
+    if trade:
+        snapshot_inputs.append(trade)
+    snapshot_inputs.extend(trade_exim.values())
+    snapshot_inputs.extend(wealth_ind.values())
+    if wealth_disp:
+        snapshot_inputs.append(wealth_disp)
+    snapshot_inputs.extend(wealth_age.values())
+    if fin_ind:
+        snapshot_inputs.append(fin_ind)
+    if fin_cty:
+        snapshot_inputs.append(fin_cty)
+
+    if not snapshot_inputs:
+        return "executive insight skipped: no dashboard snapshots available"
+
+    # Build input object for digest
+    input_keys = []
+    for s in snapshot_inputs:
+        input_keys.append(
+            {
+                "widget_key": s.widget_key,
+                "scope": s.scope,
+                "snapshot_id": int(s.id),
+                "fetched_at": s.fetched_at.isoformat() if s.fetched_at else None,
+                "source_updated_at": s.source_updated_at.isoformat() if s.source_updated_at else None,
+            }
+        )
+
+    input_obj = {
+        "card_key": card_key,
+        "tab_key": tab_key,
+        "scope": scope,
+        "lang": lang,
+        "snapshots": [{"key": s.widget_key, "scope": s.scope, "payload": s.payload} for s in snapshot_inputs],
+    }
+    data_digest = digest_for_inputs(input_obj)
+
+    # Check if insight already exists with the same data digest (skip unless forced)
+    if not force_regen:
+        existing = (
+            db.query(WidgetInsight)
+            .filter(
+                WidgetInsight.card_key == card_key,
+                WidgetInsight.tab_key == tab_key,
+                WidgetInsight.scope == scope,
+                WidgetInsight.lang == lang,
+                WidgetInsight.data_digest == data_digest,
+                WidgetInsight.generated_by == "llm",
+            )
+            .first()
+        )
+        if existing:
+            return "executive insight skipped: data unchanged (same digest)"
+
+    system = (
+        "You are a macroeconomic analyst and corporate strategy advisor. Your audience is C-suite leadership. "
+        "Write a concise, holistic Executive Insight that synthesises ALL the provided dashboard data — covering "
+        "trade flows, exports/imports, shipping freight, GDP per capita, household consumption, disposable income, "
+        "age structure demographics, and M&A activity (by industry and country). "
+        "Use ONLY the provided data and source metadata. Do NOT invent numbers. "
+        "If data is proxy/nowcast/scraped, explicitly caveat. "
+        "Style: 1-2 short paragraphs or 4-6 bullet points. Actionable, decision-oriented. "
+        "Highlight cross-domain linkages (e.g. trade trends → GDP impact → consumer spending → M&A implications). "
+        "Conclude with 1-2 risks to monitor. "
+        "Keep the JSON output compact (<= ~10000 chars). "
+        "Return STRICT JSON with keys: insight (string), references (array of {title,url,publisher,date})."
+    )
+
+    user = json.dumps(
+        {
+            "task": "Generate holistic Executive Insight for leadership dashboard",
+            "audience": ["C-suite", "senior executives", "economic analysts"],
+            "card_key": card_key,
+            "tab_key": tab_key,
+            "scope": scope,
+            "constraints": {
+                "length": "4-6 bullets or 1-2 paragraphs",
+                "must_reference_data": True,
+                "must_use_source_updated_at": True,
+                "avoid_job_time": True,
+                "no_fabrication": True,
+                "cross_domain_synthesis": True,
+                "json_max_chars": 10000,
+            },
+            "inputs": input_obj,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )
+
+    llm = generate_insight_with_llm(system=system, user=user)
+    _save_insight_generate_log(
+        db,
+        card_key=card_key,
+        tab_key=tab_key,
+        scope=scope,
+        lang=lang,
+        job_run_id=job_run_id,
+        llm_provider=llm.provider,
+        llm_model=llm.model,
+        endpoint=llm.endpoint,
+        request_system=system,
+        request_user=user,
+        request_payload=llm.request_payload,
+        response_status=llm.response_status,
+        response_raw=llm.response_raw,
+        parsed_content=llm.content,
+        parsed_references=llm.references,
+        ok=llm.ok,
+        error=llm.error or "",
+    )
+    if not llm.ok:
+        raise RuntimeError(f"executive insight LLM generation failed: {llm.error}")
+
+    content = llm.content
+    references = llm.references if isinstance(llm.references, list) else []
+
+    # Prefer the freshest source_updated_at among inputs
+    src_at = None
+    for s in snapshot_inputs:
+        if s.source_updated_at and (src_at is None or s.source_updated_at > src_at):
+            src_at = s.source_updated_at
+
+    _save_insight(
+        db,
+        card_key=card_key,
+        tab_key=tab_key,
+        scope=scope,
+        lang=lang,
+        content=content,
+        reference_list=references,
+        source_updated_at=src_at,
+        job_run_id=job_run_id,
+        data_digest=data_digest,
+        input_snapshot_keys=input_keys,
+        llm_provider=llm.provider,
+        llm_model=llm.model,
+        llm_prompt=user,
+        llm_error="",
+    )
+    return f"executive insight generated: card={card_key}, tab={tab_key}, scope={scope}, lang={lang}"
+
+
 JOB_SPECS: dict[str, JobSpec] = {
     "generate_homepage_insights": JobSpec(
         job_id="generate_homepage_insights",
@@ -1320,6 +1496,16 @@ JOB_SPECS: dict[str, JobSpec] = {
         default_params={"keep_days": settings.JOB_RETENTION_DAYS},
         normalize_params=_normalize_cleanup,
         runner=_run_cleanup_snapshots,
+    ),
+    "generate_executive_insight": JobSpec(
+        job_id="generate_executive_insight",
+        name="Generate Executive Insight",
+        description="Synthesise all dashboard data into a single holistic Executive Insight via LLM. Manual-only.",
+        cron_expr="0 0 31 2 *",
+        timezone=settings.TZ,
+        default_params={},
+        normalize_params=_normalize_generate_executive_insight,
+        runner=_run_generate_executive_insight,
     ),
 }
 
