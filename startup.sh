@@ -72,11 +72,13 @@ fi
 docker compose up -d --build
 
 # Tag the newly built web image with a timestamp for rollback/audit
-WEB_IMAGE="$(docker compose images web --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | head -n1)"
+WEB_IMAGE="$(docker compose ps -q web | xargs -r docker inspect --format '{{.Config.Image}}' 2>/dev/null | head -n1)"
 if [ -n "$WEB_IMAGE" ]; then
   TIMESTAMP_TAG="$(date +%Y%m%d-%H%M%S)"
   docker tag "$WEB_IMAGE" "${WEB_IMAGE%%:*}:${TIMESTAMP_TAG}"
   echo "Tagged image: ${WEB_IMAGE%%:*}:${TIMESTAMP_TAG}"
+else
+  echo "No running container found for service 'web', skip tagging"
 fi
 
 web_id="$(get_container_id web)"
