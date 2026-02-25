@@ -21,7 +21,26 @@
  
   -- job_definitions
   select * from job_definitions jd  
+  select * from app_user
+select * from  public.user_visit_log
   
-  
-  
-  
+select min(to_char(fetched_at, 'YYYY-MM-DD')), max(fetched_at )
+  from widget_snapshots
+  where widget_key='trade_corridors' and scope='Global'
+  order by fetched_at desc
+  limit 1;
+
+select to_char(fetched_at, 'YYYY-MM-DD')dt, count(1) from widget_snapshots group by to_char(fetched_at, 'YYYY-MM-DD')
+
+
+-- 创建备份表（只复制最近7天数据）
+CREATE TABLE widget_snapshots_backup (LIKE widget_snapshots INCLUDING ALL);
+INSERT INTO widget_snapshots_backup SELECT * FROM widget_snapshots;
+
+-- 验证
+SELECT COUNT(*) FROM widget_snapshots_backup;  -- 检查数据量[web:22]
+SELECT COUNT(*) FROM widget_snapshots;  -- 检查数据量[web:22]
+
+select * from widget_snapshots where fetched_at >= '2026-02-19'
+
+
